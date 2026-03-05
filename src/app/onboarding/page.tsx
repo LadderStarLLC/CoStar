@@ -1,13 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { User, Building2, ArrowRight, Check, Github, Linkedin, Mail, Phone } from "lucide-react";
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState(1);
   const [accountType, setAccountType] = useState<"user" | "business" | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/sign-in");
+    }
+  }, [user, authLoading, router]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) return null;
 
   const steps = [
     { num: 1, title: "Account Type" },

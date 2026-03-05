@@ -1,21 +1,21 @@
 "use client";
 
-import { UserButton, useUser } from "@clerk/nextjs";
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { User, Building2, Briefcase, Settings, Star, CheckCircle2, Github, Linkedin } from "lucide-react";
+import { User, Building2, Briefcase, Settings, Star, CheckCircle2, Github, Linkedin, LogOut } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user, isLoaded } = useUser();
+  const { user, logout, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoaded && !user) {
+    if (!loading && !user) {
       router.push("/sign-in");
     }
-  }, [user, isLoaded, router]);
+  }, [user, loading, router]);
 
-  if (!isLoaded) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
         <div className="text-white">Loading...</div>
@@ -42,7 +42,30 @@ export default function DashboardPage() {
               <a href="#" className="text-slate-300 hover:text-white transition-colors">Companies</a>
               <a href="#" className="text-slate-300 hover:text-white transition-colors">Messages</a>
             </nav>
-            <UserButton afterSignOutUrl="/" />
+
+            {/* User Menu */}
+            <div className="flex items-center gap-3">
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName || "User"}
+                  className="w-8 h-8 rounded-full"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center">
+                  <span className="text-slate-900 font-bold">
+                    {user.displayName?.[0] || user.email?.[0] || "U"}
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={logout}
+                className="p-2 text-slate-400 hover:text-white transition-colors"
+                title="Sign out"
+              >
+                <LogOut size={20} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -52,7 +75,7 @@ export default function DashboardPage() {
         {/* Welcome */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">
-            Welcome back, {user.firstName || "there"}!
+            Welcome back, {user.displayName || "there"}!
           </h1>
           <p className="text-slate-400">Here's what's happening with your profile</p>
         </div>
@@ -60,10 +83,10 @@ export default function DashboardPage() {
         {/* Stats Grid */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
           {[
-            { label: "Profile Views", value: "24", icon: User, color: "amber" },
-            { label: "Job Matches", value: "8", icon: Briefcase, color: "blue" },
-            { label: "Verified Accounts", value: "3", icon: CheckCircle2, color: "green" },
-            { label: "Profile Strength", value: "75%", icon: Star, color: "purple" },
+            { label: "Profile Views", value: "0", icon: User, color: "amber" },
+            { label: "Job Matches", value: "0", icon: Briefcase, color: "blue" },
+            { label: "Verified Accounts", value: "0", icon: CheckCircle2, color: "green" },
+            { label: "Profile Strength", value: "25%", icon: Star, color: "purple" },
           ].map((stat) => (
             <div key={stat.label} className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
               <div className={`w-10 h-10 bg-${stat.color}-500/20 rounded-lg flex items-center justify-center mb-4`}>
@@ -83,10 +106,10 @@ export default function DashboardPage() {
             <div className="space-y-4">
               {[
                 { label: "Basic Information", progress: 100, complete: true },
-                { label: "Work Experience", progress: 80, complete: false },
-                { label: "Education", progress: 100, complete: true },
-                { label: "Skills", progress: 60, complete: false },
-                { label: "Social Connections", progress: 40, complete: false },
+                { label: "Account Type", progress: 0, complete: false },
+                { label: "Work Experience", progress: 0, complete: false },
+                { label: "Education", progress: 0, complete: false },
+                { label: "Social Connections", progress: 0, complete: false },
                 { label: "Work Vibe Assessment", progress: 0, complete: false },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-4">
@@ -110,7 +133,10 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <button className="mt-6 w-full py-3 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-600 transition-colors">
+            <button
+              onClick={() => router.push("/onboarding")}
+              className="mt-6 w-full py-3 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-600 transition-colors"
+            >
               Complete Your Profile
             </button>
           </div>
@@ -141,28 +167,9 @@ export default function DashboardPage() {
         {/* Recent Job Matches */}
         <div className="mt-8 bg-slate-800/50 border border-white/10 rounded-xl p-6">
           <h2 className="text-xl font-bold text-white mb-6">Top Job Matches</h2>
-
-          <div className="space-y-4">
-            {[
-              { title: "Senior Software Engineer", company: "TechCorp", match: "94%", location: "Remote" },
-              { title: "Full Stack Developer", company: "StartupXYZ", match: "87%", location: "San Francisco" },
-              { title: "Staff Engineer", company: "BigTech Inc", match: "82%", location: "New York" },
-            ].map((job) => (
-              <div
-                key={job.title}
-                className="p-4 bg-slate-900 border border-white/10 rounded-lg hover:border-white/20 transition-colors flex items-center justify-between"
-              >
-                <div>
-                  <h3 className="text-white font-semibold">{job.title}</h3>
-                  <p className="text-slate-400 text-sm">{job.company} · {job.location}</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-amber-400 font-bold">{job.match}</div>
-                  <div className="text-slate-500 text-sm">match</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="text-slate-400 text-center py-8">
+            Complete your profile to see AI-matched job opportunities
+          </p>
         </div>
       </main>
     </div>
