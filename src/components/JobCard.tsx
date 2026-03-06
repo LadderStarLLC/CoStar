@@ -216,14 +216,17 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
                 <span>{formatDate()}</span>
               </div>
 
-              {job.application?.method && (
-                <button
-                  onClick={handleApply}
+              {job.application?.url && (
+                <a
+                  href={job.application.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
                   className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg text-sm font-medium transition-colors"
                 >
                   Apply
                   <ExternalLink className="w-3 h-3" />
-                </button>
+                </a>
               )}
             </div>
           </div>
