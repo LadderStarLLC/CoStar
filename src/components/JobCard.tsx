@@ -80,8 +80,11 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
 
   const salary = formatSalary();
 
+  // Generate link - use slug or jobId
+  const jobLink = job.slug ? `/jobs/${job.slug}` : job.jobId ? `/jobs/${job.jobId}` : '#';
+
   return (
-    <Link href={`/jobs/${job.slug}`}>
+    <Link href={jobLink}>
       <div
         className="group bg-slate-800/50 border border-white/10 rounded-xl p-5 hover:border-amber-500/30 hover:bg-slate-800/80 transition-all duration-300 cursor-pointer"
         onMouseEnter={() => setIsHovered(true)}

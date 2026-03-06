@@ -1,13 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getJobs, JobFilters, SortOption, JobData } from '@/lib/jobs';
-import { getAllCategories, getAllLocations } from '@/lib/jobs';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { getScrapedJobs, getScrapedCategories, getScrapedLocations, JobFilters, SortOption, JobData } from '@/lib/jobs';
+import NavHeader from '@/components/NavHeader';
 import JobCard from '@/components/JobCard';
 import JobFiltersComponent from '@/components/JobFilters';
-import { Briefcase, Loader2, AlertCircle, Grid, List } from 'lucide-react';
+import { Briefcase, Loader2, AlertCircle } from 'lucide-react';
 
 export default function JobsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,17 +19,25 @@ export default function JobsPage() {
   const [sortBy, setSortBy] = useState<SortOption>('recent');
   const [hasMore, setHasMore] = useState(false);
   const [lastDoc, setLastDoc] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [categories, setCategories] = useState<string[]>([]);
   const [locations, setLocations] = useState<{ city: string; country: string }[]>([]);
 
-  // Load jobs from Firestore
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/sign-in');
+    }
+  }, [user, authLoading, router]);
+
+  // Load jobs from Firestore (scrapedJobs collection)
   const loadJobs = useCallback(async () => {
+    if (!user) return;
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await getJobs(
+      const result = await getScrapedJobs(
         filters,
         sortBy,
         20,
@@ -41,19 +53,23 @@ export default function JobsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters, sortBy, lastDoc]);
+  }, [filters, sortBy, lastDoc, user]);
 
   // Initial load on mount
   useEffect(() => {
-    loadJobs();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (user) {
+      loadJobs();
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load categories and locations
+  // Load categories and locations from scrapedJobs
   useEffect(() => {
+    if (!user) return;
+
     const loadMeta = async () => {
       try {
-        const cats = await getAllCategories();
-        const locs = await getAllLocations();
+        const cats = await getScrapedCategories();
+        const locs = await getScrapedLocations();
         setCategories(cats);
         setLocations(locs);
       } catch (err) {
@@ -61,19 +77,15 @@ export default function JobsPage() {
       }
     };
     loadMeta();
-  }, []);
+  }, [user]);
 
   // Reload when filters or sort changes
   useEffect(() => {
-    setLastDoc(null);
-    loadJobs();
-  }, [filters, sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleLoadMore = () => {
-    if (!isLoading && hasMore) {
+    if (user) {
+      setLastDoc(null);
       loadJobs();
     }
-  };
+  }, [filters, sortBy, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFiltersChange = (newFilters: JobFilters) => {
     setFilters(newFilters);
@@ -83,8 +95,22 @@ export default function JobsPage() {
     setSortBy(newSort);
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-slate-900">
+      <NavHeader />
+
       {/* Header */}
       <div className="bg-slate-800/50 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 py-8">
@@ -102,10 +128,18 @@ export default function JobsPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3 text-red-400 mb-6">
+            <AlertCircle className="w-5 h-5" />
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Filters */}
           <div className="lg:w-80 flex-shrink-0">
-            <div className="sticky top-4">
+            <div className="sticky top-24">
               <JobFiltersComponent
                 filters={filters}
                 onFiltersChange={handleFiltersChange}
@@ -119,80 +153,28 @@ export default function JobsPage() {
 
           {/* Jobs List */}
           <div className="flex-1">
-            {/* View Toggle */}
+            {/* Jobs Count */}
             <div className="flex items-center justify-between mb-6">
               <p className="text-slate-400 text-sm">
                 {isLoading ? 'Loading...' : `${jobs.length} jobs found`}
               </p>
-              <div className="flex items-center gap-1 bg-slate-800/50 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'list'
-                      ? 'bg-amber-500 text-slate-900'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <List className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'grid'
-                      ? 'bg-amber-500 text-slate-900'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Grid className="w-4 h-4" />
-                </button>
-              </div>
             </div>
 
-            {/* Error State */}
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3 text-red-400 mb-6">
-                <AlertCircle className="w-5 h-5" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Jobs Grid/List */}
+            {/* Jobs List */}
             {jobs.length === 0 && !isLoading ? (
               <div className="bg-slate-800/30 border border-white/10 rounded-xl p-12 text-center">
                 <Briefcase className="w-12 h-12 text-slate-600 mx-auto mb-4" />
                 <h3 className="text-white font-semibold text-lg mb-2">No jobs found</h3>
                 <p className="text-slate-400">
-                  Try adjusting your filters or search criteria
+                  Try adjusting your filters or check back later
                 </p>
               </div>
             ) : (
-              <>
-                <div className={`space-y-4 ${viewMode === 'grid' ? 'grid md:grid-cols-2 gap-4' : ''}`}>
-                  {jobs.map(job => (
-                    <JobCard key={job.jobId} job={job} />
-                  ))}
-                </div>
-
-                {/* Load More */}
-                {hasMore && (
-                  <div className="mt-8 text-center">
-                    <button
-                      onClick={handleLoadMore}
-                      disabled={isLoading}
-                      className="px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium disabled:opacity-50"
-                    >
-                      {isLoading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          Loading...
-                        </span>
-                      ) : (
-                        'Load More Jobs'
-                      )}
-                    </button>
-                  </div>
-                )}
-              </>
+              <div className="space-y-4">
+                {jobs.map(job => (
+                  <JobCard key={job.jobId} job={job} />
+                ))}
+              </div>
             )}
 
             {/* Initial Loading */}
