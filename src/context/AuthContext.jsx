@@ -33,9 +33,14 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => signOut(auth);
+    const logout = () => auth ? signOut(auth) : Promise.resolve();
 
     useEffect(() => {
+        if (!auth) {
+            setLoading(false);
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (!currentUser) {
                 setUser(null);
@@ -55,6 +60,12 @@ export const AuthProvider = ({ children }) => {
 
             // Background sync: Fetch/sync user data from Firestore
             try {
+                if (!db) {
+                    console.warn("Firestore not initialized");
+                    setLoading(false);
+                    return;
+                }
+
                 const userRef = doc(db, 'users', currentUser.uid);
                 const userSnap = await getDoc(userRef);
 
