@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getJobBySlug, JobData, incrementJobMetric } from '@/lib/jobs';
-import { getCompanyById, CompanyData } from '@/lib/companies';
+import { getScrapedJobById, JobData } from '@/lib/jobs';
 import Link from 'next/link';
+import NavHeader from '@/components/NavHeader';
 import {
   ArrowLeft,
   MapPin,
@@ -19,16 +19,14 @@ import {
   AlertCircle,
   CheckCircle2,
   Users,
-  Building2,
 } from 'lucide-react';
 
 export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const slug = params.slug as string;
+  const jobId = params.jobId as string;
 
   const [job, setJob] = useState<JobData | null>(null);
-  const [company, setCompany] = useState<CompanyData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -36,13 +34,13 @@ export default function JobDetailPage() {
 
   useEffect(() => {
     const loadJob = async () => {
-      if (!slug) return;
+      if (!jobId) return;
 
       setIsLoading(true);
       setError(null);
 
       try {
-        const jobData = await getJobBySlug(slug);
+        const jobData = await getScrapedJobById(jobId);
 
         if (!jobData) {
           setError('Job not found');
@@ -51,17 +49,6 @@ export default function JobDetailPage() {
         }
 
         setJob(jobData);
-
-        // Track view
-        if (jobData.jobId) {
-          await incrementJobMetric(jobData.jobId, 'views');
-        }
-
-        // Load company if exists
-        if (jobData.companyId) {
-          const companyData = await getCompanyById(jobData.companyId);
-          setCompany(companyData);
-        }
       } catch (err) {
         setError('Failed to load job details');
         console.error('Error loading job:', err);
@@ -71,7 +58,7 @@ export default function JobDetailPage() {
     };
 
     loadJob();
-  }, [slug]);
+  }, [jobId]);
 
   const formatSalary = () => {
     if (!job?.salary?.visible || (!job.salary?.min && !job.salary?.max)) return 'Salary not disclosed';
@@ -386,64 +373,25 @@ export default function JobDetailPage() {
               </div>
             </div>
 
-            {/* Company Card */}
-            {company && (
+            {/* Company Info */}
+            {job.companyName && (
               <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
-                <h3 className="text-white font-semibold mb-4">About {company.name}</h3>
+                <h3 className="text-white font-semibold mb-4">About {job.companyName}</h3>
 
-                {company.tagline && (
-                  <p className="text-slate-400 text-sm mb-4">{company.tagline}</p>
-                )}
-
-                {company.description && (
-                  <p className="text-slate-300 text-sm mb-4 line-clamp-4">
-                    {company.description}
+                {job.source && (
+                  <p className="text-slate-400 text-sm mb-4">
+                    <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs">
+                      {job.source}
+                    </span>
                   </p>
                 )}
 
-                <div className="space-y-3 text-sm">
-                  {company.companySize && (
-                    <div className="flex items-center gap-3 text-slate-400">
-                      <Users className="w-4 h-4" />
-                      <span>{company.companySize} employees</span>
-                    </div>
-                  )}
-
-                  {company.headquarters && (
-                    <div className="flex items-center gap-3 text-slate-400">
-                      <MapPin className="w-4 h-4" />
-                      <span>
-                        {[company.headquarters.city, company.headquarters.country].filter(Boolean).join(', ')}
-                      </span>
-                    </div>
-                  )}
-
-                  {company.website && (
-                    <a
-                      href={company.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 text-amber-400 hover:text-amber-300"
-                    >
-                      <Globe className="w-4 h-4" />
-                      <span>Visit website</span>
-                    </a>
-                  )}
-                </div>
-
-                {company.culture?.perks && (company.culture.perks.length ?? 0) > 0 && (
-                  <div className="mt-4 pt-4 border-t border-white/10">
-                    <h4 className="text-slate-400 text-sm mb-2">Perks & Benefits</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {company.culture?.perks?.slice(0, 4).map(perk => (
-                        <span
-                          key={perk}
-                          className="px-2 py-1 bg-slate-700/50 text-slate-300 text-xs rounded-lg"
-                        >
-                          {perk}
-                        </span>
-                      ))}
-                    </div>
+                {job.location?.city && (
+                  <div className="flex items-center gap-3 text-slate-400 text-sm mb-2">
+                    <MapPin className="w-4 h-4" />
+                    <span>
+                      {[job.location.city, job.location.country].filter(Boolean).join(', ')}
+                    </span>
                   </div>
                 )}
               </div>

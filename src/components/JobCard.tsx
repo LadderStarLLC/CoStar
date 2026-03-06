@@ -80,8 +80,8 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
 
   const salary = formatSalary();
 
-  // Generate link - use slug or jobId
-  const jobLink = job.slug ? `/jobs/${job.slug}` : job.jobId ? `/jobs/${job.jobId}` : '#';
+  // Generate link - use jobId (not slug since slugs aren't persistent)
+  const jobLink = job.jobId ? `/jobs/${job.jobId}` : '#';
 
   return (
     <Link href={jobLink}>
@@ -176,6 +176,11 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
               )}
             </div>
 
+            {/* Short Description */}
+            {job.shortDescription && (
+              <p className="text-slate-400 text-sm mt-2 line-clamp-2">{job.shortDescription}</p>
+            )}
+
             {/* Tags */}
             {job.tags && job.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">
@@ -192,6 +197,15 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
                     +{job.tags.length - 4} more
                   </span>
                 )}
+              </div>
+            )}
+
+            {/* Source Badge */}
+            {job.source && (
+              <div className="flex items-center gap-2 mt-3">
+                <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs">
+                  {job.source}
+                </span>
               </div>
             )}
 

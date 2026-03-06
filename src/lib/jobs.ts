@@ -397,6 +397,37 @@ export async function getScrapedJobs(
     jobs = jobs.filter(job => job.category === filters.category);
   }
 
+  // Client-side filtering for date posted
+  if (filters.datePosted && filters.datePosted !== 'any') {
+    const now = new Date();
+    let cutoffDate: Date;
+
+    switch (filters.datePosted) {
+      case '24h':
+        cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case 'week':
+        cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        cutoffDate = new Date(0);
+    }
+
+    jobs = jobs.filter(job => {
+      if (!job.createdAt) return true;
+      let jobDate: Date;
+      if (job.createdAt.toDate) {
+        jobDate = job.createdAt.toDate();
+      } else {
+        jobDate = new Date(job.createdAt);
+      }
+      return jobDate >= cutoffDate;
+    });
+  }
+
   // Client-side filtering for remote policy
   if (filters.remotePolicy && filters.remotePolicy.length > 0) {
     jobs = jobs.filter(job =>
@@ -610,6 +641,19 @@ export async function getJobBySlug(slug: string): Promise<JobData | null> {
     jobId: doc.id,
     ...doc.data(),
   } as JobData;
+}
+
+// Get a single scraped job by ID
+export async function getScrapedJobById(jobId: string): Promise<JobData | null> {
+  if (!db) throw new Error('Firestore not initialized');
+
+  const jobRef = doc(db, 'scrapedJobs', jobId);
+  const jobSnap = await getDoc(jobRef);
+
+  if (!jobSnap.exists()) return null;
+
+  const data = jobSnap.data() as ScrapedJobData;
+  return convertScrapedJobToJobData({ ...data, id: jobSnap.id });
 }
 
 // Get jobs with filters and sorting

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { getScrapedJobs, getScrapedCategories, getScrapedLocations, JobFilters, SortOption, JobData } from '@/lib/jobs';
 import NavHeader from '@/components/NavHeader';
@@ -9,9 +9,10 @@ import JobCard from '@/components/JobCard';
 import JobFiltersComponent from '@/components/JobFilters';
 import { Briefcase, Loader2, AlertCircle } from 'lucide-react';
 
-export default function JobsPage() {
+function JobsContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +22,32 @@ export default function JobsPage() {
   const [lastDoc, setLastDoc] = useState<any>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [locations, setLocations] = useState<{ city: string; country: string }[]>([]);
+
+  // Initialize filters from URL params
+  useEffect(() => {
+    const search = searchParams.get('search');
+    const tag = searchParams.get('tag');
+    const remote = searchParams.get('remote');
+
+    const newFilters: JobFilters = {};
+
+    if (search) {
+      newFilters.search = search;
+    }
+
+    if (tag) {
+      newFilters.tags = [tag];
+    }
+
+    if (remote) {
+      newFilters.remotePolicy = [remote];
+    }
+
+    // Only update if we have URL params
+    if (Object.keys(newFilters).length > 0) {
+      setFilters(prev => ({ ...prev, ...newFilters }));
+    }
+  }, [searchParams]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -136,38 +163,30 @@ export default function JobsPage() {
           </div>
         )}
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar Filters */}
-          <div className="lg:w-80 flex-shrink-0">
-            <div className="sticky top-24">
-              <JobFiltersComponent
-                filters={filters}
-                onFiltersChange={handleFiltersChange}
-                sortBy={sortBy}
-                onSortChange={handleSortChange}
-                categories={categories}
-                locations={locations}
-              />
-            </div>
-          </div>
+        <div className="flex gap-8">
+          {/* Filters Sidebar */}
+          <aside className="w-72 flex-shrink-0">
+            <JobFiltersComponent
+              filters={filters}
+              onFiltersChange={handleFiltersChange}
+              sortBy={sortBy}
+              onSortChange={handleSortChange}
+              categories={categories}
+              locations={locations}
+            />
+          </aside>
 
-          {/* Jobs List */}
+          {/* Job Listings */}
           <div className="flex-1">
-            {/* Jobs Count */}
-            <div className="flex items-center justify-between mb-6">
-              <p className="text-slate-400 text-sm">
-                {isLoading ? 'Loading...' : `${jobs.length} jobs found`}
-              </p>
-            </div>
-
-            {/* Jobs List */}
-            {jobs.length === 0 && !isLoading ? (
-              <div className="bg-slate-800/30 border border-white/10 rounded-xl p-12 text-center">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+              </div>
+            ) : jobs.length === 0 ? (
+              <div className="text-center py-20">
                 <Briefcase className="w-12 h-12 text-slate-600 mx-auto mb-4" />
                 <h3 className="text-white font-semibold text-lg mb-2">No jobs found</h3>
-                <p className="text-slate-400">
-                  Try adjusting your filters or check back later
-                </p>
+                <p className="text-slate-400">Try adjusting your filters or search query</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -177,15 +196,32 @@ export default function JobsPage() {
               </div>
             )}
 
-            {/* Initial Loading */}
-            {isLoading && jobs.length === 0 && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+            {/* Load More */}
+            {hasMore && !isLoading && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={loadJobs}
+                  className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition-colors"
+                >
+                  Load more jobs
+                </button>
               </div>
             )}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function JobsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+      </div>
+    }>
+      <JobsContent />
+    </Suspense>
   );
 }
