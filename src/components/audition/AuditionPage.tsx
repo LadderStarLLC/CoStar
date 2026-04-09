@@ -1,0 +1,247 @@
+'use client';
+
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { getScrapedJobById } from '@/lib/jobs';
+import { buildSystemPrompt } from '@/lib/audition/systemPrompt';
+import type {
+  AuditionPhase,
+  AuditionConfig,
+  AuditionResults,
+} from '@/lib/audition/types';
+import type { JobData } from '@/lib/jobs';
+
+import { useGeminiLiveSession } from '@/hooks/useGeminiLiveSession';
+import { useAudioCapture } from '@/hooks/useAudioCapture';
+import { useAudioPlayback } from '@/hooks/useAudioPlayback';
+import { useInterviewTimer } from '@/hooks/useInterviewTimer';
+import { useTranscript } from '@/hooks/useTranscript';
+
+import { SetupScreen } from './SetupScreen';
+import { InterviewScreen } from './InterviewScreen';
+import { ResultsScreen } from './ResultsScreen';
+
+interface AuditionPageProps {
+  jobId: string;
+}
+
+const DEFAULT_CONFIG: AuditionConfig = {
+  interviewType: 'mixed',
+  difficulty: 'medium',
+  durationMinutes: 10,
+  mediaMode: 'voice',
+};
+
+export function AuditionPage({ jobId }: AuditionPageProps) {
+  const { user } = useAuth() as { user: { getIdToken: () => Promise<string> } | null };
+
+  const [phase, setPhase] = useState<AuditionPhase>('setup');
+  const [job, setJob] = useState<JobData | null>(null);
+  const [config, setConfig] = useState<AuditionConfig>(DEFAULT_CONFIG);
+  const [results, setResults] = useState<AuditionResults | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+
+  const sessionStartRef = useRef<number>(0);
+
+  // Load job data
+  useEffect(() => {
+    getScrapedJobById(jobId).then((j) => setJob(j ?? null));
+  }, [jobId]);
+
+  // Transcript
+  const { entries, addPartial, finalizeLast, reset: resetTranscript } = useTranscript();
+
+  // Audio playback
+  const { isPlaying, enqueueChunk, stop: stopPlayback, close: closePlayback, analyserRef } =
+    useAudioPlayback();
+
+  // Gemini session
+  const { aiStatus, isConnected, connect, sendAudioChunk, disconnect } = useGeminiLiveSession({
+    onAudioChunk: enqueueChunk,
+    onAITranscript: (text, isFinal) => {
+      addPartial('ai', text);
+      if (isFinal) finalizeLast('ai');
+    },
+    onUserTranscript: (text, isFinal) => {
+      addPartial('user', text);
+      if (isFinal) finalizeLast('user');
+    },
+    onTurnComplete: () => {
+      finalizeLast('ai');
+      audioCapture.setPaused(false);
+    },
+    onInterviewComplete: () => {
+      handleEndInterview();
+    },
+    onError: (msg) => {
+      setSessionError(msg);
+      setPhase('setup');
+    },
+  });
+
+  // Audio capture — paused while AI is speaking
+  const audioCapture = useAudioCapture({
+    onChunk: useCallback(
+      (base64: string) => {
+        if (isConnected) sendAudioChunk(base64);
+      },
+      [isConnected, sendAudioChunk],
+    ),
+  });
+
+  // Pause mic capture while AI is playing audio
+  useEffect(() => {
+    audioCapture.setPaused(isPlaying);
+  }, [isPlaying, audioCapture.setPaused]);
+
+  // Timer
+  const handleTimerExpire = useCallback(() => {
+    handleEndInterview();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const timer = useInterviewTimer(config.durationMinutes * 60, handleTimerExpire);
+
+  const handleStartAudition = useCallback(async () => {
+    setPhase('requesting-permission');
+    setSessionError(null);
+
+    const granted = await audioCapture.requestPermission();
+    if (!granted) {
+      setPhase('setup');
+      return;
+    }
+
+    setPhase('connecting');
+
+    try {
+      if (!user) throw new Error('Not authenticated');
+      const idToken = await user.getIdToken();
+
+      const res = await fetch('/api/audition/token', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+
+      if (!res.ok) throw new Error('Failed to get session token');
+      const { token } = (await res.json()) as { token: string };
+
+      const systemPrompt = buildSystemPrompt(job ?? { title: 'this role', companyName: 'the company' }, config);
+      await connect(token, systemPrompt, config);
+
+      audioCapture.startCapture();
+      sessionStartRef.current = Date.now();
+      timer.start();
+      setPhase('interviewing');
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : 'Failed to start session');
+      setPhase('setup');
+    }
+  }, [user, job, config, audioCapture, connect, timer]);
+
+  const handleEndInterview = useCallback(async () => {
+    setPhase('ending');
+    timer.pause();
+    disconnect();
+    audioCapture.stopCapture();
+    stopPlayback();
+
+    const durationSeconds = Math.round((Date.now() - sessionStartRef.current) / 1000);
+    const finalEntries = entries.map((e) => ({ ...e, isFinal: true }));
+
+    try {
+      const res = await fetch('/api/audition/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: finalEntries,
+          jobTitle: job?.title ?? 'Unknown Role',
+          companyName: job?.companyName ?? 'Unknown Company',
+          interviewType: config.interviewType,
+          difficulty: config.difficulty,
+        }),
+      });
+
+      const feedback = res.ok
+        ? ((await res.json()) as { score: number; feedback: string; strengths: string[]; improvements: string[] })
+        : { score: 0, feedback: 'Could not generate feedback.', strengths: [], improvements: [] };
+
+      setResults({
+        transcript: finalEntries,
+        score: feedback.score,
+        feedback: feedback.feedback,
+        strengths: feedback.strengths,
+        improvements: feedback.improvements,
+        durationSeconds,
+      });
+    } catch {
+      setResults({
+        transcript: finalEntries,
+        score: 0,
+        feedback: 'Interview complete. Feedback unavailable.',
+        strengths: [],
+        improvements: [],
+        durationSeconds,
+      });
+    }
+
+    setPhase('results');
+  }, [timer, disconnect, audioCapture, stopPlayback, entries, job, config]);
+
+  const handleTryAgain = useCallback(() => {
+    closePlayback();
+    resetTranscript();
+    timer.reset();
+    setResults(null);
+    setSessionError(null);
+    setPhase('setup');
+  }, [closePlayback, resetTranscript, timer]);
+
+  const handleConfigChange = useCallback((patch: Partial<AuditionConfig>) => {
+    setConfig((c) => ({ ...c, ...patch }));
+  }, []);
+
+  if (phase === 'setup' || phase === 'requesting-permission') {
+    return (
+      <SetupScreen
+        job={job ?? { title: 'Loading...', companyName: '' }}
+        config={config}
+        onConfigChange={handleConfigChange}
+        onStart={handleStartAudition}
+        isRequestingPermission={phase === 'requesting-permission'}
+        micError={sessionError}
+      />
+    );
+  }
+
+  if (phase === 'interviewing' || phase === 'connecting' || phase === 'ending') {
+    return (
+      <InterviewScreen
+        jobTitle={job?.title ?? 'Interview'}
+        companyName={job?.companyName ?? ''}
+        aiStatus={aiStatus}
+        isConnecting={phase === 'connecting'}
+        isMuted={audioCapture.isMuted}
+        entries={entries}
+        secondsRemaining={timer.secondsRemaining}
+        percentRemaining={timer.percentRemaining}
+        analyserRef={analyserRef}
+        onToggleMute={audioCapture.toggleMute}
+        onEndInterview={handleEndInterview}
+      />
+    );
+  }
+
+  if (phase === 'results' && results) {
+    return (
+      <ResultsScreen
+        results={results}
+        jobTitle={job?.title ?? 'Interview'}
+        companyName={job?.companyName ?? ''}
+        jobId={jobId}
+        onTryAgain={handleTryAgain}
+      />
+    );
+  }
+
+  return null;
+}
