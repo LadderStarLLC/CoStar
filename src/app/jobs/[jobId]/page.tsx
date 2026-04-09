@@ -19,6 +19,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Users,
+  Mic,
 } from 'lucide-react';
 
 export default function JobDetailPage() {
@@ -362,6 +363,18 @@ export default function JobDetailPage() {
                       Apply Now
                     </button>
                   )}
+
+                  <Link
+                    href={`/jobs/${jobId}/audition`}
+                    className="w-full flex items-center gap-2 px-6 py-3 mb-1
+                      bg-gradient-to-r from-violet-600 to-purple-600
+                      hover:from-violet-500 hover:to-purple-500
+                      text-white rounded-xl font-bold transition-all border border-violet-500/30"
+                  >
+                    <Mic className="w-4 h-4" />
+                    Practice Audition
+                    <span className="ml-auto text-xs font-normal opacity-70">AI Interview</span>
+                  </Link>
                 </>
               )}
 
