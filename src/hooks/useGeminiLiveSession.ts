@@ -133,7 +133,7 @@ export function useGeminiLiveSession({
         const model = overrides?.liveModel ?? GEMINI_CONFIG.liveModel;
         const voice = overrides?.voiceName ?? GEMINI_CONFIG.voiceName;
 
-        const url = `wss://${host}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?bearer_token=${token}`;
+        const url = `wss://${host}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained?access_token=${token}`;
         const ws = new WebSocket(url);
         wsRef.current = ws;
 
@@ -142,7 +142,7 @@ export function useGeminiLiveSession({
           setIsConnected(true);
           setAIStatus('processing');
 
-          // Send setup message
+          // Send setup message — top-level key must be "setup" per official Google sample
           const setup = {
             setup: {
               model,
@@ -159,7 +159,7 @@ export function useGeminiLiveSession({
                   },
                 },
               },
-              inputAudioTranscription: { model },
+              inputAudioTranscription: {},
               outputAudioTranscription: {},
             },
           };
@@ -200,10 +200,10 @@ export function useGeminiLiveSession({
   const sendAudioChunk = useCallback((base64PCM: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     const msg = {
-      realtime_input: {
+      realtimeInput: {
         audio: {
           data: base64PCM,
-          mime_type: `audio/pcm;rate=${GEMINI_CONFIG.inputSampleRate}`,
+          mimeType: `audio/pcm;rate=${GEMINI_CONFIG.inputSampleRate}`,
         },
       },
     };

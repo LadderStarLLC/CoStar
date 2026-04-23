@@ -4,7 +4,7 @@
 
 export const GEMINI_CONFIG = {
   // Live (real-time streaming) model — used for the voice interview session
-  liveModel: 'models/gemini-3.1-flash-lite-preview',
+  liveModel: 'models/gemini-3.1-flash-live-preview',
 
   // Standard (non-streaming) model — used for post-interview feedback scoring
   feedbackModel: 'gemini-3.1-flash-lite-preview',

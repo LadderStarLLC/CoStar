@@ -64,7 +64,7 @@ export default function Home() {
 
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             {/* User Account */}
-            <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8 hover:border-amber-500/50 transition-colors group">
+            <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8 hover:border-amber-500/50 transition-colors group">
               <div className="w-14 h-14 bg-amber-500/20 rounded-xl flex items-center justify-center mb-6 group-hover:bg-amber-500/30 transition-colors">
                 <User className="text-amber-400" size={28} />
               </div>
@@ -92,7 +92,7 @@ export default function Home() {
             </div>
 
             {/* Business Account */}
-            <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8 hover:border-blue-500/50 transition-colors group">
+            <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8 hover:border-blue-500/50 transition-colors group">
               <div className="w-14 h-14 bg-blue-500/20 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-500/30 transition-colors">
                 <Building2 className="text-blue-400" size={28} />
               </div>
@@ -153,7 +153,7 @@ export default function Home() {
                 color: "green",
               },
             ].map((feature) => (
-              <div key={feature.title} className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+              <div key={feature.title} className="bg-slate-800/80 border border-white/10 rounded-xl p-6">
                 <div className={`w-12 h-12 bg-${feature.color}-500/20 rounded-lg flex items-center justify-center mb-4`}>
                   <feature.icon className={`text-${feature.color}-400`} size={24} />
                 </div>

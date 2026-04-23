@@ -59,7 +59,7 @@ export default function OnboardingPage() {
 
         {/* Step 1: Account Type */}
         {step === 1 && (
-          <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8">
+          <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8">
             <h1 className="text-3xl font-bold text-white mb-2">Choose Your Path</h1>
             <p className="text-slate-400 mb-8">Select how you want to use CoStar</p>
 
@@ -115,7 +115,7 @@ export default function OnboardingPage() {
 
         {/* Step 2: Basic Info */}
         {step === 2 && (
-          <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8">
+          <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8">
             <h1 className="text-3xl font-bold text-white mb-2">Tell Us About Yourself</h1>
             <p className="text-slate-400 mb-8">Let's get the basics down</p>
 
@@ -167,7 +167,7 @@ export default function OnboardingPage() {
 
         {/* Step 3: Connect Accounts */}
         {step === 3 && (
-          <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8">
+          <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8">
             <h1 className="text-3xl font-bold text-white mb-2">Connect Your Accounts</h1>
             <p className="text-slate-400 mb-8">Import your professional presence</p>
 
@@ -212,7 +212,7 @@ export default function OnboardingPage() {
 
         {/* Step 4: Work Vibe */}
         {step === 4 && (
-          <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8">
+          <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8">
             <h1 className="text-3xl font-bold text-white mb-2">Discover Your Work Vibe</h1>
             <p className="text-slate-400 mb-8">Help us understand what makes you tick</p>
 
