@@ -41,11 +41,33 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        brand: {
+          primary: "rgb(var(--brand-primary))",
+          "primary-hover": "rgb(var(--brand-primary-hover))",
+          ai: "rgb(var(--brand-ai))",
+        },
+        surface: {
+          base: "rgb(var(--surface-base))",
+          elevated: "rgb(var(--surface-elevated))",
+        },
+      },
+      spacing: {
+        "13": "3.25rem",
+        "18": "4.5rem",
+        "22": "5.5rem",
+        "30": "7.5rem",
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      typography: {
+        DEFAULT: {
+          css: {
+            color: "rgb(var(--foreground))",
+          },
+        },
       },
     },
   },

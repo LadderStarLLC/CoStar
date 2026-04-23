@@ -142,9 +142,9 @@ export function useGeminiLiveSession({
           setIsConnected(true);
           setAIStatus('processing');
 
-          // Send setup message — top-level key must be "config" per Google docs
+          // Send setup message — top-level key must be "setup" per official Google sample
           const setup = {
-            config: {
+            setup: {
               model,
               systemInstruction: {
                 parts: [{ text: systemPrompt }],

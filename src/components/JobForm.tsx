@@ -205,7 +205,7 @@ export default function JobForm({ job, company, employerId, onSubmit, onCancel, 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Info */}
-      <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+      <div className="bg-slate-800/80 border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold text-lg mb-4">Basic Information</h3>
         <div className="space-y-4">
           <Input label="Job Title *" error={errors['title']}>
@@ -269,7 +269,7 @@ export default function JobForm({ job, company, employerId, onSubmit, onCancel, 
       </div>
 
       {/* Location */}
-      <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+      <div className="bg-slate-800/80 border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold text-lg mb-4">Location</h3>
         <div className="space-y-4">
           <div className="grid md:grid-cols-3 gap-4">
@@ -319,7 +319,7 @@ export default function JobForm({ job, company, employerId, onSubmit, onCancel, 
       </div>
 
       {/* Salary */}
-      <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+      <div className="bg-slate-800/80 border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold text-lg mb-4">Compensation</h3>
         <div className="space-y-4">
           <div className="flex items-center gap-3">
@@ -384,7 +384,7 @@ export default function JobForm({ job, company, employerId, onSubmit, onCancel, 
       </div>
 
       {/* Skills */}
-      <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+      <div className="bg-slate-800/80 border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold text-lg mb-4">Skills & Requirements</h3>
         <div className="space-y-4">
           <div>
@@ -452,7 +452,7 @@ export default function JobForm({ job, company, employerId, onSubmit, onCancel, 
       </div>
 
       {/* Tags */}
-      <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+      <div className="bg-slate-800/80 border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold text-lg mb-4">Tags</h3>
         <div className="flex gap-2 mb-2">
           <input
@@ -484,7 +484,7 @@ export default function JobForm({ job, company, employerId, onSubmit, onCancel, 
       </div>
 
       {/* Application */}
-      <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+      <div className="bg-slate-800/80 border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold text-lg mb-4">Application Process</h3>
         <div className="space-y-4">
           <Select
@@ -546,7 +546,7 @@ export default function JobForm({ job, company, employerId, onSubmit, onCancel, 
       </div>
 
       {/* Status */}
-      <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+      <div className="bg-slate-800/80 border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold text-lg mb-4">Visibility</h3>
         <div className="space-y-4">
           <Select

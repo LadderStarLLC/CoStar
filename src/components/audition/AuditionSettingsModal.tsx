@@ -111,7 +111,7 @@ export function AuditionSettingsModal({ current, onSave, onClose, onRequestMic, 
               value={form.geminiApiKey}
               onChange={(e) => patch('geminiApiKey', e.target.value)}
               placeholder="AIza..."
-              className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2 pr-10 text-slate-200 text-sm focus:outline-none focus:border-violet-500/50 placeholder-slate-600"
+              className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2 pr-10 text-slate-200 text-sm focus:outline-none focus:border-amber-500 placeholder-slate-600"
             />
             <button
               type="button"
@@ -135,7 +135,7 @@ export function AuditionSettingsModal({ current, onSave, onClose, onRequestMic, 
             value={form.liveApiHost}
             onChange={(e) => patch('liveApiHost', e.target.value)}
             placeholder={AUDITION_SETTINGS_DEFAULTS.liveApiHost}
-            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-violet-500/50 placeholder-slate-600"
+            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-amber-500 placeholder-slate-600"
           />
         </div>
 
@@ -147,7 +147,7 @@ export function AuditionSettingsModal({ current, onSave, onClose, onRequestMic, 
             value={form.liveModel}
             onChange={(e) => patch('liveModel', e.target.value)}
             placeholder={AUDITION_SETTINGS_DEFAULTS.liveModel}
-            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-violet-500/50 placeholder-slate-600"
+            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-amber-500 placeholder-slate-600"
           />
         </div>
 
@@ -159,7 +159,7 @@ export function AuditionSettingsModal({ current, onSave, onClose, onRequestMic, 
             value={form.feedbackModel}
             onChange={(e) => patch('feedbackModel', e.target.value)}
             placeholder={AUDITION_SETTINGS_DEFAULTS.feedbackModel}
-            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-violet-500/50 placeholder-slate-600"
+            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-amber-500 placeholder-slate-600"
           />
         </div>
 
@@ -194,7 +194,7 @@ export function AuditionSettingsModal({ current, onSave, onClose, onRequestMic, 
           <button
             onClick={handleSave}
             disabled={saving || !form.geminiApiKey.trim()}
-            className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold transition-all"
+            className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 text-sm font-bold transition-all"
           >
             {saved ? 'Saved!' : saving ? 'Saving...' : 'Save'}
           </button>

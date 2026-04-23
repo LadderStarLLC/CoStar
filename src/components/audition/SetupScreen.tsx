@@ -101,7 +101,7 @@ export function SetupScreen({
                 onChange={(e) => onJobTextChange?.(e.target.value)}
                 placeholder="Paste the full job description here — title, responsibilities, requirements, company info..."
                 rows={6}
-                className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-slate-200 text-sm resize-none focus:outline-none focus:border-violet-500/50 placeholder-slate-600 leading-relaxed"
+                className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-slate-200 text-sm resize-none focus:outline-none focus:border-amber-500 placeholder-slate-600 leading-relaxed"
               />
             </div>
           ) : (
@@ -126,7 +126,7 @@ export function SetupScreen({
                       if (preset) onLoadPreset(preset);
                       e.target.value = '';
                     }}
-                    className="w-full appearance-none bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2 text-slate-300 text-sm focus:outline-none focus:border-violet-500/50 pr-8"
+                    className="w-full appearance-none bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2 text-slate-300 text-sm focus:outline-none focus:border-amber-500 pr-8"
                   >
                     <option value="" disabled>Load a preset…</option>
                     {presets.map((p) => (
@@ -152,7 +152,7 @@ export function SetupScreen({
                   <button
                     onClick={handleSavePreset}
                     disabled={!presetName.trim()}
-                    className="px-3 py-2 rounded-xl bg-violet-600/30 border border-violet-500/40 text-violet-300 text-sm font-medium hover:bg-violet-600/40 disabled:opacity-40 transition-all"
+                    className="px-3 py-2 rounded-xl bg-amber-500/30 border border-amber-500/40 text-amber-300 text-sm font-medium hover:bg-amber-500/40 disabled:opacity-40 transition-all"
                   >
                     Save
                   </button>
@@ -212,7 +212,7 @@ export function SetupScreen({
             value={config.focus ?? ''}
             onChange={(e) => onConfigChange({ focus: e.target.value })}
             placeholder="e.g. System Design, React, Leadership, AWS..."
-            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-violet-500/50 placeholder-slate-600"
+            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-amber-500 placeholder-slate-600"
           />
           <p className="text-slate-500 text-xs">The AI will concentrate its questions on this area.</p>
         </div>
@@ -248,7 +248,7 @@ export function SetupScreen({
             onChange={(e) => onConfigChange({ resume: e.target.value })}
             placeholder="Paste your resume or describe your experience — the AI will personalize questions to your background..."
             rows={4}
-            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-slate-200 text-sm resize-none focus:outline-none focus:border-violet-500/50 placeholder-slate-600 leading-relaxed"
+            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-slate-200 text-sm resize-none focus:outline-none focus:border-amber-500 placeholder-slate-600 leading-relaxed"
           />
         </div>
 
@@ -286,10 +286,10 @@ export function SetupScreen({
           onClick={onStart}
           disabled={isRequestingPermission || !canStart}
           className="w-full flex items-center justify-center gap-2 py-4 rounded-xl
-            bg-gradient-to-r from-violet-600 to-purple-600
-            hover:from-violet-500 hover:to-purple-500
+            bg-gradient-to-r from-amber-500 to-orange-500
+            hover:from-amber-400 hover:to-orange-400
             disabled:opacity-50 disabled:cursor-not-allowed
-            text-white font-bold text-base transition-all border border-violet-500/30"
+            text-slate-900 font-bold text-base transition-all border border-amber-400/30"
         >
           {isRequestingPermission ? (
             <>
