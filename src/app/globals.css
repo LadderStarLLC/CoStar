@@ -3,31 +3,57 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 255, 255, 255;
-  --background-end-rgb: 255, 255, 255;
-}
+  /* Brand Colors */
+  --brand-primary: 245 158 11;        /* amber-500 */
+  --brand-primary-hover: 251 191 36;   /* amber-400 */
+  --brand-ai: 139 92 246;              /* violet-500 - AI context only */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 10, 10, 10;
-    --background-end-rgb: 0, 0, 0;
-  }
+  /* Surface Elevation */
+  --surface-base: 15 23 42;           /* slate-900 */
+  --surface-elevated: 30 41 59;       /* slate-800 */
+
+  /* Borders */
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+
+  /* Legacy compatibility (shadcn-style HSL variables) */
+  --background: var(--surface-base);
+  --foreground: 255 255 255;
+  --border: var(--border-default);
+  --input: var(--border-default);
+  --ring: 245 158 11;
+
+  --primary: 245 158 11;
+  --primary-foreground: 15 23 42;
+  --secondary: 30 41 59;
+  --secondary-foreground: 255 255 255;
+  --destructive: 0 161 136;
+  --destructive-foreground: 255 255 255;
+  --muted: 30 41 59;
+  --muted-foreground: 148 163 184;
+  --accent: 245 158 11;
+  --accent-foreground: 15 23 42;
+  --popover: 30 41 59;
+  --popover-foreground: 255 255 255;
+  --card: 30 41 59;
+  --card-foreground: 255 255 255;
+
+  --radius: 0.75rem;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background-color: rgb(var(--surface-base));
+  color: rgb(var(--foreground));
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border-default);
   }
 }
