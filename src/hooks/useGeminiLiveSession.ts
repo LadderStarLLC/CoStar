@@ -56,6 +56,14 @@ export function useGeminiLiveSession({
       return;
     }
 
+    // Check for API errors sent via WebSocket
+    if (data.error) {
+      const errMsg = (data.error as any).message || JSON.stringify(data.error);
+      callbacksRef.current.onError(`API Error: ${errMsg}`);
+      if (wsRef.current) wsRef.current.close();
+      return;
+    }
+
     // Setup confirmation
     if (data.setupComplete) {
       setAIStatus('listening');
@@ -113,59 +121,78 @@ export function useGeminiLiveSession({
   }, []);
 
   const connect = useCallback(
-    async (token: string, systemPrompt: string, config: AuditionConfig, overrides?: GeminiSessionOverrides) => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+    (token: string, systemPrompt: string, config: AuditionConfig, overrides?: GeminiSessionOverrides): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        let isOpened = false;
 
-      const host = overrides?.liveApiHost ?? GEMINI_CONFIG.liveApiHost;
-      const model = overrides?.liveModel ?? GEMINI_CONFIG.liveModel;
-      const voice = overrides?.voiceName ?? GEMINI_CONFIG.voiceName;
+        if (wsRef.current) {
+          wsRef.current.close();
+        }
 
-      const url = `wss://${host}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?access_token=${token}`;
-      const ws = new WebSocket(url);
-      wsRef.current = ws;
+        const host = overrides?.liveApiHost ?? GEMINI_CONFIG.liveApiHost;
+        const model = overrides?.liveModel ?? GEMINI_CONFIG.liveModel;
+        const voice = overrides?.voiceName ?? GEMINI_CONFIG.voiceName;
 
-      ws.onopen = () => {
-        setIsConnected(true);
-        setAIStatus('processing');
+        const url = `wss://${host}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?bearer_token=${token}`;
+        const ws = new WebSocket(url);
+        wsRef.current = ws;
 
-        // Send setup message
-        const setup = {
-          setup: {
-            model,
-            system_instruction: {
-              parts: [{ text: systemPrompt }],
-            },
-            generation_config: {
-              response_modalities: GEMINI_CONFIG.responseModalities,
-              speech_config: {
-                voice_config: {
-                  prebuilt_voice_config: {
-                    voice_name: voice,
+        ws.onopen = () => {
+          isOpened = true;
+          setIsConnected(true);
+          setAIStatus('processing');
+
+          // Send setup message
+          const setup = {
+            setup: {
+              model,
+              system_instruction: {
+                parts: [{ text: systemPrompt }],
+              },
+              generation_config: {
+                response_modalities: GEMINI_CONFIG.responseModalities,
+                speech_config: {
+                  voice_config: {
+                    prebuilt_voice_config: {
+                      voice_name: voice,
+                    },
                   },
                 },
               },
+              input_audio_transcription: {},
+              output_audio_transcription: {},
             },
-            input_audio_transcription: {},
-            output_audio_transcription: {},
-          },
+          };
+          ws.send(JSON.stringify(setup));
+          resolve();
         };
-        ws.send(JSON.stringify(setup));
-      };
 
-      ws.onmessage = handleMessage;
+        ws.onmessage = handleMessage;
 
-      ws.onerror = () => {
-        callbacksRef.current.onError('Connection error. Please try again.');
-        setIsConnected(false);
-        setAIStatus('idle');
-      };
+        ws.onerror = () => {
+          setIsConnected(false);
+          setAIStatus('idle');
+          if (wsRef.current === ws) wsRef.current = null;
+          
+          if (!isOpened) {
+            reject(new Error('Connection error. Please try again.'));
+          } else {
+            callbacksRef.current.onError('Connection error. Please try again.');
+          }
+        };
 
-      ws.onclose = () => {
-        setIsConnected(false);
-        setAIStatus('idle');
-      };
+        ws.onclose = (event) => {
+          setIsConnected(false);
+          setAIStatus('idle');
+          if (wsRef.current === ws) wsRef.current = null;
+          
+          if (!isOpened) {
+            reject(new Error(`Connection closed before opening. Code: ${event.code}`));
+          } else if (event.code !== 1000 && event.code !== 1005) {
+            callbacksRef.current.onError(`Connection lost. Code: ${event.code}`);
+          }
+        };
+      });
     },
     [handleMessage],
   );
