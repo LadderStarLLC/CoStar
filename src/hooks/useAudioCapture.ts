@@ -113,7 +113,7 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
       const input = e.inputBuffer.getChannelData(0);
       const pcm = float32ToInt16(input);
       const base64 = int16ToBase64(pcm);
-      console.log('[AudioCapture] Sending chunk, size:', input.length, 'paused:', pausedRef.current);
+      console.log('[AudioCapture] onchunks, paused:', pausedRef.current, 'input length:', input.length, 'pausedRef address:', pausedRef.current);
       onChunkRef.current(base64);
     };
 

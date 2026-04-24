@@ -72,6 +72,7 @@ export function useGeminiLiveSession({
 
     // Setup confirmation
     if (data.setupComplete) {
+      console.log('[GeminiLive] Received setupComplete');
       setAIStatus('listening');
       return;
     }
@@ -87,6 +88,7 @@ export function useGeminiLiveSession({
         for (const part of parts) {
           const inlineData = part.inlineData as Record<string, unknown> | undefined;
           if (inlineData?.data && typeof inlineData.data === 'string') {
+            console.log('[GeminiLive] Received audio chunk, size:', inlineData.data.length);
             setAIStatus('speaking');
             callbacksRef.current.onAudioChunk(inlineData.data);
           }
@@ -139,11 +141,9 @@ export function useGeminiLiveSession({
         const model = overrides?.liveModel ?? credentials.liveModel ?? GEMINI_CONFIG.liveModel;
         const voice = overrides?.voiceName ?? GEMINI_CONFIG.voiceName;
 
-        // gemini-3.1-flash-live-preview only exists in v1alpha — v1beta returns 1008 "not found".
-        // Do NOT use BidiGenerateContentConstrained — that requires ephemeral tokens which fail with
-        // 1007 "project-scoped" for this model.
-        const url = `wss://${host}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${credentials.key}`;
-        const urlSafe = `wss://${host}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=REDACTED`;
+        // v1beta matches the working reference app configuration
+        const url = `wss://${host}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${credentials.key}`;
+        const urlSafe = `wss://${host}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=REDACTED`;
         console.log('[GeminiLive] Connecting to:', urlSafe, '| model:', model);
         const ws = new WebSocket(url);
         wsRef.current = ws;
@@ -193,9 +193,13 @@ export function useGeminiLiveSession({
           resolve();
         };
 
-        ws.onmessage = handleMessage;
+        ws.onmessage = (event) => {
+          console.log('[GeminiLive] ws.onmessage raw:', event.data);
+          handleMessage(event);
+        };
 
-        ws.onerror = () => {
+        ws.onerror = (e) => {
+          console.log('[GeminiLive] ws.onerror', e);
           setIsConnected(false);
           setAIStatus('idle');
           if (wsRef.current === ws) wsRef.current = null;
@@ -208,6 +212,7 @@ export function useGeminiLiveSession({
         };
 
         ws.onclose = (event) => {
+          console.log('[GeminiLive] ws.onclose code:', event.code, 'reason:', event.reason);
           setIsConnected(false);
           setAIStatus('idle');
           if (wsRef.current === ws) wsRef.current = null;
@@ -224,7 +229,14 @@ export function useGeminiLiveSession({
   );
 
   const sendAudioChunk = useCallback((base64PCM: string) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    if (!wsRef.current) {
+      console.log('[GeminiLive] sendAudioChunk early return: wsRef is null');
+      return;
+    }
+    if (wsRef.current.readyState !== WebSocket.OPEN) {
+      console.log('[GeminiLive] sendAudioChunk early return: ws not OPEN, state:', wsRef.current.readyState);
+      return;
+    }
     const msg = {
       realtimeInput: {
         audio: {
@@ -233,6 +245,7 @@ export function useGeminiLiveSession({
         },
       },
     };
+    console.log('[GeminiLive] sendAudioChunk, ws state:', wsRef.current.readyState, 'chunk size:', base64PCM.length);
     wsRef.current.send(JSON.stringify(msg));
   }, []);
 
