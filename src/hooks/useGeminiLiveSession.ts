@@ -190,15 +190,6 @@ export function useGeminiLiveSession({
             },
           };
           ws.send(JSON.stringify(setup));
-
-          // Send initial clientContent to signal session is ready (reference app pattern)
-          ws.send(JSON.stringify({
-            clientContent: {
-              turns: [{ role: "user", parts: [{ text: "" }] }],
-              turnComplete: true
-            }
-          }));
-
           resolve();
         };
 
