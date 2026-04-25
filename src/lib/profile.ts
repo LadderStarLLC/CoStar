@@ -11,6 +11,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import type { CompanyData } from './companies';
 
 export type AccountType = 'talent' | 'business' | 'agency' | 'admin' | 'owner';
 export type SocialPlatform = 'github' | 'linkedin' | 'email';
@@ -147,6 +148,29 @@ export function createSlug(value?: string | null, fallback?: string): string {
   return base || 'profile';
 }
 
+export async function isSlugAvailable(slug: string, excludeUid?: string): Promise<boolean> {
+  if (!db) throw new Error('Firestore not initialized');
+  const q = query(collection(db, 'users'), where('slug', '==', slug), limit(1));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return true;
+  if (excludeUid && snapshot.docs[0].id === excludeUid) return true;
+  return false;
+}
+
+export async function generateUniqueSlug(value: string | null | undefined, uid: string): Promise<string> {
+  const baseSlug = createSlug(value, uid);
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (!(await isSlugAvailable(slug, uid))) {
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+    if (counter > 100) break; // Safety break
+  }
+
+  return slug;
+}
+
 export function normalizeProfile(uid: string, data: Partial<UserProfile> = {}): UserProfile {
   const accountType = normalizeAccountType(data.accountType);
   const role = normalizeAccountType(data.role) ?? accountType ?? 'talent';
@@ -179,6 +203,47 @@ export function normalizeProfile(uid: string, data: Partial<UserProfile> = {}): 
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
+}
+
+function mapCompanyToProfile(companyId: string, data: CompanyData): UserProfile {
+  const logoUrl = (data as CompanyData & { logoUrl?: string }).logoUrl;
+  const cultureValues = data.culture?.values ?? [];
+  const cultureTags = [
+    ...cultureValues,
+    ...(data.culture?.perks ?? []),
+    ...(data.culture?.benefits ?? []),
+  ];
+  const location = [
+    data.headquarters?.city,
+    data.headquarters?.state,
+    data.headquarters?.country,
+  ].filter(Boolean).join(', ');
+
+  return normalizeProfile(data.employerId || companyId, {
+    displayName: data.name ?? '',
+    photoURL: data.logo ?? logoUrl ?? null,
+    accountType: 'business',
+    role: 'business',
+    headline: data.tagline ?? data.description ?? '',
+    location,
+    slug: data.slug ?? createSlug(data.name, companyId),
+    publicProfileEnabled: true,
+    businessProfile: {
+      companyId,
+      companyName: data.name ?? '',
+      website: data.website ?? '',
+      companySize: data.companySize ?? '',
+      description: data.description ?? data.tagline ?? '',
+      headquarters: data.headquarters,
+      culture: {
+        values: cultureValues.join(', '),
+        tags: cultureTags,
+      },
+      hiringGoals: data.hiringCount ? `${data.hiringCount} active hiring needs` : '',
+    },
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+  });
 }
 
 export function getSocialConnection(
@@ -324,6 +389,9 @@ export async function getPublicProfileBySlugOrUid(
 ): Promise<UserProfile | null> {
   if (!db) throw new Error('Firestore not initialized');
 
+  const normalizedSlug = slugOrUid.toLowerCase();
+  const shouldCheckCompanies = !accountType || accountType === 'business';
+
   const directSnap = await getDoc(doc(db, 'users', slugOrUid));
   if (directSnap.exists()) {
     const directProfile = normalizeProfile(directSnap.id, directSnap.data() as Partial<UserProfile>);
@@ -337,18 +405,41 @@ export async function getPublicProfileBySlugOrUid(
 
   const snapshot = await getDocs(query(
     collection(db, 'users'),
-    where('slug', '==', slugOrUid),
+    where('slug', '==', normalizedSlug),
     limit(5)
   ));
-  if (snapshot.empty) return null;
+  if (!snapshot.empty) {
+    const profileSnap = snapshot.docs.find((docSnap) => {
+      const data = docSnap.data() as Partial<UserProfile>;
+      return data.publicProfileEnabled !== false && (!accountType || normalizeAccountType(data.accountType) === accountType);
+    });
+    if (profileSnap) {
+      return normalizeProfile(profileSnap.id, profileSnap.data() as Partial<UserProfile>);
+    }
+  }
 
-  const profileSnap = snapshot.docs.find((docSnap) => {
-    const data = docSnap.data() as Partial<UserProfile>;
-    return data.publicProfileEnabled !== false && (!accountType || normalizeAccountType(data.accountType) === accountType);
-  });
-  if (!profileSnap) return null;
+  if (!shouldCheckCompanies) return null;
 
-  return normalizeProfile(profileSnap.id, profileSnap.data() as Partial<UserProfile>);
+  const directCompanySnap = await getDoc(doc(db, 'companies', slugOrUid));
+  if (directCompanySnap.exists()) {
+    return mapCompanyToProfile(directCompanySnap.id, {
+      companyId: directCompanySnap.id,
+      ...directCompanySnap.data(),
+    } as CompanyData);
+  }
+
+  const companySnapshot = await getDocs(query(
+    collection(db, 'companies'),
+    where('slug', '==', normalizedSlug),
+    limit(1)
+  ));
+  if (companySnapshot.empty) return null;
+
+  const companySnap = companySnapshot.docs[0];
+  return mapCompanyToProfile(companySnap.id, {
+    companyId: companySnap.id,
+    ...companySnap.data(),
+  } as CompanyData);
 }
 
 export async function saveUserProfile(uid: string, updates: Partial<UserProfile>): Promise<void> {

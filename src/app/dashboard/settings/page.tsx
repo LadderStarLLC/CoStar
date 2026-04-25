@@ -12,6 +12,7 @@ import { uploadProfileImage } from "@/lib/storage";
 import {
   accountTypeLabels,
   createSlug,
+  generateUniqueSlug,
   emptyWorkVibe,
   getOperatorPreviewProfile,
   getSocialConnection,
@@ -131,16 +132,18 @@ export default function AccountSettingsPage() {
         return;
       }
 
+      const slug = await generateUniqueSlug(
+        accountType === "business" ? companyName : accountType === "agency" ? agencyName : trimmedName,
+        user.uid
+      );
+
       const profileUpdates = {
         uid: user.uid,
         email: user.email,
         displayName: trimmedName || user.displayName,
         photoURL: user.photoURL,
         publicProfileEnabled,
-        slug: createSlug(
-          accountType === "business" ? companyName : accountType === "agency" ? agencyName : trimmedName,
-          user.uid
-        ),
+        slug,
         headline: headline.trim(),
         location: location.trim(),
         socialConnections: nextConnections,
