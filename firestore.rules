@@ -1,6 +1,46 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function validAccountType(value) {
+      return value in ['user', 'business', 'agency'];
+    }
+
+    function accountTypeIsCreateValid() {
+      return !('accountType' in request.resource.data) ||
+        request.resource.data.accountType == null ||
+        validAccountType(request.resource.data.accountType);
+    }
+
+    function accountTypeIsImmutable() {
+      return !('accountType' in resource.data) ||
+        resource.data.accountType == null ||
+        request.resource.data.accountType == resource.data.accountType;
+    }
+
+    function lockMetadataIsImmutable() {
+      return !('accountTypeLocked' in resource.data) ||
+        resource.data.accountTypeLocked != true ||
+        (
+          request.resource.data.accountTypeLocked == resource.data.accountTypeLocked &&
+          request.resource.data.accountTypeLockedAt == resource.data.accountTypeLockedAt &&
+          request.resource.data.accountTypeSource == resource.data.accountTypeSource
+        );
+    }
+
+    function roleMatchesAccountType() {
+      return !('accountType' in request.resource.data) ||
+        request.resource.data.accountType == null ||
+        request.resource.data.role == request.resource.data.accountType;
+    }
+
     // Job listings - require authentication
     match /jobs/{jobId} {
       allow read: if request.auth != null;
@@ -21,8 +61,13 @@ service cloud.firestore {
 
     // User profiles - any authenticated user can read (for Connect feature), only owner can write
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null || resource.data.publicProfileEnabled == true;
+      allow create: if isOwner(userId) && accountTypeIsCreateValid();
+      allow update: if isOwner(userId) &&
+        accountTypeIsImmutable() &&
+        lockMetadataIsImmutable() &&
+        roleMatchesAccountType();
+      allow delete: if isOwner(userId);
     }
 
     // Connections - participants only

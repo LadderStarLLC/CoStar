@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
+  accountTypeLabels,
   calculateProfileComplete,
+  createSlug,
   emptyWorkVibe,
   getSocialConnection,
   getUserProfile,
-  saveUserProfile,
+  lockAccountType,
+  saveTypeSpecificProfile,
   upsertSocialConnection,
   type AccountType,
   type SocialConnection,
@@ -21,12 +24,23 @@ export default function OnboardingPage() {
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState(1);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
+  const [accountTypeLocked, setAccountTypeLocked] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [headline, setHeadline] = useState("");
   const [location, setLocation] = useState("");
   const [linkedInUrl, setLinkedInUrl] = useState("");
   const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([]);
   const [workVibe, setWorkVibe] = useState<WorkVibe>(emptyWorkVibe);
+  const [companyName, setCompanyName] = useState("");
+  const [companyWebsite, setCompanyWebsite] = useState("");
+  const [companySize, setCompanySize] = useState("1-10");
+  const [companyDescription, setCompanyDescription] = useState("");
+  const [hiringGoals, setHiringGoals] = useState("");
+  const [agencyName, setAgencyName] = useState("");
+  const [agencyWebsite, setAgencyWebsite] = useState("");
+  const [agencyDescription, setAgencyDescription] = useState("");
+  const [agencySpecialties, setAgencySpecialties] = useState<string[]>([]);
+  const [agencyServices, setAgencyServices] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,12 +62,26 @@ export default function OnboardingPage() {
         }
 
         setAccountType(profile.accountType ?? null);
+        setAccountTypeLocked(Boolean(profile.accountTypeLocked && profile.accountType));
+        if (profile.accountType) {
+          setStep(2);
+        }
         setDisplayName(profile.displayName ?? user.displayName ?? "");
         setHeadline(profile.headline ?? "");
         setLocation(profile.location ?? "");
         setSocialConnections(profile.socialConnections ?? []);
         setWorkVibe(profile.workVibe ?? emptyWorkVibe);
         setLinkedInUrl(getSocialConnection(profile, "linkedin")?.url ?? "");
+        setCompanyName(profile.businessProfile?.companyName ?? "");
+        setCompanyWebsite(profile.businessProfile?.website ?? "");
+        setCompanySize(profile.businessProfile?.companySize ?? "1-10");
+        setCompanyDescription(profile.businessProfile?.description ?? "");
+        setHiringGoals(profile.businessProfile?.hiringGoals ?? "");
+        setAgencyName(profile.agencyProfile?.agencyName ?? "");
+        setAgencyWebsite(profile.agencyProfile?.website ?? "");
+        setAgencyDescription(profile.agencyProfile?.description ?? "");
+        setAgencySpecialties(profile.agencyProfile?.specialties ?? []);
+        setAgencyServices(profile.agencyProfile?.services ?? []);
       } catch (err) {
         console.error("Failed to load profile:", err);
         setError("Could not load your profile. You can still continue and save again.");
@@ -75,9 +103,9 @@ export default function OnboardingPage() {
 
   const steps = [
     { num: 1, title: "Account Type" },
-    { num: 2, title: "Basic Info" },
-    { num: 3, title: "Connect Accounts" },
-    { num: 4, title: "Work Vibe" },
+    { num: 2, title: accountType === "business" ? "Company" : accountType === "agency" ? "Agency" : "Basic Info" },
+    { num: 3, title: accountType === "business" ? "Hiring" : accountType === "agency" ? "Services" : "Connect Accounts" },
+    { num: 4, title: accountType === "business" ? "Culture" : accountType === "agency" ? "Specialties" : "Work Vibe" },
   ];
 
   const toggleWorkVibeValue = (field: "style" | "culture", value: string) => {
@@ -90,6 +118,17 @@ export default function OnboardingPage() {
           : [...selected, value],
       };
     });
+  };
+
+  const toggleStringValue = (
+    setter: Dispatch<SetStateAction<string[]>>,
+    value: string
+  ) => {
+    setter((current) =>
+      current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value]
+    );
   };
 
   const handleEmailConnect = () => {
@@ -140,20 +179,51 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
+      if (!accountType) {
+        setError("Choose an account type before completing setup.");
+        return;
+      }
+
+      await lockAccountType(user.uid, accountType, "signup");
+
       const nextProfile = {
         uid: user.uid,
         email: user.email,
         displayName: displayName.trim() || user.displayName,
         photoURL: user.photoURL,
+        slug: createSlug(
+          accountType === "business" ? companyName : accountType === "agency" ? agencyName : displayName,
+          user.uid
+        ),
         accountType,
         role: accountType ?? "user",
-        headline: headline.trim(),
+        headline: headline.trim() || defaultHeadline(accountType),
         location: location.trim(),
         socialConnections,
-        workVibe,
+        workVibe: accountType === "user" ? workVibe : emptyWorkVibe,
+        businessProfile: accountType === "business" ? {
+          companyName: companyName.trim(),
+          website: companyWebsite.trim(),
+          companySize,
+          description: companyDescription.trim(),
+          headquarters: { city: location.trim() },
+          hiringGoals: hiringGoals.trim(),
+          culture: {
+            values: workVibe.values.trim(),
+            tags: [...workVibe.style, ...workVibe.culture],
+          },
+        } : null,
+        agencyProfile: accountType === "agency" ? {
+          agencyName: agencyName.trim(),
+          website: agencyWebsite.trim(),
+          description: agencyDescription.trim(),
+          location: location.trim(),
+          specialties: agencySpecialties,
+          services: agencyServices,
+        } : null,
       };
 
-      await saveUserProfile(user.uid, {
+      await saveTypeSpecificProfile(user.uid, accountType, {
         ...nextProfile,
         profileComplete: calculateProfileComplete(nextProfile),
       });
@@ -267,12 +337,16 @@ export default function OnboardingPage() {
         {/* Step 2: Basic Info */}
         {step === 2 && (
           <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Tell Us About Yourself</h1>
-            <p className="text-slate-400 mb-8">Let's get the basics down</p>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              {accountType === "business" ? "Set Up Your Company" : accountType === "agency" ? "Set Up Your Agency" : "Tell Us About Yourself"}
+            </h1>
+            <p className="text-slate-400 mb-8">
+              {accountType ? `${accountTypeLabels[accountType]} profile details` : "Let's get the basics down"}
+            </p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-white mb-2 font-medium">Full Name</label>
+                <label className="block text-white mb-2 font-medium">Representative Name</label>
                 <input
                   type="text"
                   placeholder="John Doe"
@@ -282,11 +356,73 @@ export default function OnboardingPage() {
                 />
               </div>
 
+              {accountType === "business" && (
+                <>
+                  <div>
+                    <label className="block text-white mb-2 font-medium">Company Name</label>
+                    <input
+                      type="text"
+                      placeholder="Acme Inc."
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white mb-2 font-medium">Company Website</label>
+                    <input
+                      type="url"
+                      placeholder="https://acme.com"
+                      value={companyWebsite}
+                      onChange={(e) => setCompanyWebsite(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white mb-2 font-medium">Company Size</label>
+                    <select
+                      value={companySize}
+                      onChange={(e) => setCompanySize(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white focus:border-amber-500 focus:outline-none"
+                    >
+                      {["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"].map((size) => (
+                        <option key={size} value={size}>{size} employees</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {accountType === "agency" && (
+                <>
+                  <div>
+                    <label className="block text-white mb-2 font-medium">Agency Name</label>
+                    <input
+                      type="text"
+                      placeholder="Coaching Collective"
+                      value={agencyName}
+                      onChange={(e) => setAgencyName(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white mb-2 font-medium">Agency Website</label>
+                    <input
+                      type="url"
+                      placeholder="https://agency.com"
+                      value={agencyWebsite}
+                      onChange={(e) => setAgencyWebsite(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+                </>
+              )}
+
               <div>
                 <label className="block text-white mb-2 font-medium">Headline</label>
                 <input
                   type="text"
-                  placeholder="Senior Software Engineer at TechCorp"
+                  placeholder={accountType === "business" ? "Hiring team at Acme Inc." : accountType === "agency" ? "Career coaching and placement specialists" : "Senior Software Engineer at TechCorp"}
                   value={headline}
                   onChange={(e) => setHeadline(e.target.value)}
                   className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
@@ -307,10 +443,11 @@ export default function OnboardingPage() {
 
             <div className="flex gap-4 mt-8">
               <button
-                onClick={() => setStep(1)}
+                onClick={() => setStep(accountTypeLocked ? 2 : 1)}
+                disabled={accountTypeLocked}
                 className="flex-1 py-4 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600 transition-colors"
               >
-                Back
+                {accountTypeLocked ? "Type Locked" : "Back"}
               </button>
               <button
                 onClick={() => setStep(3)}
@@ -325,10 +462,73 @@ export default function OnboardingPage() {
         {/* Step 3: Connect Accounts */}
         {step === 3 && (
           <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Connect Your Accounts</h1>
-            <p className="text-slate-400 mb-8">Import your professional presence</p>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              {accountType === "business" ? "Hiring Goals" : accountType === "agency" ? "Services" : "Connect Your Accounts"}
+            </h1>
+            <p className="text-slate-400 mb-8">
+              {accountType === "business"
+                ? "Tell candidates what you are building toward"
+                : accountType === "agency"
+                ? "Choose the services your agency offers"
+                : "Import your professional presence"}
+            </p>
 
-            <div className="space-y-4">
+            {accountType === "business" ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-white mb-2 font-medium">Company Description</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Tell candidates what your company does and why people join."
+                    value={companyDescription}
+                    onChange={(e) => setCompanyDescription(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white mb-2 font-medium">Hiring Goals</label>
+                  <textarea
+                    rows={4}
+                    placeholder="What roles, teams, or candidate qualities are you hiring for?"
+                    value={hiringGoals}
+                    onChange={(e) => setHiringGoals(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none resize-none"
+                  />
+                </div>
+              </div>
+            ) : accountType === "agency" ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-white mb-3 font-medium">Services</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {["Interview Coaching", "Resume Review", "Placement", "Career Strategy"].map((service) => (
+                      <button
+                        key={service}
+                        onClick={() => toggleStringValue(setAgencyServices, service)}
+                        className={`py-3 border rounded-lg text-white transition-colors ${
+                          agencyServices.includes(service)
+                            ? "bg-purple-500/20 border-purple-500"
+                            : "bg-slate-900 border-white/10 hover:border-purple-500"
+                        }`}
+                      >
+                        {service}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-white mb-2 font-medium">Agency Description</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Describe how your agency supports candidates or clients."
+                    value={agencyDescription}
+                    onChange={(e) => setAgencyDescription(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none resize-none"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
               {[
                 {
                   icon: Github,
@@ -387,6 +587,7 @@ export default function OnboardingPage() {
                 />
               </div>
             </div>
+            )}
 
             {error && (
               <div className="mt-4 bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm">
@@ -414,12 +615,44 @@ export default function OnboardingPage() {
         {/* Step 4: Work Vibe */}
         {step === 4 && (
           <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Discover Your Work Vibe</h1>
-            <p className="text-slate-400 mb-8">Help us understand what makes you tick</p>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              {accountType === "business" ? "Company Culture" : accountType === "agency" ? "Agency Specialties" : "Discover Your Work Vibe"}
+            </h1>
+            <p className="text-slate-400 mb-8">
+              {accountType === "business"
+                ? "Help candidates understand your workplace"
+                : accountType === "agency"
+                ? "Define where your agency is strongest"
+                : "Help us understand what makes you tick"}
+            </p>
 
-            <div className="space-y-6">
+            {accountType === "agency" ? (
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-white mb-3 font-medium">Specialties</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {["Software Engineering", "Sales", "Operations", "Executive Search"].map((specialty) => (
+                      <button
+                        key={specialty}
+                        onClick={() => toggleStringValue(setAgencySpecialties, specialty)}
+                        className={`py-3 border rounded-lg text-white transition-colors ${
+                          agencySpecialties.includes(specialty)
+                            ? "bg-purple-500/20 border-purple-500"
+                            : "bg-slate-900 border-white/10 hover:border-purple-500"
+                        }`}
+                      >
+                        {specialty}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
               <div>
-                <label className="block text-white mb-3 font-medium">Work Style</label>
+                <label className="block text-white mb-3 font-medium">
+                  {accountType === "business" ? "Work Environment" : "Work Style"}
+                </label>
                 <div className="grid grid-cols-2 gap-3">
                   {["Remote", "Hybrid", "In-Office", "Flexible"].map((style) => (
                     <button
@@ -438,7 +671,9 @@ export default function OnboardingPage() {
               </div>
 
               <div>
-                <label className="block text-white mb-3 font-medium">Company Culture Preference</label>
+                <label className="block text-white mb-3 font-medium">
+                  {accountType === "business" ? "Company Culture" : "Company Culture Preference"}
+                </label>
                 <div className="grid grid-cols-2 gap-3">
                   {["Startup", "Enterprise", "Remote-First", "Mission-Driven"].map((culture) => (
                     <button
@@ -457,7 +692,9 @@ export default function OnboardingPage() {
               </div>
 
               <div>
-                <label className="block text-white mb-3 font-medium">What matters most to you?</label>
+                <label className="block text-white mb-3 font-medium">
+                  {accountType === "business" ? "What should candidates know about your culture?" : "What matters most to you?"}
+                </label>
                 <textarea
                   rows={4}
                   placeholder="Tell us about your values, goals, and what you're looking for..."
@@ -467,6 +704,7 @@ export default function OnboardingPage() {
                 />
               </div>
             </div>
+            )}
 
             {error && (
               <div className="mt-4 bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm">
@@ -495,4 +733,10 @@ export default function OnboardingPage() {
       </div>
     </div>
   );
+}
+
+function defaultHeadline(accountType: AccountType): string {
+  if (accountType === "business") return "Employer on CoStar";
+  if (accountType === "agency") return "Talent agency on CoStar";
+  return "Professional on CoStar";
 }

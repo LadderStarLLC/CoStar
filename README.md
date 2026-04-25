@@ -341,6 +341,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID
 - **Work Vibe Assessment**: AI-powered culture fit analysis
 - **Social Integrations**: Connect GitHub, LinkedIn (coming soon)
 - **Job Matching**: AI-suggested positions based on profile
+- **Real-time Messaging**: Built-in rich text chat widget for communicating with recruiters and agencies
 
 ### Business Features (Coming Soon)
 
@@ -348,6 +349,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID
 - **Talent Search**: AI-powered candidate discovery
 - **Pipeline Management**: Track candidates through hiring funnel
 - **Team Collaboration**: Multi-user hiring teams
+- **Candidate Messaging**: Direct communication channel with job seekers
 
 ---
 

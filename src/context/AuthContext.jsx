@@ -10,10 +10,12 @@ import {
 import {
     doc,
     getDoc,
-    setDoc,
-    serverTimestamp
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import {
+    createOrSyncUserProfileFromAuth,
+    isAccountType,
+} from '@/lib/profile';
 
 const AuthContext = createContext();
 
@@ -23,13 +25,16 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const signInWithGoogle = async () => {
+    const signInWithGoogle = async (requestedType = null) => {
         if (!auth) {
             alert("Firebase Auth not initialized. Please check environment variables.");
             return;
         }
         const provider = new GoogleAuthProvider();
         try {
+            if (requestedType && isAccountType(requestedType)) {
+                window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
+            }
             await signInWithPopup(auth, provider);
         } catch (error) {
             console.error("Error signing in:", error);
@@ -52,56 +57,50 @@ export const AuthProvider = ({ children }) => {
                 return;
             }
 
-            // Set user immediately with Auth data
-            setUser({
-                uid: currentUser.uid,
-                email: currentUser.email,
-                displayName: currentUser.displayName,
-                photoURL: currentUser.photoURL,
-                role: 'user', // Default role
-                getIdToken: () => currentUser.getIdToken(),
-            });
-            setLoading(false);
-
-            // Background sync: Fetch/sync user data from Firestore
             try {
                 if (!db) {
                     console.warn("Firestore not initialized");
+                    setUser({
+                        uid: currentUser.uid,
+                        email: currentUser.email,
+                        displayName: currentUser.displayName,
+                        photoURL: currentUser.photoURL,
+                        accountType: null,
+                        role: 'user',
+                        getIdToken: () => currentUser.getIdToken(),
+                    });
                     setLoading(false);
                     return;
                 }
 
                 const userRef = doc(db, 'users', currentUser.uid);
                 const userSnap = await getDoc(userRef);
+                const storedRequestedType = window.sessionStorage.getItem('costar:requestedAccountType');
+                const requestedType = isAccountType(storedRequestedType) ? storedRequestedType : null;
+                window.sessionStorage.removeItem('costar:requestedAccountType');
 
-                if (!userSnap.exists()) {
-                    // Create new user document
-                    const newUserData = {
-                        uid: currentUser.uid,
-                        email: currentUser.email,
-                        displayName: currentUser.displayName,
-                        photoURL: currentUser.photoURL,
-                        role: 'user',
-                        accountType: null, // 'user' | 'business' | 'agency'
-                        workVibe: null,
-                        socialConnections: [],
-                        workExperience: [],
-                        education: [],
-                        accolades: [],
-                        createdAt: serverTimestamp(),
-                        updatedAt: serverTimestamp(),
-                    };
-                    await setDoc(userRef, newUserData);
-                } else {
-                    // Update existing user with latest auth data
-                    const userData = userSnap.data();
-                    setUser(prev => ({
-                        ...prev,
-                        ...userData
-                    }));
-                }
+                const profile = await createOrSyncUserProfileFromAuth(
+                    currentUser,
+                    userSnap.exists() && userSnap.data()?.accountType ? null : requestedType
+                );
+
+                setUser({
+                    ...profile,
+                    getIdToken: () => currentUser.getIdToken(),
+                });
             } catch (error) {
                 console.error("Background Sync Error:", error);
+                setUser({
+                    uid: currentUser.uid,
+                    email: currentUser.email,
+                    displayName: currentUser.displayName,
+                    photoURL: currentUser.photoURL,
+                    accountType: null,
+                    role: 'user',
+                    getIdToken: () => currentUser.getIdToken(),
+                });
+            } finally {
+                setLoading(false);
             }
         });
 

@@ -206,6 +206,11 @@ The system uses a two-tier Firestore structure:
 1. **`conversations` collection**: Stores metadata (participant IDs, latest message snippet, unread status). Used to quickly render the Inbox list without heavy reads.
 2. **`conversations/{id}/messages` subcollection**: Stores individual message data.
 
+**UI Implementation:**
+- Messaging is implemented as a **global floating widget** (`ChatWidget.tsx`) residing at the bottom-right of the screen.
+- State is managed globally via `MessagingContext` (`src/context/MessagingContext.tsx`), allowing any part of the app (like the "Message Recruiter" button on job pages) to seamlessly open the chat panel to a specific conversation.
+- Standalone `/messages` routes were deliberately avoided in favor of this integrated contextual experience.
+
 ### Security Rules (Privacy)
 A strict `firestore.rules` configuration enforces that:
 - You must be explicitly listed in a conversation's `participantIds` array to read or write to it.

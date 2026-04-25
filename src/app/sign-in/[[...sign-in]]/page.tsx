@@ -11,7 +11,7 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push("/dashboard");
+      router.push(user.accountType ? "/dashboard" : "/onboarding");
     }
   }, [user, loading, router]);
 
