@@ -7,6 +7,7 @@ import {
   accountTypeLabels,
   calculateProfileComplete,
   createSlug,
+  generateUniqueSlug,
   emptyWorkVibe,
   getSocialConnection,
   getUserProfile,
@@ -186,15 +187,17 @@ export default function OnboardingPage() {
 
       await lockAccountType(user.uid, accountType, "signup");
 
+      const slug = await generateUniqueSlug(
+        accountType === "business" ? companyName : accountType === "agency" ? agencyName : displayName,
+        user.uid
+      );
+
       const nextProfile = {
         uid: user.uid,
         email: user.email,
         displayName: displayName.trim() || user.displayName,
         photoURL: user.photoURL,
-        slug: createSlug(
-          accountType === "business" ? companyName : accountType === "agency" ? agencyName : displayName,
-          user.uid
-        ),
+        slug,
         accountType,
         role: accountType ?? "talent",
         headline: headline.trim() || defaultHeadline(accountType),
