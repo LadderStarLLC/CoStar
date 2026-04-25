@@ -8,6 +8,7 @@ import { LogOut, Briefcase, Building2, User, Settings, Mic } from 'lucide-react'
 export default function NavHeader() {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
+  const accountType = user?.accountType ?? null;
 
   const handleLogout = async () => {
     await logout();
@@ -42,13 +43,19 @@ export default function NavHeader() {
             <Mic className="w-3.5 h-3.5" />
             Audition
           </Link>
-          {user?.accountType === 'business' && (
+          {accountType === 'business' && (
             <Link href="/dashboard/jobs" className="text-slate-300 hover:text-white transition-colors">
               Post a Job
             </Link>
           )}
-          <Link href="#" className="text-slate-300 hover:text-white transition-colors">Companies</Link>
-          <Link href="/messages" className="text-slate-300 hover:text-white transition-colors">Messages</Link>
+          {accountType === 'agency' && (
+            <Link href="/dashboard/settings" className="text-slate-300 hover:text-white transition-colors">
+              Agency Profile
+            </Link>
+          )}
+          {accountType === 'business' && (
+            <Link href="/dashboard/settings" className="text-slate-300 hover:text-white transition-colors">Company Profile</Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-3">

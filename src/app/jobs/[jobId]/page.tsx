@@ -7,6 +7,7 @@ import Link from 'next/link';
 import NavHeader from '@/components/NavHeader';
 import { useAuth } from '@/context/AuthContext';
 import { getOrCreateConversation } from '@/lib/messaging';
+import { useMessaging } from '@/context/MessagingContext';
 import {
   ArrowLeft,
   MapPin,
@@ -30,6 +31,7 @@ export default function JobDetailPage() {
   const router = useRouter();
   const jobId = params.jobId as string;
   const { user } = useAuth();
+  const { openMessaging } = useMessaging();
 
   const [job, setJob] = useState<JobData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,7 +63,7 @@ export default function JobDetailPage() {
           role: 'agency'
         }
       });
-      router.push(`/messages/${conversationId}`);
+      openMessaging(conversationId);
     } catch (err) {
       console.error('Failed to start conversation:', err);
       alert('Failed to start conversation. Please try again.');

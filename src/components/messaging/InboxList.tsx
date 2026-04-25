@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { Conversation } from '@/lib/messaging';
 
@@ -8,9 +7,10 @@ interface InboxListProps {
   conversations: Conversation[];
   currentUserId: string;
   activeConversationId?: string;
+  onSelect?: (id: string) => void;
 }
 
-export default function InboxList({ conversations, currentUserId, activeConversationId }: InboxListProps) {
+export default function InboxList({ conversations, currentUserId, activeConversationId, onSelect }: InboxListProps) {
   if (conversations.length === 0) {
     return (
       <div className="p-8 text-center text-slate-400">
@@ -32,10 +32,10 @@ export default function InboxList({ conversations, currentUserId, activeConversa
         const timestamp = conv.lastUpdatedAt?.toDate ? conv.lastUpdatedAt.toDate() : new Date();
 
         return (
-          <Link 
+          <button 
             key={conv.id} 
-            href={`/messages/${conv.id}`}
-            className={`p-4 hover:bg-white/5 transition-colors flex items-start gap-4 ${isActive ? 'bg-white/5' : ''}`}
+            onClick={() => onSelect && onSelect(conv.id)}
+            className={`w-full text-left p-4 hover:bg-white/5 transition-colors flex items-start gap-4 ${isActive ? 'bg-white/5' : ''}`}
           >
             <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
               {otherParticipant?.avatarUrl ? (
@@ -70,7 +70,7 @@ export default function InboxList({ conversations, currentUserId, activeConversa
             {isUnread && (
               <div className="w-2.5 h-2.5 bg-amber-500 rounded-full shrink-0 mt-1.5" />
             )}
-          </Link>
+          </button>
         );
       })}
     </div>

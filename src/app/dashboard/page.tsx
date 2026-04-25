@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import NavHeader from "@/components/NavHeader";
 import {
+  accountTypeLabels,
   buildProfileChecklist,
   calculateProfileComplete,
   getUserProfile,
@@ -32,6 +33,10 @@ export default function DashboardPage() {
 
       try {
         const loadedProfile = await getUserProfile(user.uid);
+        if (loadedProfile && !loadedProfile.accountType) {
+          router.push("/onboarding");
+          return;
+        }
         setProfile(loadedProfile);
       } catch (err) {
         console.error("Failed to load profile:", err);
@@ -41,7 +46,7 @@ export default function DashboardPage() {
     if (!loading) {
       loadProfile();
     }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   const profileChecklist = useMemo(
     () => buildProfileChecklist(profile ?? user ?? null),
@@ -60,6 +65,12 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
+  const accountType: UserProfile["accountType"] | null =
+    profile?.accountType ?? (user.accountType as UserProfile["accountType"] | undefined) ?? null;
+  const accountLabel = accountType ? accountTypeLabels[accountType] : "Account";
+  const dashboardStats = getDashboardStats(accountType, profileComplete, connectedAccounts);
+  const quickActions = getQuickActions(accountType);
+
   return (
     <div className="min-h-screen bg-slate-900">
       <NavHeader />
@@ -72,18 +83,13 @@ export default function DashboardPage() {
             Welcome back, {user.displayName || "there"}!
           </h1>
           <p className="text-slate-400">
-            {profile?.headline || "Here's what's happening with your profile"}
+            {profile?.headline || `${accountLabel} dashboard`}
           </p>
         </div>
 
         {/* Stats Grid */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
-          {[
-            { label: "Profile Views", value: "0", icon: User, bgClass: "bg-amber-500/20", iconClass: "text-amber-400" },
-            { label: "Job Matches", value: "0", icon: Briefcase, bgClass: "bg-blue-500/20", iconClass: "text-blue-400" },
-            { label: "Verified Accounts", value: String(connectedAccounts), icon: CheckCircle2, bgClass: "bg-green-500/20", iconClass: "text-green-400" },
-            { label: "Profile Strength", value: `${profileComplete}%`, icon: Star, bgClass: "bg-purple-500/20", iconClass: "text-purple-400" },
-          ].map((stat) => (
+          {dashboardStats.map((stat) => (
             <div key={stat.label} className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
               <div className={`w-10 h-10 ${stat.bgClass} rounded-lg flex items-center justify-center mb-4`}>
                 <stat.icon className={stat.iconClass} size={20} />
@@ -136,10 +142,7 @@ export default function DashboardPage() {
 
             <div className="space-y-3">
               {[
-                { icon: Briefcase, label: "Browse Jobs", iconClass: "text-amber-400", href: "/jobs" },
-                { icon: Building2, label: "Post a Job", iconClass: "text-green-400", href: "/dashboard/jobs" },
-                { icon: Github, label: "Connect GitHub", iconClass: "text-slate-400", href: "/dashboard/settings#connections" },
-                { icon: Linkedin, label: "Import LinkedIn", iconClass: "text-blue-400", href: "/dashboard/settings#connections" },
+                ...quickActions,
                 { icon: Settings, label: "Account Settings", iconClass: "text-slate-400", href: "/dashboard/settings" },
               ].map((action) => (
                 <Link
@@ -155,21 +158,86 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Job Matches */}
+        {/* Recent Activity */}
         <div className="mt-8 bg-slate-800/50 border border-white/10 rounded-xl p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-white">Top Job Matches</h2>
-            <Link href="/jobs" className="text-amber-400 hover:text-amber-300 text-sm">
+            <h2 className="text-xl font-bold text-white">{accountType === "business" ? "Hiring Activity" : accountType === "agency" ? "Agency Activity" : "Top Job Matches"}</h2>
+            <Link href={accountType === "business" ? "/dashboard/jobs" : "/jobs"} className="text-amber-400 hover:text-amber-300 text-sm">
               View All →
             </Link>
           </div>
           <p className="text-slate-400 text-center py-8">
-            {profileComplete < 80
-              ? "Complete your profile to see AI-matched job opportunities"
-              : "Job match recommendations will appear here as matching is expanded."}
+            {getDashboardEmptyState(accountType, profileComplete)}
           </p>
         </div>
       </main>
     </div>
   );
+}
+
+function getDashboardStats(accountType: UserProfile["accountType"] | null, profileComplete: number, connectedAccounts: number) {
+  if (accountType === "business") {
+    return [
+      { label: "Company Views", value: "0", icon: Building2, bgClass: "bg-blue-500/20", iconClass: "text-blue-400" },
+      { label: "Job Posts", value: "0", icon: Briefcase, bgClass: "bg-amber-500/20", iconClass: "text-amber-400" },
+      { label: "Applicants", value: "0", icon: User, bgClass: "bg-green-500/20", iconClass: "text-green-400" },
+      { label: "Profile Strength", value: `${profileComplete}%`, icon: Star, bgClass: "bg-purple-500/20", iconClass: "text-purple-400" },
+    ];
+  }
+
+  if (accountType === "agency") {
+    return [
+      { label: "Agency Views", value: "0", icon: Building2, bgClass: "bg-purple-500/20", iconClass: "text-purple-400" },
+      { label: "Candidates", value: "0", icon: User, bgClass: "bg-amber-500/20", iconClass: "text-amber-400" },
+      { label: "Auditions", value: "0", icon: Briefcase, bgClass: "bg-blue-500/20", iconClass: "text-blue-400" },
+      { label: "Profile Strength", value: `${profileComplete}%`, icon: Star, bgClass: "bg-green-500/20", iconClass: "text-green-400" },
+    ];
+  }
+
+  return [
+    { label: "Profile Views", value: "0", icon: User, bgClass: "bg-amber-500/20", iconClass: "text-amber-400" },
+    { label: "Job Matches", value: "0", icon: Briefcase, bgClass: "bg-blue-500/20", iconClass: "text-blue-400" },
+    { label: "Verified Accounts", value: String(connectedAccounts), icon: CheckCircle2, bgClass: "bg-green-500/20", iconClass: "text-green-400" },
+    { label: "Profile Strength", value: `${profileComplete}%`, icon: Star, bgClass: "bg-purple-500/20", iconClass: "text-purple-400" },
+  ];
+}
+
+function getQuickActions(accountType: UserProfile["accountType"] | null) {
+  if (accountType === "business") {
+    return [
+      { icon: Building2, label: "Edit Company Profile", iconClass: "text-blue-400", href: "/dashboard/settings" },
+      { icon: Briefcase, label: "Post a Job", iconClass: "text-green-400", href: "/dashboard/jobs" },
+    ];
+  }
+
+  if (accountType === "agency") {
+    return [
+      { icon: User, label: "Edit Agency Profile", iconClass: "text-purple-400", href: "/dashboard/settings" },
+      { icon: Briefcase, label: "Browse Jobs", iconClass: "text-amber-400", href: "/jobs" },
+    ];
+  }
+
+  return [
+    { icon: Briefcase, label: "Browse Jobs", iconClass: "text-amber-400", href: "/jobs" },
+    { icon: Github, label: "Connect GitHub", iconClass: "text-slate-400", href: "/dashboard/settings#connections" },
+    { icon: Linkedin, label: "Import LinkedIn", iconClass: "text-blue-400", href: "/dashboard/settings#connections" },
+  ];
+}
+
+function getDashboardEmptyState(accountType: UserProfile["accountType"] | null, profileComplete: number): string {
+  if (accountType === "business") {
+    return profileComplete < 80
+      ? "Complete your company profile to publish a stronger employer presence."
+      : "Job posting and candidate activity will appear here.";
+  }
+
+  if (accountType === "agency") {
+    return profileComplete < 80
+      ? "Complete your agency profile to show candidates and clients what you offer."
+      : "Candidate coaching and placement activity will appear here.";
+  }
+
+  return profileComplete < 80
+    ? "Complete your profile to see AI-matched job opportunities"
+    : "Job match recommendations will appear here as matching is expanded.";
 }
