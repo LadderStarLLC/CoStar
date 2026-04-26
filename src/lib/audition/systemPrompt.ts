@@ -1,5 +1,6 @@
 import type { JobData } from '@/lib/jobs';
 import type { AuditionConfig } from './types';
+import { GEMINI_CONFIG } from './config';
 
 export interface PersonaConfig {
   name: string;
@@ -9,7 +10,7 @@ export interface PersonaConfig {
 
 function difficultyGuidance(difficulty: string): string {
   const map: Record<string, string> = {
-    easy: 'Ask foundational questions. Avoid trick questions and overly niche edge cases.',
+    easy: 'Ask foundational questions. Be encouraging and patient. Allow the candidate time to build confidence. Avoid trick questions.',
     medium: 'Ask a mix of conceptual and applied questions. Probe for depth on interesting answers without being aggressive.',
     hard: 'Ask advanced, scenario-based questions. Challenge assumptions. Expect senior-level articulation and precision.',
   };
@@ -58,12 +59,11 @@ function conductRules(numQuestions: number): string {
   return `CONDUCT RULES:
 - Speak naturally and conversationally, exactly as a real human interviewer would.
 - Ask ONE question at a time. Wait for the candidate's full response before proceeding.
-- Use natural speech fillers organically and contextually (e.g., occasional "hmm", "I see", or "right") to create conversational pacing. Let the conversation breathe; do not rush.
-- React fluidly to the candidate's answers. You may adjust your phrasing based on the flow of the conversation rather than sticking to a rigid script.
+- After each answer, give a brief neutral acknowledgment ("Thanks, that's helpful." / "Interesting, I appreciate that perspective." / "Got it.") before moving on.
 - Do NOT give scores, grades, or performance feedback during the interview itself.
 - If the candidate gives an unclear answer, ask ONE targeted clarifying follow-up.
 - Keep your own spoken turns concise — this is a voice conversation, not an essay.
-- Ask exactly ${numQuestions} questions total. No more, no less.
+- Aim for ${numQuestions} questions total.
 - When you have asked your last question and received a response, wrap up professionally: thank the candidate, give a brief closing statement, then output the exact word INTERVIEW_COMPLETE on its own line. You will then be asked to evaluate the candidate — you MUST immediately call the generate_feedback tool with your honest assessment.`;
 }
 
@@ -76,6 +76,7 @@ export function buildSystemPrompt(job: JobData, config: AuditionConfig, persona:
   const remotePolicy = job.location?.remotePolicy || 'flexible';
   const workArrangement =
     remotePolicy === 'remote' ? 'a fully remote' : remotePolicy === 'hybrid' ? 'a hybrid' : 'an in-office';
+  const questionCount = config.numQuestions || GEMINI_CONFIG.questionCount[config.difficulty];
 
   return `You are a professional interviewer named ${persona.name} conducting a ${config.difficulty}-difficulty interview for the role of ${job.title} at ${job.companyName ?? 'the company'}. You MUST introduce yourself as ${persona.name} and stay in this persona throughout.
 
@@ -90,7 +91,7 @@ ${difficultyGuidance(config.difficulty)}
 Tone: ${toneGuidance(persona.tone)}
 Methodology: ${styleGuidance(persona.style)}
 
-${conductRules(config.numQuestions)}
+${conductRules(questionCount)}
 
 OPENING:
 Begin immediately by introducing yourself warmly: "Hi, I'm ${persona.name}, and I'll be your interviewer today for the ${job.title} role at ${job.companyName ?? 'the company'}. Thanks for making time — let's jump right in. [first question here]"
@@ -99,6 +100,8 @@ Do not say anything else before starting.`;
 }
 
 export function buildSystemPromptFromText(rawJobText: string, config: AuditionConfig, persona: PersonaConfig): string {
+  const questionCount = config.numQuestions || GEMINI_CONFIG.questionCount[config.difficulty];
+
   return `You are a professional interviewer named ${persona.name} conducting a ${config.difficulty}-difficulty interview based on the following job posting. You MUST introduce yourself as ${persona.name} and stay in this persona throughout. Read the posting carefully and tailor every question to the role, company, and requirements described.
 
 JOB POSTING:
@@ -111,10 +114,10 @@ ${difficultyGuidance(config.difficulty)}
 Tone: ${toneGuidance(persona.tone)}
 Methodology: ${styleGuidance(persona.style)}
 
-${conductRules(config.numQuestions)}
+${conductRules(questionCount)}
 
 OPENING:
-Begin immediately by introducing yourself and referencing the role from the job posting: "Hi, I'm ${persona.name}, and I'll be your interviewer today. Let's jump right in. [first question here]"
+Begin immediately by introducing yourself warmly and referencing the role from the job posting: "Hi, I'm ${persona.name}, and I'll be your interviewer today. Thanks for making time — let's jump right in. [first question here]"
 
 Do not say anything else before starting.`;
 }

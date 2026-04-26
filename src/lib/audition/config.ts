@@ -20,6 +20,13 @@ export const GEMINI_CONFIG = {
   inputSampleRate: 16000,   // mic capture rate (PCM sent to Gemini)
   outputSampleRate: 24000,  // playback rate (PCM received from Gemini)
 
+  // Default question count per difficulty level
+  questionCount: {
+    easy: 5,
+    medium: 8,
+    hard: 12,
+  } as Record<string, number>,
+
   // Ephemeral token lifetime (milliseconds)
   tokenTtlMs: 30 * 60 * 1000,       // 30 minutes
   sessionTtlMs: 2 * 60 * 1000,      // 2 minutes new-session window
