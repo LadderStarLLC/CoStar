@@ -230,7 +230,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
         voiceName: resolvedVoice,
       });
 
-      audioCapture.startCapture();
+      await audioCapture.startCapture();
       sessionIdRef.current = Date.now().toString();
       sessionStartRef.current = Date.now();
       interviewStartTimeRef.current = Date.now();
