@@ -97,10 +97,9 @@ export function subscribeToConversations(
 ) {
   const q = query(
     collection(db as any, 'conversations'),
-    where('participantIds', 'array-contains', userId),
-    orderBy('lastUpdatedAt', 'desc')
+    where('participantIds', 'array-contains', userId)
   );
-  
+
   return onSnapshot(
     q,
     (snapshot) => {
@@ -108,12 +107,17 @@ export function subscribeToConversations(
       snapshot.forEach(docSnap => {
         convs.push({ id: docSnap.id, ...docSnap.data() } as Conversation);
       });
+      // Sort client-side to avoid requiring a composite index
+      convs.sort((a, b) => {
+        const timeA = a.lastUpdatedAt?.toMillis?.() ?? 0;
+        const timeB = b.lastUpdatedAt?.toMillis?.() ?? 0;
+        return timeB - timeA; // descending
+      });
       callback(convs);
     },
     onError,
   );
 }
-
 /**
  * Subscribes to all messages in a conversation.
  */
