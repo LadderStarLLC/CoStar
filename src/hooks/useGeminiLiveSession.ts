@@ -89,14 +89,6 @@ export function useGeminiLiveSession({
       audioEnabledAtRef.current = Date.now() + 750;
       firstAudioSentRef.current = false;
       setAIStatus('listening');
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-          clientContent: {
-            turns: [{ role: 'user', parts: [{ text: 'Hello.' }] }],
-            turnComplete: true,
-          },
-        }));
-      }
       return;
     }
 
