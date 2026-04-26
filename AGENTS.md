@@ -134,11 +134,17 @@ The `connect()` function in `useGeminiLiveSession.ts` returns a `Promise<void>` 
 
 **Do not send audio chunks before `setupComplete` is received from the server.**
 
-`sendAudioChunk` is gated behind a `setupReadyRef` flag that starts `false` and is set to `true` only when `setupComplete` arrives. This is critical: sending audio before `setupComplete` competes with the initial text turn ("Hello.") that triggers the AI's opening introduction, causing the AI to never speak first.
+`sendAudioChunk` is gated behind a `setupReadyRef` flag that starts `false` and is set to `true` only when `setupComplete` arrives. This is critical: sending audio before `setupComplete` can lead to errors.
 
 After `setupComplete`:
 1. `setupReadyRef.current` is set to `true` (unblocking audio)
-2. A `clientContent` turn with `"Hello."` is sent to prompt the AI's opening
+2. We rely purely on the microphone's VAD (Voice Activity Detection) or the natural flow for the AI to speak.
+
+**DO NOT send synthetic `clientContent` text turns immediately on setup.** Mixing a `clientContent` text turn with an ongoing `realtimeInput` audio stream on `v1beta` causes a `1008: Operation is not implemented` error.
+
+### 11. Tool Call Audio Gating
+
+When the Gemini Live API attempts a `toolCall` (like `generate_feedback`), you must immediately halt all outgoing audio transmissions. Continue to drop audio chunks until you have successfully sent the `toolResponse` back to the server. Failure to do so results in the server closing the connection with an "Input During Tool Calls" error.
 
 ---
 
