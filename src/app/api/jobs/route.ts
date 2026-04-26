@@ -347,8 +347,12 @@ async function fetchCareerjet(state: ReturnType<typeof buildRequestState>, apiKe
   else if (state.filters.employmentType?.includes('temporary')) apiParams.set('contract_type', 't');
   else if (state.filters.employmentType?.includes('internship')) apiParams.set('contract_type', 'i');
 
-  const proxyUrl = process.env.JOB_BOARD_PROXY_URL || 'https://search.api.careerjet.net';
-  const response = await fetch(`${proxyUrl}/careerjet/v4/query?${apiParams.toString()}`, {
+  const proxyUrl = process.env.JOB_BOARD_PROXY_URL;
+  const fetchUrl = proxyUrl 
+    ? `${proxyUrl.replace(/\/$/, '')}/careerjet/v4/query?${apiParams.toString()}` 
+    : `https://search.api.careerjet.net/v4/query?${apiParams.toString()}`;
+
+  const response = await fetch(fetchUrl, {
     headers: {
       Authorization: getAuthHeader(apiKey),
       Accept: 'application/json',
@@ -382,8 +386,12 @@ async function fetchCareerjet(state: ReturnType<typeof buildRequestState>, apiKe
 }
 
 async function fetchJooble(state: ReturnType<typeof buildRequestState>, apiKey: string): Promise<ProviderResult> {
-  const proxyUrl = process.env.JOB_BOARD_PROXY_URL || 'https://jooble.org';
-  const response = await fetch(`${proxyUrl}/jooble/api/${apiKey}`, {
+  const proxyUrl = process.env.JOB_BOARD_PROXY_URL;
+  const fetchUrl = proxyUrl 
+    ? `${proxyUrl.replace(/\/$/, '')}/jooble/api/${apiKey}` 
+    : `https://jooble.org/api/${apiKey}`;
+
+  const response = await fetch(fetchUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
