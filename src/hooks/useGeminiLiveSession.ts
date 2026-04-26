@@ -49,7 +49,7 @@ export function useGeminiLiveSession({
 
   const wsRef = useRef<WebSocket | null>(null);
   const setupReadyRef = useRef(false);
-  const initialOpeningCompleteRef = useRef(false);
+  const audioEnabledAtRef = useRef(0);
   const firstAudioSentRef = useRef(false);
   const callbacksRef = useRef({
     onAudioChunk,
@@ -85,7 +85,7 @@ export function useGeminiLiveSession({
     if (data.setupComplete) {
       console.log('[GeminiLive] Received setupComplete — unblocking audio, triggering AI opening');
       setupReadyRef.current = true;
-      initialOpeningCompleteRef.current = false;
+      audioEnabledAtRef.current = Date.now() + 750;
       firstAudioSentRef.current = false;
       setAIStatus('listening');
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -153,10 +153,6 @@ export function useGeminiLiveSession({
 
     // Turn complete — model finished speaking
     if (serverContent.turnComplete) {
-      if (!initialOpeningCompleteRef.current) {
-        console.log('[GeminiLive] Initial AI opening complete - microphone audio is now enabled');
-        initialOpeningCompleteRef.current = true;
-      }
       setAIStatus('listening');
       callbacksRef.current.onTurnComplete();
     }
@@ -180,7 +176,7 @@ export function useGeminiLiveSession({
         }
 
         firstAudioSentRef.current = false;
-        initialOpeningCompleteRef.current = false;
+        audioEnabledAtRef.current = 0;
         const host = overrides?.liveApiHost ?? credentials.host;
         const model = overrides?.liveModel ?? credentials.liveModel ?? GEMINI_CONFIG.liveModel;
         const voice = overrides?.voiceName ?? GEMINI_CONFIG.voiceName;
@@ -195,7 +191,7 @@ export function useGeminiLiveSession({
         ws.onopen = () => {
           isOpened = true;
           setupReadyRef.current = false;
-          initialOpeningCompleteRef.current = false;
+          audioEnabledAtRef.current = 0;
           firstAudioSentRef.current = false;
           setIsConnected(true);
           setAIStatus('listening'); // Start in listening mode — audio chunks blocked until setupComplete
@@ -306,8 +302,8 @@ export function useGeminiLiveSession({
     if (!setupReadyRef.current) {
       return; // Discard chunks until setupComplete is received — prevents competing with "Hello." trigger
     }
-    if (!initialOpeningCompleteRef.current) {
-      return; // Do not interrupt the AI's initial opening turn with mic audio.
+    if (Date.now() < audioEnabledAtRef.current) {
+      return; // Briefly avoid racing setup/the initial AI trigger, but never block mic indefinitely.
     }
     if (!wsRef.current) {
       console.log('[GeminiLive] sendAudioChunk early return: wsRef is null');
@@ -343,7 +339,7 @@ export function useGeminiLiveSession({
 
   const disconnect = useCallback(() => {
     setupReadyRef.current = false;
-    initialOpeningCompleteRef.current = false;
+    audioEnabledAtRef.current = 0;
     firstAudioSentRef.current = false;
     wsRef.current?.close();
     wsRef.current = null;

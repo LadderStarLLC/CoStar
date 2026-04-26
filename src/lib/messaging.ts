@@ -90,38 +90,54 @@ export async function getOrCreateConversation(
 /**
  * Subscribes to all conversations for a specific user.
  */
-export function subscribeToConversations(userId: string, callback: (conversations: Conversation[]) => void) {
+export function subscribeToConversations(
+  userId: string,
+  callback: (conversations: Conversation[]) => void,
+  onError?: (error: Error) => void,
+) {
   const q = query(
     collection(db as any, 'conversations'),
     where('participantIds', 'array-contains', userId),
     orderBy('lastUpdatedAt', 'desc')
   );
   
-  return onSnapshot(q, (snapshot) => {
-    const convs: Conversation[] = [];
-    snapshot.forEach(docSnap => {
-      convs.push({ id: docSnap.id, ...docSnap.data() } as Conversation);
-    });
-    callback(convs);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const convs: Conversation[] = [];
+      snapshot.forEach(docSnap => {
+        convs.push({ id: docSnap.id, ...docSnap.data() } as Conversation);
+      });
+      callback(convs);
+    },
+    onError,
+  );
 }
 
 /**
  * Subscribes to all messages in a conversation.
  */
-export function subscribeToMessages(conversationId: string, callback: (messages: Message[]) => void) {
+export function subscribeToMessages(
+  conversationId: string,
+  callback: (messages: Message[]) => void,
+  onError?: (error: Error) => void,
+) {
   const q = query(
     collection(db as any, `conversations/${conversationId}/messages`),
     orderBy('createdAt', 'asc')
   );
   
-  return onSnapshot(q, (snapshot) => {
-    const msgs: Message[] = [];
-    snapshot.forEach(docSnap => {
-      msgs.push({ id: docSnap.id, ...docSnap.data() } as Message);
-    });
-    callback(msgs);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const msgs: Message[] = [];
+      snapshot.forEach(docSnap => {
+        msgs.push({ id: docSnap.id, ...docSnap.data() } as Message);
+      });
+      callback(msgs);
+    },
+    onError,
+  );
 }
 
 /**

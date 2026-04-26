@@ -18,7 +18,14 @@ export default function ChatWidget() {
 
   useEffect(() => {
     if (!user) return;
-    const unsubscribe = subscribeToConversations(user.uid, setConversations);
+    const unsubscribe = subscribeToConversations(
+      user.uid,
+      setConversations,
+      (error) => {
+        console.warn('[Messaging] Conversations listener failed:', error.message);
+        setConversations([]);
+      },
+    );
     return () => unsubscribe();
   }, [user]);
 
@@ -27,7 +34,14 @@ export default function ChatWidget() {
       setMessages([]);
       return;
     }
-    const unsubscribe = subscribeToMessages(activeConversationId, setMessages);
+    const unsubscribe = subscribeToMessages(
+      activeConversationId,
+      setMessages,
+      (error) => {
+        console.warn('[Messaging] Messages listener failed:', error.message);
+        setMessages([]);
+      },
+    );
     return () => unsubscribe();
   }, [activeConversationId]);
 
