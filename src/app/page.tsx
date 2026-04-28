@@ -1,213 +1,146 @@
 import Link from "next/link";
-import { User, Building2, Users2, ArrowRight, Github, Linkedin, CheckCircle2 } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  CheckCircle2,
+  Mic,
+  Sparkles,
+  Star,
+  TrendingUp,
+} from "lucide-react";
 import HomeHeader from "@/components/HomeHeader";
+import BrandLogo from "@/components/BrandLogo";
+import FeaturedJobsPreview from "@/components/FeaturedJobsPreview";
+
+const coachingTracks = [
+  "Interview rehearsal with AI voice practice",
+  "Offer positioning and compensation strategy",
+  "Resume, portfolio, and profile optimization",
+  "Weekly accountability for targeted career moves",
+];
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-[#1A1D20] text-[#F4F5F7]">
       <HomeHeader />
 
-      {/* Hero Section */}
-      <section className="relative py-24 md:py-32 overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-amber-500/10 rounded-full blur-3xl" />
-
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
-              Your Professional Journey,{" "}
-              <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
-                Unified
-              </span>
-            </h1>
-            <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
-              Connect GitHub, LinkedIn, and more. Let AI understand your work vibe and find your perfect career match.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/sign-up" className="px-8 py-4 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity flex items-center gap-2">
-                Create Free Profile <ArrowRight size={20} />
-              </Link>
-              <Link href="/sign-up?type=business" className="px-8 py-4 bg-white/10 text-white rounded-xl font-bold text-lg hover:bg-white/20 transition-colors border border-white/20">
-                Start Hiring
-              </Link>
-              <Link href="/sign-up?type=agency" className="px-8 py-4 bg-purple-500/20 text-purple-300 rounded-xl font-bold text-lg hover:bg-purple-500/30 transition-colors border border-purple-500/30">
-                Start an Agency
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Account Types */}
-      <section className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-4">
-            Choose Your Path
-          </h2>
-          <p className="text-slate-400 text-center mb-16 max-w-2xl mx-auto">
-            Whether you&apos;re building your career, building a team, or coaching the next generation of talent, CoStar has you covered.
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {/* User Account */}
-            <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8 hover:border-amber-500/50 transition-colors group">
-              <div className="w-14 h-14 bg-amber-500/20 rounded-xl flex items-center justify-center mb-6 group-hover:bg-amber-500/30 transition-colors">
-                <User className="text-amber-400" size={28} />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-4">Talent</h3>
-              <p className="text-slate-400 mb-6">
-                Build your comprehensive professional profile. Connect social accounts, showcase your work vibe, and get matched with companies that fit you.
-              </p>
-              <ul className="space-y-3">
-                {[
-                  "Connect GitHub, LinkedIn, Twitter",
-                  "Work & Education History",
-                  "AI Work Vibe Assessment",
-                  "Job Matches & Insights",
-                  "Verified Profile Badges",
-                ].map((feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-slate-300">
-                    <CheckCircle2 className="text-amber-400" size={18} />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/sign-up?type=talent" className="mt-8 block w-full py-3 bg-amber-500 text-slate-900 rounded-lg font-semibold text-center hover:bg-amber-400 transition-colors">
-                Create Free Profile
-              </Link>
-            </div>
-
-            {/* Business Account */}
-            <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8 hover:border-blue-500/50 transition-colors group">
-              <div className="w-14 h-14 bg-blue-500/20 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-500/30 transition-colors">
-                <Building2 className="text-blue-400" size={28} />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-4">Employer</h3>
-              <p className="text-slate-400 mb-6">
-                Access aggregated candidate profiles synthesized with AI. Describe your culture and vibe, let our HR agent find deeply compatible candidates.
-              </p>
-              <ul className="space-y-3">
-                {[
-                  "AI Candidate Synthesis",
-                  "Culture Fit Matching",
-                  "Talent Pipeline",
-                  "Team Collaboration",
-                  "Priority Support",
-                ].map((feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-slate-300">
-                    <CheckCircle2 className="text-blue-400" size={18} />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/sign-up?type=business" className="mt-8 block w-full py-3 bg-blue-500 text-white rounded-lg font-semibold text-center hover:bg-blue-400 transition-colors">
-                Start Free Trial
-              </Link>
-            </div>
-
-            {/* Agency Account */}
-            <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8 hover:border-purple-500/50 transition-colors group">
-              <div className="w-14 h-14 bg-purple-500/20 rounded-xl flex items-center justify-center mb-6 group-hover:bg-purple-500/30 transition-colors">
-                <Users2 className="text-purple-400" size={28} />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-4">Agency</h3>
-              <p className="text-slate-400 mb-6">
-                Coach, prep, and place talent with AI-powered interview practice. Build connections and track candidate progress.
-              </p>
-              <ul className="space-y-3">
-                {[
-                  "AI Interview Coaching",
-                  "Talent Placement",
-                  "Audition Sessions",
-                  "Connect & Network",
-                  "Performance Insights",
-                ].map((feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-slate-300">
-                    <CheckCircle2 className="text-purple-400" size={18} />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/sign-up?type=agency" className="mt-8 block w-full py-3 bg-purple-500 text-white rounded-lg font-semibold text-center hover:bg-purple-400 transition-colors">
-                Start Your Agency
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="py-24 px-6 bg-slate-800/30">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-4">
-            Everything You Need to Succeed
-          </h2>
-          <p className="text-slate-400 text-center mb-16 max-w-2xl mx-auto">
-            Powerful features to showcase your professional journey and find your perfect match.
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                icon: Github,
-                title: "Social Integrations",
-                description: "Connect GitHub, LinkedIn, Twitter and more. Import your work, contributions, and professional network.",
-                color: "amber",
-              },
-              {
-                icon: Linkedin,
-                title: "Work Vibe AI",
-                description: "Our AI analyzes your work style, values, and preferences to find your ideal company culture.",
-                color: "blue",
-              },
-              {
-                icon: Building2,
-                title: "Smart Matching",
-                description: "Get matched with positions that align with your skills, experience, and personality.",
-                color: "green",
-              },
-            ].map((feature) => (
-              <div key={feature.title} className="bg-slate-800/80 border border-white/10 rounded-xl p-6">
-                <div className={`w-12 h-12 bg-${feature.color}-500/20 rounded-lg flex items-center justify-center mb-4`}>
-                  <feature.icon className={`text-${feature.color}-400`} size={24} />
+      <main>
+        <section className="relative overflow-hidden ladderstar-surface">
+          <div className="absolute inset-x-0 top-0 h-px ladderstar-emerald-line" />
+          <div className="max-w-7xl mx-auto px-6 py-16 md:py-24">
+            <div className="grid lg:grid-cols-[1.02fr_0.98fr] gap-10 lg:gap-14 items-center">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#5DC99B]/30 bg-[#262A2E]/80 px-3 py-1.5 text-sm font-medium text-[#5DC99B]">
+                  <TrendingUp className="w-4 h-4" />
+                  Premium roles, guided ascent
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-slate-400">{feature.description}</p>
+
+                <h1 className="mt-6 text-5xl md:text-7xl font-black tracking-tight text-balance">
+                  LadderStar
+                  <span className="block bg-gradient-to-r from-[#E5B536] to-[#5DC99B] bg-clip-text text-transparent">
+                    climb toward rare work.
+                  </span>
+                </h1>
+
+                <p className="mt-6 max-w-2xl text-lg md:text-xl leading-8 text-[#F4F5F7]/76">
+                  A digital-native job board and career coaching platform for ambitious professionals who want sharper guidance, better filters, and access to roles worth reaching for.
+                </p>
+
+                <div className="mt-9 flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href="/jobs"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg ladderstar-action px-6 py-3.5 font-bold text-[#1A1D20] transition hover:brightness-110"
+                  >
+                    Search top roles
+                    <ArrowRight className="w-5 h-5" />
+                  </Link>
+                  <Link
+                    href="#coaching"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#5DC99B]/35 bg-[#262A2E] px-6 py-3.5 font-semibold text-[#F4F5F7] transition hover:border-[#5DC99B] hover:text-[#5DC99B]"
+                  >
+                    Book coaching
+                    <Mic className="w-5 h-5" />
+                  </Link>
+                </div>
+
+                <div className="mt-10 grid grid-cols-3 gap-4 max-w-xl">
+                  {[
+                    ["18k+", "curated listings"],
+                    ["92%", "clear next steps"],
+                    ["24/7", "AI practice"],
+                  ].map(([value, label]) => (
+                    <div key={label} className="border-l border-[#5DC99B]/40 pl-4">
+                      <div className="text-2xl font-black text-[#E5B536]">{value}</div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-[#F4F5F7]/55">{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <FeaturedJobsPreview />
+            </div>
+          </div>
+        </section>
+
+        <section id="outcomes" className="border-y border-white/10 bg-[#262A2E] px-6 py-16">
+          <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-5">
+            {[
+              ["Curated database", "Search a focused job board with clear salary, remote, and match signals."],
+              ["Actionable guidance", "Convert job discovery into outreach, prep, applications, and follow-through."],
+              ["Premium momentum", "Use coaching and AI interview practice to move faster with higher confidence."],
+            ].map(([title, description]) => (
+              <div key={title} className="rounded-lg border border-white/10 bg-[#1A1D20]/65 p-6">
+                <BadgeCheck className="w-6 h-6 text-[#5DC99B]" />
+                <h2 className="mt-5 text-xl font-bold">{title}</h2>
+                <p className="mt-3 leading-7 text-[#F4F5F7]/68">{description}</p>
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            Ready to Transform Your Career Journey?
-          </h2>
-          <p className="text-xl text-slate-400 mb-10">
-            Join thousands of professionals building their future with CoStar.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/sign-up" className="px-8 py-4 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity">
-              Get Started Free
-            </Link>
+        <section id="coaching" className="px-6 py-20">
+          <div className="max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-10 items-start">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#E5B536]/30 px-3 py-1.5 text-sm font-semibold text-[#E5B536]">
+                <Sparkles className="w-4 h-4" />
+                Career coaching layer
+              </div>
+              <h2 className="mt-5 text-4xl md:text-5xl font-black tracking-tight text-balance">
+                Separate from the database. Built for the climb after discovery.
+              </h2>
+              <p className="mt-5 text-lg leading-8 text-[#F4F5F7]/70">
+                The job board helps you find openings. Coaching helps you become the obvious candidate, sharpen your narrative, and turn applications into interviews and offers.
+              </p>
+              <Link
+                href="/sign-up?type=talent"
+                className="mt-8 inline-flex items-center gap-2 rounded-lg ladderstar-action px-6 py-3.5 font-bold text-[#1A1D20] transition hover:brightness-110"
+              >
+                Book coaching
+                <Star className="w-5 h-5 fill-[#1A1D20]" />
+              </Link>
+            </div>
+
+            <div className="rounded-lg border border-[#5DC99B]/25 ladderstar-ascent-gradient p-6">
+              <div className="grid sm:grid-cols-2 gap-4">
+                {coachingTracks.map((track) => (
+                  <div key={track} className="rounded-lg border border-white/10 bg-[#262A2E]/85 p-5">
+                    <CheckCircle2 className="w-5 h-5 text-[#5DC99B]" />
+                    <p className="mt-4 font-semibold leading-7">{track}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* Footer */}
-      <footer className="border-t border-white/10 py-12 px-6">
+      <footer className="border-t border-white/10 px-6 py-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center">
-              <span className="text-slate-900 font-bold">C</span>
-            </div>
-            <span className="text-white font-bold">CoStar</span>
+            <BrandLogo size="sm" />
+            <span className="font-bold">LadderStar</span>
           </div>
-          <p className="text-slate-500 text-sm">
-            © 2024 CoStar. All rights reserved.
-          </p>
+          <p className="text-sm text-[#F4F5F7]/45">Premium job discovery and career coaching.</p>
         </div>
       </footer>
     </div>

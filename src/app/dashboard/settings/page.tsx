@@ -226,7 +226,7 @@ export default function AccountSettingsPage() {
         await saveProfile(nextConnections);
         setMessage("GitHub was already linked.");
       } else if (err?.code === "auth/credential-already-in-use") {
-        setError("That GitHub account is already linked to another CoStar account.");
+        setError("That GitHub account is already linked to another LadderStar account.");
       } else {
         setError("Could not connect GitHub. Confirm GitHub is enabled in Firebase Auth.");
       }
@@ -295,7 +295,7 @@ export default function AccountSettingsPage() {
     }
 
     const confirmed = window.confirm(
-      "Delete this CoStar account? This removes your profile and lets this email choose a new account type only after signing up again."
+      "Delete this LadderStar account? This removes your profile and lets this email choose a new account type only after signing up again."
     );
     if (!confirmed) return;
 
@@ -674,7 +674,7 @@ export default function AccountSettingsPage() {
           <section className="bg-red-500/5 border border-red-500/20 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-2">Delete Account</h2>
             <p className="text-slate-400 mb-4">
-              Account type is permanent for this email. Deleting this account removes the profile so the email can be used to create a new CoStar account path later.
+              Account type is permanent for this email. Deleting this account removes the profile so the email can be used to create a new LadderStar account path later.
             </p>
             <button
               onClick={deleteAccount}

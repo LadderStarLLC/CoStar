@@ -266,7 +266,7 @@ export default function OnboardingPage() {
         {step === 1 && (
           <div className="bg-slate-800/80 border border-white/10 rounded-2xl p-8">
             <h1 className="text-3xl font-bold text-white mb-2">Choose Your Path</h1>
-            <p className="text-slate-400 mb-8">Select how you want to use CoStar</p>
+            <p className="text-slate-400 mb-8">Select how you want to use LadderStar</p>
 
             <div className="space-y-4">
               <button
@@ -739,7 +739,7 @@ export default function OnboardingPage() {
 }
 
 function defaultHeadline(accountType: AccountType): string {
-  if (accountType === "business") return "Employer on CoStar";
-  if (accountType === "agency") return "Talent agency on CoStar";
-  return "Talent on CoStar";
+  if (accountType === "business") return "Employer on LadderStar";
+  if (accountType === "agency") return "Talent agency on LadderStar";
+  return "Talent on LadderStar";
 }

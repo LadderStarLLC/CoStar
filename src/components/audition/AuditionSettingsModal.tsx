@@ -194,7 +194,7 @@ function getMicStatusMeta(status: MicConnectionStatus, error?: string | null) {
       return {
         label: 'Allowed',
         title: 'Microphone access is allowed',
-        description: 'CoStar can use your microphone when an audition starts.',
+        description: 'LadderStar can use your microphone when an audition starts.',
         icon: Mic,
         iconClass: 'text-emerald-400',
         badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',

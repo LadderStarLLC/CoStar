@@ -38,7 +38,7 @@ export default function PublicProfileView({ profile }: PublicProfileViewProps) {
     <div className="min-h-screen bg-slate-900">
       <main className="mx-auto max-w-5xl px-6 py-12">
         <Link href="/" className="text-sm text-amber-400 hover:text-amber-300">
-          Back to CoStar
+          Back to LadderStar
         </Link>
 
         <section className="mt-8 border-b border-white/10 pb-10">
@@ -50,7 +50,7 @@ export default function PublicProfileView({ profile }: PublicProfileViewProps) {
               <div className="mb-3 inline-flex rounded-full border border-white/10 bg-slate-800 px-3 py-1 text-sm text-slate-300">
                 {accountTypeLabels[accountType]}
               </div>
-              <h1 className="text-4xl font-bold text-white">{displayName || "CoStar Profile"}</h1>
+              <h1 className="text-4xl font-bold text-white">{displayName || "LadderStar Profile"}</h1>
               {headline && <p className="mt-3 max-w-3xl text-lg text-slate-300">{headline}</p>}
               {location && (
                 <div className="mt-4 flex items-center gap-2 text-slate-400">

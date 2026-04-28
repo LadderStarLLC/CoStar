@@ -44,6 +44,7 @@ module.exports = {
         brand: {
           primary: "rgb(var(--brand-primary))",
           "primary-hover": "rgb(var(--brand-primary-hover))",
+          secondary: "rgb(var(--brand-secondary))",
           ai: "rgb(var(--brand-ai))",
         },
         surface: {
