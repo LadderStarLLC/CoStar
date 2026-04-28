@@ -11,6 +11,8 @@ interface JobFiltersProps {
   onSortChange: (sort: SortOption) => void;
   categories?: string[];
   locations?: { city: string; country: string }[];
+  tags?: string[];
+  sources?: string[];
 }
 
 const employmentTypes = [
@@ -59,6 +61,8 @@ export default function JobFiltersComponent({
   onSortChange,
   categories = [],
   locations = [],
+  tags = [],
+  sources = [],
 }: JobFiltersProps) {
   const [searchQuery, setSearchQuery] = useState(filters.search || '');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -311,6 +315,38 @@ export default function JobFiltersComponent({
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
+          </FilterSection>
+        )}
+
+        {/* Tags */}
+        {tags.length > 0 && (
+          <FilterSection title="Tags" sectionKey="tags">
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+              {tags.map(tag => (
+                <Checkbox
+                  key={tag}
+                  checked={(filters.tags || []).includes(tag)}
+                  onChange={() => toggleArrayFilter('tags', tag)}
+                  label={tag}
+                />
+              ))}
+            </div>
+          </FilterSection>
+        )}
+
+        {/* Sources */}
+        {sources.length > 0 && (
+          <FilterSection title="Source" sectionKey="source">
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+              {sources.map(source => (
+                <Checkbox
+                  key={source}
+                  checked={(filters.source || []).includes(source)}
+                  onChange={() => toggleArrayFilter('source', source)}
+                  label={source}
+                />
+              ))}
+            </div>
           </FilterSection>
         )}
 

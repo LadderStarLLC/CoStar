@@ -24,6 +24,8 @@ function JobsContent() {
   const [page, setPage] = useState(1);
   const [categories, setCategories] = useState<string[]>([]);
   const [locations, setLocations] = useState<{ city: string; country: string }[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [sources, setSources] = useState<string[]>([]);
 
   useEffect(() => {
     const search = searchParams.get('search');
@@ -61,6 +63,8 @@ function JobsContent() {
       setWarnings(result.warnings || []);
 
       const nextCategories = Array.from(new Set(result.jobs.map((job) => job.category).filter(Boolean) as string[]));
+      const nextTags = Array.from(new Set(result.jobs.flatMap((job) => job.tags || []).filter(Boolean) as string[]));
+      const nextSources = Array.from(new Set(result.jobs.map((job) => job.source).filter(Boolean) as string[]));
       const nextLocations = Array.from(
         new Map(
           result.jobs
@@ -75,6 +79,8 @@ function JobsContent() {
 
       setCategories(nextCategories);
       setLocations(nextLocations);
+      setTags(nextTags);
+      setSources(nextSources);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load jobs. Please try again.');
       console.error('Error loading jobs:', err);
@@ -164,6 +170,8 @@ function JobsContent() {
               onSortChange={handleSortChange}
               categories={categories}
               locations={locations}
+              tags={tags}
+              sources={sources}
             />
           </aside>
 
