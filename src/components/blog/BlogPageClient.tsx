@@ -123,7 +123,7 @@ export function BlogPageClient() {
               <FileText className="h-4 w-4" />
               Blog
             </div>
-            <h1 className="text-4xl font-bold text-white">CoStar Blog</h1>
+            <h1 className="text-4xl font-bold text-white">LadderStar Blog</h1>
             <p className="mt-2 max-w-2xl text-slate-400">Interview practice, hiring signals, and platform updates.</p>
           </div>
           <div className="flex gap-2">

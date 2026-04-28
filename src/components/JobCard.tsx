@@ -4,7 +4,9 @@ import { JobData } from '@/lib/jobs';
 import { serializeCareerjetJob } from '@/lib/careerjet';
 import { MapPin, Clock, DollarSign, Briefcase, Globe, Bookmark, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 
 interface JobCardProps {
   job: JobData;
@@ -14,6 +16,8 @@ interface JobCardProps {
 }
 
 export default function JobCard({ job, showCompany = true, onSave, onApply }: JobCardProps) {
+  const { user } = useAuth();
+  const router = useRouter();
   const [saved, setSaved] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -69,6 +73,12 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
   const handleSave = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!user) {
+      router.push('/sign-in');
+      return;
+    }
+
     setSaved(!saved);
     onSave?.(job.jobId!);
   };

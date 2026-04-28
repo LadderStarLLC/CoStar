@@ -13,6 +13,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import HomeHeader from "@/components/HomeHeader";
+import BrandLogo from "@/components/BrandLogo";
 
 const featuredJobs = [
   {
@@ -215,9 +216,7 @@ export default function Home() {
       <footer className="border-t border-white/10 px-6 py-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 ladderstar-gold-gradient rounded-lg flex items-center justify-center">
-              <Star className="w-4 h-4 fill-[#1A1D20] text-[#1A1D20]" />
-            </div>
+            <BrandLogo size="sm" />
             <span className="font-bold">LadderStar</span>
           </div>
           <p className="text-sm text-[#F4F5F7]/45">Premium job discovery and career coaching.</p>

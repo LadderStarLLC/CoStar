@@ -492,7 +492,7 @@ export default function JobForm({ job, company, employerId, onSubmit, onCancel, 
             value={formData.application?.method || 'platform'}
             onChange={(v) => handleChange('application', 'method', v)}
             options={[
-              { value: 'platform', label: 'Through CoStar Platform' },
+              { value: 'platform', label: 'Through LadderStar Platform' },
               { value: 'email', label: 'Direct Email' },
               { value: 'external', label: 'External URL' },
               { value: 'referral', label: 'Referral Only' },

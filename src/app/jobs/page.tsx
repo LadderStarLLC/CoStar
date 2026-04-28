@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { useSearchParams } from 'next/navigation';
 import { JobFilters, SortOption, JobData } from '@/lib/jobs';
 import { fetchCareerjetJobs } from '@/lib/careerjet';
 import NavHeader from '@/components/NavHeader';
@@ -11,8 +10,6 @@ import JobFiltersComponent from '@/components/JobFilters';
 import { Briefcase, Loader2, AlertCircle } from 'lucide-react';
 
 function JobsContent() {
-  const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,15 +40,7 @@ function JobsContent() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/sign-in');
-    }
-  }, [user, authLoading, router]);
-
   const loadJobs = useCallback(async (nextPage = 1, append = false) => {
-    if (!user) return;
-
     setIsLoading(true);
     setError(null);
 
@@ -87,19 +76,11 @@ function JobsContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters, sortBy, user]);
+  }, [filters, sortBy]);
 
   useEffect(() => {
-    if (user) {
-      loadJobs(1, false);
-    }
-  }, [user, loadJobs]);
-
-  useEffect(() => {
-    if (user) {
-      loadJobs(1, false);
-    }
-  }, [filters, sortBy, user, loadJobs]);
+    loadJobs(1, false);
+  }, [filters, sortBy, loadJobs]);
 
   const handleFiltersChange = (newFilters: JobFilters) => {
     setFilters(newFilters);
@@ -108,18 +89,6 @@ function JobsContent() {
   const handleSortChange = (newSort: SortOption) => {
     setSortBy(newSort);
   };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#1A1D20] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#E5B536] animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-[#1A1D20] text-[#F4F5F7]">

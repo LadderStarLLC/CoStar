@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { isPrivilegedAccountType } from '@/lib/profile';
-import { LogOut, User, Mic, Shield, Star } from 'lucide-react';
+import { LogOut, User, Mic, Shield } from 'lucide-react';
 import SiteSearch from './SiteSearch';
+import BrandLogo from './BrandLogo';
 
 export default function NavHeader() {
   const { user, logout, loading } = useAuth();
@@ -39,9 +40,7 @@ export default function NavHeader() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 ladderstar-gold-gradient rounded-lg flex items-center justify-center">
-              <Star className="w-4 h-4 fill-[#1A1D20] text-[#1A1D20]" />
-            </div>
+            <BrandLogo size="sm" />
             <span className="text-[#F4F5F7] font-bold tracking-tight">LadderStar</span>
           </Link>
         </div>

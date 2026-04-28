@@ -43,7 +43,7 @@ function MissingProfile({ label }: { label: string }) {
     <div className="flex min-h-screen items-center justify-center bg-slate-900 px-6 text-center">
       <div>
         <h1 className="text-2xl font-bold text-white">{label}</h1>
-        <p className="mt-2 text-slate-400">This public CoStar profile is unavailable.</p>
+        <p className="mt-2 text-slate-400">This public LadderStar profile is unavailable.</p>
       </div>
     </div>
   );
