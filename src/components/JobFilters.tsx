@@ -11,6 +11,8 @@ interface JobFiltersProps {
   onSortChange: (sort: SortOption) => void;
   categories?: string[];
   locations?: { city: string; country: string }[];
+  tags?: string[];
+  sources?: string[];
 }
 
 const employmentTypes = [
@@ -59,6 +61,8 @@ export default function JobFiltersComponent({
   onSortChange,
   categories = [],
   locations = [],
+  tags = [],
+  sources = [],
 }: JobFiltersProps) {
   const [searchQuery, setSearchQuery] = useState(filters.search || '');
   const [showMobileFilters, setShowMobileFilters] = useState(false);

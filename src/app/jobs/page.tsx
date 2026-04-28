@@ -24,6 +24,8 @@ function JobsContent() {
   const [page, setPage] = useState(1);
   const [categories, setCategories] = useState<string[]>([]);
   const [locations, setLocations] = useState<{ city: string; country: string }[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [sources, setSources] = useState<string[]>([]);
 
   useEffect(() => {
     const search = searchParams.get('search');
@@ -168,6 +170,8 @@ function JobsContent() {
               onSortChange={handleSortChange}
               categories={categories}
               locations={locations}
+              tags={tags}
+              sources={sources}
             />
           </aside>
 
