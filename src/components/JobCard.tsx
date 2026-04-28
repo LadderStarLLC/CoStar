@@ -56,13 +56,13 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
   const getRemoteBadgeClass = () => {
     switch (job.location?.remotePolicy) {
       case 'remote':
-        return 'bg-green-500/20 text-green-400 border-green-500/30';
+        return 'bg-[#5DC99B]/12 text-[#5DC99B] border-[#5DC99B]/35';
       case 'hybrid':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+        return 'bg-[#E5B536]/12 text-[#E5B536] border-[#E5B536]/35';
       case 'onsite':
-        return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+        return 'bg-[#F4F5F7]/10 text-[#F4F5F7]/78 border-white/15';
       default:
-        return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+        return 'bg-[#F4F5F7]/10 text-[#F4F5F7]/62 border-white/10';
     }
   };
 
@@ -92,15 +92,15 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
   return (
     <Link href={jobLink}>
       <div
-        className="group bg-slate-800/50 border border-white/10 rounded-xl p-5 hover:border-amber-500/30 hover:bg-slate-800/80 transition-all duration-300 cursor-pointer"
+        className="group bg-[#262A2E] border border-white/10 rounded-lg p-5 hover:border-[#5DC99B]/55 hover:shadow-[0_18px_44px_rgba(0,0,0,0.28)] transition-all duration-300 cursor-pointer"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="flex items-start gap-4">
           {/* Company Logo */}
           {showCompany && job.companyName && (
-            <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-amber-400/20 to-orange-500/20 flex items-center justify-center border border-white/10">
-              <span className="text-amber-400 font-bold text-lg">
+            <div className="flex-shrink-0 w-12 h-12 rounded-lg ladderstar-gold-gradient flex items-center justify-center border border-[#E5B536]/25">
+              <span className="text-[#1A1D20] font-black text-lg">
                 {job.companyName.charAt(0).toUpperCase()}
               </span>
             </div>
@@ -110,11 +110,11 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 className="text-white font-semibold text-lg group-hover:text-amber-400 transition-colors truncate">
+                <h3 className="text-[#F4F5F7] font-bold text-lg group-hover:text-[#E5B536] transition-colors truncate">
                   {job.title}
                 </h3>
                 {showCompany && job.companyName && (
-                  <p className="text-slate-400 text-sm">{job.companyName}</p>
+                  <p className="text-[#F4F5F7]/62 text-sm">{job.companyName}</p>
                 )}
               </div>
 
@@ -124,8 +124,8 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
                   onClick={handleSave}
                   className={`p-2 rounded-lg transition-colors ${
                     saved
-                      ? 'text-amber-400 bg-amber-400/10'
-                      : 'text-slate-400 hover:text-amber-400 hover:bg-slate-700'
+                      ? 'text-[#E5B536] bg-[#E5B536]/10'
+                      : 'text-[#F4F5F7]/55 hover:text-[#E5B536] hover:bg-[#1A1D20]'
                   }`}
                   title={saved ? 'Saved' : 'Save job'}
                 >
@@ -135,7 +135,7 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
             </div>
 
             {/* Meta Info */}
-            <div className="flex flex-wrap items-center gap-3 mt-3 text-sm text-slate-400">
+            <div className="flex flex-wrap items-center gap-3 mt-3 text-sm text-[#F4F5F7]/62">
               {/* Location */}
               {(job.location?.city || job.location?.country) && (
                 <div className="flex items-center gap-1">
@@ -175,7 +175,7 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
 
               {/* Salary */}
               {salary && (
-                <div className="flex items-center gap-1 text-green-400">
+                <div className="flex items-center gap-1 text-[#5DC99B]">
                   <DollarSign className="w-4 h-4" />
                   <span className="font-medium">{salary}</span>
                 </div>
@@ -184,7 +184,7 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
 
             {/* Short Description */}
             {job.shortDescription && (
-              <p className="text-slate-400 text-sm mt-2 line-clamp-2">{job.shortDescription}</p>
+              <p className="text-[#F4F5F7]/64 text-sm mt-2 line-clamp-2">{job.shortDescription}</p>
             )}
 
             {/* Tags */}
@@ -193,13 +193,13 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
                 {job.tags.slice(0, 4).map((tag, index) => (
                   <span
                     key={index}
-                    className="px-2 py-1 bg-slate-700/50 text-slate-300 text-xs rounded-lg"
+                    className="px-2 py-1 bg-[#1A1D20] text-[#F4F5F7]/72 text-xs rounded-lg border border-white/5"
                   >
                     {tag}
                   </span>
                 ))}
                 {job.tags.length > 4 && (
-                  <span className="px-2 py-1 text-slate-500 text-xs">
+                  <span className="px-2 py-1 text-[#F4F5F7]/38 text-xs">
                     +{job.tags.length - 4} more
                   </span>
                 )}
@@ -209,12 +209,12 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
             {/* Source Badge and Category */}
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               {job.category && (
-                <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full text-xs">
+                <span className="px-2 py-0.5 bg-[#5DC99B]/10 text-[#5DC99B] border border-[#5DC99B]/30 rounded-full text-xs">
                   {job.category}
                 </span>
               )}
               {job.source && (
-                <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs">
+                <span className="px-2 py-0.5 bg-[#E5B536]/10 text-[#E5B536] border border-[#E5B536]/30 rounded-full text-xs">
                   {job.source}
                 </span>
               )}
@@ -222,7 +222,7 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
 
             {/* Footer */}
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
-              <div className="flex items-center gap-1 text-slate-500 text-sm">
+              <div className="flex items-center gap-1 text-[#F4F5F7]/42 text-sm">
                 <Clock className="w-4 h-4" />
                 <span>{formatDate()}</span>
               </div>
@@ -234,7 +234,7 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg text-sm font-medium transition-colors"
+                  className="flex items-center gap-1 px-3 py-1.5 ladderstar-action text-[#1A1D20] rounded-lg text-sm font-bold transition hover:brightness-110"
                 >
                   Apply
                   <ExternalLink className="w-3 h-3" />
@@ -242,7 +242,7 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
               ) : (
                 <span
                   onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-[#1A1D20] hover:border-[#5DC99B] border border-white/10 text-[#F4F5F7] rounded-lg text-sm font-medium transition-colors cursor-pointer"
                 >
                   View Details
                   <ExternalLink className="w-3 h-3" />

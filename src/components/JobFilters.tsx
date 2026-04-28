@@ -122,7 +122,7 @@ export default function JobFiltersComponent({
     <div className="border-b border-white/10 pb-4">
       <button
         onClick={() => toggleSection(sectionKey)}
-        className="flex items-center justify-between w-full text-white font-medium mb-3"
+        className="flex items-center justify-between w-full text-[#F4F5F7] font-semibold mb-3 hover:text-[#5DC99B] transition-colors"
       >
         <span>{title}</span>
         <ChevronDown
@@ -148,44 +148,44 @@ export default function JobFiltersComponent({
       <div
         className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
           checked
-            ? 'bg-amber-500 border-amber-500'
-            : 'border-slate-600 group-hover:border-amber-500'
+            ? 'bg-[#5DC99B] border-[#5DC99B]'
+            : 'border-[#F4F5F7]/25 group-hover:border-[#5DC99B]'
         }`}
         onClick={onChange}
       >
         {checked && (
-          <svg className="w-3 h-3 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3 h-3 text-[#1A1D20]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
           </svg>
         )}
       </div>
-      <span className="text-slate-300 text-sm">{label}</span>
+      <span className="text-[#F4F5F7]/72 group-hover:text-[#F4F5F7] text-sm transition-colors">{label}</span>
     </label>
   );
 
   return (
-    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
+    <div className="bg-[#262A2E] border border-white/10 rounded-lg p-4 shadow-xl shadow-black/20">
       {/* Search */}
       <form onSubmit={handleSearchSubmit} className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#5DC99B]" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search jobs, skills, companies..."
-          className="w-full bg-slate-900 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+          className="w-full bg-[#1A1D20] border border-white/10 rounded-lg pl-10 pr-4 py-3 text-[#F4F5F7] placeholder-[#F4F5F7]/38 focus:border-[#5DC99B] focus:outline-none focus:ring-1 focus:ring-[#5DC99B]/40"
         />
       </form>
 
       {/* Mobile Filter Toggle */}
       <button
         onClick={() => setShowMobileFilters(!showMobileFilters)}
-        className="lg:hidden flex items-center justify-center gap-2 w-full py-2 mb-4 bg-slate-700/50 text-white rounded-lg"
+        className="lg:hidden flex items-center justify-center gap-2 w-full py-2 mb-4 bg-[#1A1D20] text-[#F4F5F7] rounded-lg border border-white/10"
       >
         <SlidersHorizontal className="w-4 h-4" />
         Filters
         {hasActiveFilters && (
-          <span className="px-2 py-0.5 bg-amber-500 text-slate-900 text-xs rounded-full">
+          <span className="px-2 py-0.5 bg-[#5DC99B] text-[#1A1D20] text-xs rounded-full font-semibold">
             Active
           </span>
         )}
@@ -193,11 +193,11 @@ export default function JobFiltersComponent({
 
       {/* Sort */}
       <div className="mb-4">
-        <label className="text-slate-400 text-sm mb-2 block">Sort by</label>
+        <label className="text-[#F4F5F7]/62 text-sm mb-2 block">Sort by</label>
         <select
           value={sortBy}
           onChange={(e) => onSortChange(e.target.value as SortOption)}
-          className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:border-amber-500 focus:outline-none"
+          className="w-full bg-[#1A1D20] border border-white/10 rounded-lg px-4 py-2.5 text-[#F4F5F7] focus:border-[#5DC99B] focus:outline-none focus:ring-1 focus:ring-[#5DC99B]/40"
         >
           {sortOptions.map(option => (
             <option key={option.value} value={option.value}>
@@ -255,11 +255,11 @@ export default function JobFiltersComponent({
         <FilterSection title="Salary Range" sectionKey="salary">
           <div className="space-y-3">
             <div>
-              <label className="text-slate-400 text-xs mb-1 block">Minimum</label>
+              <label className="text-[#F4F5F7]/62 text-xs mb-1 block">Minimum</label>
               <select
                 value={filters.salaryMin || ''}
                 onChange={(e) => updateFilter('salaryMin', e.target.value ? Number(e.target.value) : undefined)}
-                className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-500 focus:outline-none"
+                className="w-full bg-[#1A1D20] border border-white/10 rounded-lg px-3 py-2 text-[#F4F5F7] text-sm focus:border-[#5DC99B] focus:outline-none"
               >
                 <option value="">Any</option>
                 <option value="30000">$30k+</option>
@@ -271,11 +271,11 @@ export default function JobFiltersComponent({
               </select>
             </div>
             <div>
-              <label className="text-slate-400 text-xs mb-1 block">Maximum</label>
+              <label className="text-[#F4F5F7]/62 text-xs mb-1 block">Maximum</label>
               <select
                 value={filters.salaryMax || ''}
                 onChange={(e) => updateFilter('salaryMax', e.target.value ? Number(e.target.value) : undefined)}
-                className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-500 focus:outline-none"
+                className="w-full bg-[#1A1D20] border border-white/10 rounded-lg px-3 py-2 text-[#F4F5F7] text-sm focus:border-[#5DC99B] focus:outline-none"
               >
                 <option value="">Any</option>
                 <option value="50000">$50k</option>
@@ -308,7 +308,7 @@ export default function JobFiltersComponent({
             <select
               value={filters.category || ''}
               onChange={(e) => updateFilter('category', e.target.value || undefined)}
-              className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-500 focus:outline-none"
+              className="w-full bg-[#1A1D20] border border-white/10 rounded-lg px-3 py-2 text-[#F4F5F7] text-sm focus:border-[#5DC99B] focus:outline-none"
             >
               <option value="">All Categories</option>
               {categories.map(cat => (
@@ -354,7 +354,7 @@ export default function JobFiltersComponent({
         {hasActiveFilters && (
           <button
             onClick={clearFilters}
-            className="flex items-center justify-center gap-2 w-full mt-4 py-2 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center justify-center gap-2 w-full mt-4 py-2 text-[#F4F5F7]/62 hover:text-[#5DC99B] transition-colors"
           >
             <X className="w-4 h-4" />
             Clear all filters

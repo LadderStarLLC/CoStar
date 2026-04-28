@@ -8,8 +8,8 @@ import ChatWidget from "@/components/messaging/ChatWidget";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "CoStar - Professional Networking & AI Job Matching",
-  description: "Connect your professional journey. AI-powered job matching that understands your work vibe.",
+  title: "LadderStar - Premium Job Board & Career Coaching",
+  description: "Find top-tier roles, practice interviews, and get actionable career coaching on LadderStar.",
 };
 
 export default function RootLayout({
