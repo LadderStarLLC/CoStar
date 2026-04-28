@@ -2,42 +2,15 @@ import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
-  Briefcase,
   CheckCircle2,
-  MapPin,
   Mic,
-  Search,
-  SlidersHorizontal,
   Sparkles,
   Star,
   TrendingUp,
 } from "lucide-react";
 import HomeHeader from "@/components/HomeHeader";
 import BrandLogo from "@/components/BrandLogo";
-
-const featuredJobs = [
-  {
-    title: "Senior Product Designer",
-    company: "Northstar Labs",
-    location: "Remote, US",
-    salary: "$145k - $185k",
-    tags: ["Remote", "New", "Equity"],
-  },
-  {
-    title: "AI GTM Strategy Lead",
-    company: "VentureScale",
-    location: "New York, NY",
-    salary: "$170k - $220k",
-    tags: ["Hybrid", "Executive"],
-  },
-  {
-    title: "Founding Full Stack Engineer",
-    company: "SignalFrame",
-    location: "Austin, TX",
-    salary: "$155k - $210k",
-    tags: ["Startup", "Top Match"],
-  },
-];
+import FeaturedJobsPreview from "@/components/FeaturedJobsPreview";
 
 const coachingTracks = [
   "Interview rehearsal with AI voice practice",
@@ -104,59 +77,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-white/10 bg-[#262A2E]/90 p-4 shadow-2xl shadow-black/30">
-                <div className="rounded-lg border border-[#5DC99B]/20 bg-[#1A1D20] p-4">
-                  <div className="grid sm:grid-cols-[1fr_auto] gap-3">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#5DC99B]" />
-                      <div className="rounded-lg border border-[#5DC99B]/45 bg-[#262A2E] py-3 pl-10 pr-4 text-[#F4F5F7]/86">
-                        product, AI, strategy
-                      </div>
-                    </div>
-                    <button className="inline-flex items-center justify-center gap-2 rounded-lg ladderstar-action px-5 py-3 font-bold text-[#1A1D20]">
-                      <SlidersHorizontal className="w-4 h-4" />
-                      Filter
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {featuredJobs.map((job, index) => (
-                    <div
-                      key={job.title}
-                      className={`rounded-lg border p-4 transition ${
-                        index === 0
-                          ? "border-[#E5B536]/45 ladderstar-ascent-gradient"
-                          : "border-white/10 bg-[#1A1D20]/70"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h2 className="font-bold text-[#F4F5F7]">{job.title}</h2>
-                          <p className="mt-1 text-sm text-[#F4F5F7]/65">{job.company}</p>
-                        </div>
-                        <div className="rounded-lg ladderstar-gold-gradient p-2">
-                          <Briefcase className="w-4 h-4 text-[#1A1D20]" />
-                        </div>
-                      </div>
-                      <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-[#F4F5F7]/65">
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-4 h-4 text-[#5DC99B]" />
-                          {job.location}
-                        </span>
-                        <span className="font-semibold text-[#E5B536]">{job.salary}</span>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {job.tags.map((tag) => (
-                          <span key={tag} className="rounded-full border border-[#5DC99B]/30 bg-[#5DC99B]/10 px-2.5 py-1 text-xs font-semibold text-[#5DC99B]">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <FeaturedJobsPreview />
             </div>
           </div>
         </section>
