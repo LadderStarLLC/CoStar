@@ -18,11 +18,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           "hover:scale-[1.02] active:scale-[0.98]",
           // Variant styles
           variant === "primary" &&
-            "bg-amber-500 hover:bg-amber-400 text-slate-900",
+            "ladderstar-action text-[#1A1D20] hover:brightness-110",
           variant === "secondary" &&
-            "bg-slate-700 hover:bg-slate-600 text-white border border-white/10",
+            "bg-[#262A2E] hover:border-[#5DC99B] text-[#F4F5F7] border border-white/10",
           variant === "ghost" &&
-            "bg-transparent hover:bg-slate-800 text-slate-300",
+            "bg-transparent hover:bg-[#262A2E] text-[#F4F5F7]/72 hover:text-[#5DC99B]",
           variant === "destructive" &&
             "bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30",
           // Size styles
