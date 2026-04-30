@@ -26,7 +26,7 @@ export default function BrandLogo({ size = "md", className, imageClassName, prio
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-lg ladderstar-gold-gradient shadow-[0_10px_26px_rgba(229,181,54,0.2)]",
+        "inline-flex items-center justify-center rounded-lg border border-[#5DC99B]/35 bg-[#262A2E] shadow-[0_10px_26px_rgba(93,201,155,0.14)]",
         sizeClasses[size],
         className,
       )}

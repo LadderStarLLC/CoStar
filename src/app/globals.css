@@ -45,6 +45,7 @@
 body {
   background-color: rgb(var(--surface-base));
   color: rgb(var(--foreground));
+  overflow-x: hidden;
 }
 
 @layer utilities {
