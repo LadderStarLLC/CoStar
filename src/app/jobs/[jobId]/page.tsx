@@ -300,7 +300,7 @@ export default function JobDetailPage() {
             <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
               <h2 className="text-white font-semibold text-lg mb-4">About this role</h2>
               <div className="prose prose-invert max-w-none">
-                <p className="text-slate-300 whitespace-pre-wrap">{job.description}</p>
+                <p className="text-slate-300 whitespace-pre-wrap break-words">{job.description}</p>
               </div>
             </div>
 

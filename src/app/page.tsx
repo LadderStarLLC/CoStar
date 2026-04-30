@@ -63,7 +63,7 @@ export default function Home() {
                   </Link>
                 </div>
 
-                <div className="mt-10 grid grid-cols-3 gap-4 max-w-xl">
+                <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-xl">
                   {[
                     ["18k+", "curated listings"],
                     ["92%", "clear next steps"],
