@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { MessagingProvider } from "@/context/MessagingContext";
@@ -29,6 +30,7 @@ export default function RootLayout({
             </div>
           </MessagingProvider>
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
