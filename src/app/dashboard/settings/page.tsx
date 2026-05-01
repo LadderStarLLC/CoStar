@@ -9,6 +9,8 @@ import NavHeader from "@/components/NavHeader";
 import { useAuth } from "@/context/AuthContext";
 import { auth, db } from "@/lib/firebase";
 import { uploadProfileImage } from "@/lib/storage";
+import { fetchWalletSummary } from "@/lib/walletClient";
+import { walletLabel, type WalletSummary } from "@/lib/wallet";
 import {
   accountTypeLabels,
   createSlug,
@@ -39,6 +41,7 @@ export default function AccountSettingsPage() {
   const [isConnectingGithub, setIsConnectingGithub] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
 
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [previewType, setPreviewType] = useState<PublicAccountType>("talent");
@@ -98,6 +101,13 @@ export default function AccountSettingsPage() {
         setAgencyDescription(profile?.agencyProfile?.description ?? "");
         setAgencySpecialties((profile?.agencyProfile?.specialties ?? []).join(", "));
         setAgencyServices((profile?.agencyProfile?.services ?? []).join(", "));
+
+        if (isOperator) {
+          setWalletSummary(null);
+        } else {
+          const nextWalletSummary = await fetchWalletSummary(user);
+          setWalletSummary(nextWalletSummary);
+        }
       } catch (err) {
         console.error("Failed to load settings:", err);
         setError("Could not load your settings.");
@@ -378,6 +388,46 @@ export default function AccountSettingsPage() {
         )}
 
         <div className="space-y-6">
+          {walletSummary?.wallet && (
+            <section className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Premium Balance</h2>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Private to your account and managed by LadderStar.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-right">
+                  <div className="text-3xl font-bold text-white">{walletSummary.wallet.balance}</div>
+                  <div className="text-sm font-medium text-emerald-300">{walletLabel(walletSummary.wallet.currency)}</div>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Recent Activity</h3>
+                {walletSummary.transactions.length > 0 ? (
+                  <div className="divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10">
+                    {walletSummary.transactions.map((transaction) => (
+                      <div key={transaction.id} className="flex items-center justify-between gap-4 bg-slate-900 px-4 py-3">
+                        <div>
+                          <div className="font-medium text-white">{transaction.reason}</div>
+                          <div className="text-sm text-slate-500">{formatWalletDate(transaction.createdAt)}</div>
+                        </div>
+                        <div className={transaction.delta >= 0 ? "font-bold text-emerald-300" : "font-bold text-red-300"}>
+                          {transaction.delta >= 0 ? "+" : ""}{transaction.delta}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-slate-400">
+                    No balance activity yet.
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
+
           <section className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">Profile</h2>
@@ -697,4 +747,13 @@ function splitCsv(value: string): string[] {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function formatWalletDate(value: unknown): string {
+  if (!value) return "Just now";
+  if (typeof value === "string") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+  }
+  return "Just now";
 }

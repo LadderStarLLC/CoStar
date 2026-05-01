@@ -32,18 +32,18 @@ export default function Home() {
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#5DC99B]/30 bg-[#262A2E]/80 px-3 py-1.5 text-sm font-medium text-[#5DC99B]">
                   <TrendingUp className="w-4 h-4" />
-                  Premium roles, guided ascent
+                  Roles worth reaching for.
                 </div>
 
                 <h1 className="mt-6 text-5xl md:text-7xl font-black tracking-tight text-balance">
-                  LadderStar
+                  Sharper guidance. Better filters.
                   <span className="block bg-gradient-to-r from-[#E5B536] to-[#5DC99B] bg-clip-text text-transparent">
-                    climb toward rare work.
+                    Better roles.
                   </span>
                 </h1>
 
                 <p className="mt-6 max-w-2xl text-lg md:text-xl leading-8 text-[#F4F5F7]/76">
-                  A digital-native job board and career coaching platform for ambitious professionals who want sharper guidance, better filters, and access to roles worth reaching for.
+                  A digital-native job board and career coaching platform built for ambitious professionals ready for their next ascent.
                 </p>
 
                 <div className="mt-9 flex flex-col sm:flex-row gap-3">
@@ -51,7 +51,7 @@ export default function Home() {
                     href="/jobs"
                     className="inline-flex items-center justify-center gap-2 rounded-lg ladderstar-action px-6 py-3.5 font-bold text-[#1A1D20] transition hover:brightness-110"
                   >
-                    Search top roles
+                    Start Climbing
                     <ArrowRight className="w-5 h-5" />
                   </Link>
                   <Link

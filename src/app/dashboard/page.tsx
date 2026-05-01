@@ -16,13 +16,16 @@ import {
   type PublicAccountType,
   type UserProfile,
 } from "@/lib/profile";
-import { User, Building2, Briefcase, Settings, Star, CheckCircle2, Github, Linkedin } from "lucide-react";
+import { fetchWalletSummary } from "@/lib/walletClient";
+import { walletLabel, type AccountWallet } from "@/lib/wallet";
+import { User, Building2, Briefcase, Settings, Star, CheckCircle2, Github, Linkedin, Coins } from "lucide-react";
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [previewType, setPreviewType] = useState<PublicAccountType>("talent");
+  const [wallet, setWallet] = useState<AccountWallet | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -46,6 +49,13 @@ export default function DashboardPage() {
           return;
         }
         setProfile(loadedProfile);
+
+        if (isOperator) {
+          setWallet(null);
+        } else {
+          const walletSummary = await fetchWalletSummary(user);
+          setWallet(walletSummary.wallet);
+        }
       } catch (err) {
         console.error("Failed to load profile:", err);
       }
@@ -77,7 +87,7 @@ export default function DashboardPage() {
   const accountType: UserProfile["accountType"] | null =
     profile?.accountType ?? (user.accountType as UserProfile["accountType"] | undefined) ?? null;
   const accountLabel = accountType ? accountTypeLabels[accountType] : "Account";
-  const dashboardStats = getDashboardStats(accountType, profileComplete, connectedAccounts);
+  const dashboardStats = getDashboardStats(accountType, profileComplete, connectedAccounts, wallet);
   const quickActions = getQuickActions(accountType);
 
   return (
@@ -210,9 +220,19 @@ export default function DashboardPage() {
   );
 }
 
-function getDashboardStats(accountType: UserProfile["accountType"] | null, profileComplete: number, connectedAccounts: number) {
+function getDashboardStats(
+  accountType: UserProfile["accountType"] | null,
+  profileComplete: number,
+  connectedAccounts: number,
+  wallet: AccountWallet | null
+) {
+  const walletStat = wallet
+    ? { label: walletLabel(wallet.currency), value: String(wallet.balance), icon: Coins, bgClass: "bg-emerald-500/20", iconClass: "text-emerald-400" }
+    : null;
+
   if (accountType === "business") {
     return [
+      ...(walletStat ? [walletStat] : []),
       { label: "Company Views", value: "0", icon: Building2, bgClass: "bg-blue-500/20", iconClass: "text-blue-400" },
       { label: "Job Posts", value: "0", icon: Briefcase, bgClass: "bg-amber-500/20", iconClass: "text-amber-400" },
       { label: "Applicants", value: "0", icon: User, bgClass: "bg-green-500/20", iconClass: "text-green-400" },
@@ -222,6 +242,7 @@ function getDashboardStats(accountType: UserProfile["accountType"] | null, profi
 
   if (accountType === "agency") {
     return [
+      ...(walletStat ? [walletStat] : []),
       { label: "Agency Views", value: "0", icon: Building2, bgClass: "bg-purple-500/20", iconClass: "text-purple-400" },
       { label: "Candidates", value: "0", icon: User, bgClass: "bg-amber-500/20", iconClass: "text-amber-400" },
       { label: "Auditions", value: "0", icon: Briefcase, bgClass: "bg-blue-500/20", iconClass: "text-blue-400" },
@@ -230,6 +251,7 @@ function getDashboardStats(accountType: UserProfile["accountType"] | null, profi
   }
 
   return [
+    ...(walletStat ? [walletStat] : []),
     { label: "Profile Views", value: "0", icon: User, bgClass: "bg-amber-500/20", iconClass: "text-amber-400" },
     { label: "Job Matches", value: "0", icon: Briefcase, bgClass: "bg-blue-500/20", iconClass: "text-blue-400" },
     { label: "Verified Accounts", value: String(connectedAccounts), icon: CheckCircle2, bgClass: "bg-green-500/20", iconClass: "text-green-400" },

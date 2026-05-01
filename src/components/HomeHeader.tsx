@@ -15,7 +15,7 @@ export default function HomeHeader() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
         <Link href="/" className="flex items-center gap-2">
           <BrandLogo size="md" priority />
-          <span className="text-[#F4F5F7] text-xl font-bold tracking-tight">LadderStar</span>
+          <span className="text-[#F4F5F7] text-xl font-bold tracking-tight">Ladder Star</span>
         </Link>
         <nav className="flex items-center gap-4 sm:gap-8 flex-wrap">
           {navLinks.map((link) => (

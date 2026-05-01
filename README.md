@@ -1,440 +1,293 @@
-# CoStar - Professional Networking & AI Job Matching Platform
+# Ladder Star
+
+Ladder Star is an AI-powered career platform for practicing interviews, discovering jobs, building public professional profiles, and messaging recruiters or agencies. It combines a live AI audition room, a job board, profile pages, admin tooling, blog publishing, and real-time messaging into one Next.js app.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js">
   <img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase">
+  <img src="https://img.shields.io/badge/Gemini-Live_API-8E75B2?style=for-the-badge&logo=google&logoColor=white" alt="Gemini Live API">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
-  <img src="https://img.shields.io/badge/Tailwind_CSS-38BDF8?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind">
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38BDF8?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel">
 </p>
 
-## Overview
+## What Is Inside
 
-**CoStar** is a professional networking platform that connects talent with employers through AI-driven profile matching. The platform supports public account paths and hidden privileged operator paths:
+Ladder Star is part career platform, part practice room, part recruiter inbox, and part AI interview coach. The app has a few important wires under the floorboards, mostly around Gemini Live API and Firebase authorization, so this README is the map before you start moving things around.
 
-1. **Talent Accounts** - Talent can create comprehensive professional profiles connecting social networks, work history, education, accolades, and "work vibe" assessments
-2. **Paid Business Accounts** - Employers can access aggregated candidate profiles synthesized with an HR AI agent to find deeply compatible candidates
-3. **Agency Accounts** - Agencies can coach, prep, and place talent with AI-powered interview practice and profile tools
-4. **Admin/Owner Accounts** - Hidden privileged account types for platform operations and moderation
+- **Audition**: real-time AI voice interviews through Google's Gemini Multimodal Live API.
+- **Job Board**: searchable jobs, job detail pages, save/apply actions, and job-specific audition entry points.
+- **Profiles**: public profile pages for talent, businesses, and agencies.
+- **Messaging**: a global floating chat widget with safe rich-text messages.
+- **Admin Console**: owner/admin platform summary, role management, and account moderation.
+- **Blog**: TipTap-powered editing and publishing.
+- **Search**: discovery across talent, agencies, businesses, and jobs.
+- **Settings & History**: per-user Gemini settings, interviewer presets, saved audition sessions, feedback, and ultra feedback.
 
-## Tech Stack
+## Architecture
 
-### Frontend
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Icons**: Lucide React
-- **Animations**: Framer Motion
-- **Deployment**: Vercel
-
-### Backend & Services
-- **Authentication**: Firebase Auth (Google Sign-In)
-- **Database**: Firebase Firestore
-- **Hosting**: Vercel
-
-### External Integrations
-- GitHub OAuth
-- LinkedIn OAuth (planned)
-- Google OAuth (via Firebase)
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- Firebase account
-- Vercel account (for deployment)
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone https://github.com/TheSandemon/CoStar.git
-cd CoStar
+```text
+Browser
+  -> Next.js App Router pages and components
+  -> Next.js API routes
+  -> Firebase Auth / Firestore / Firebase Admin SDK
+  -> Gemini Live API, Gemini text generation, job APIs
 ```
 
-2. **Install dependencies**
+- **Framework**: Next.js 14 App Router
+- **Language**: TypeScript and React 18
+- **Styling**: Tailwind CSS with shared UI primitives in `src/components/ui`
+- **Auth**: Firebase Authentication with Google sign-in
+- **Database**: Firestore
+- **Storage**: Firebase Storage for profile images
+- **AI**: Gemini Live API for real-time interview audio, Gemini text generation for extended feedback
+- **Messaging editor**: TipTap, stored as serialized JSON rather than raw HTML
+- **Deployment**: Vercel preview and production deployments
+
+## Product Concepts
+
+### Account Types
+
+Ladder Star has five account types:
+
+- `talent`
+- `business`
+- `agency`
+- `admin`
+- `owner`
+
+Public sign-up only exposes `talent`, `business`, and `agency`. The privileged `admin` and `owner` paths are hidden and must not be added to public account selection UI.
+
+Account type is treated as an immutable identity path once locked. The old legacy string `user` is normalized to `talent`, but new code should use `talent`.
+
+### Admin And Owner Access
+
+Admin and owner users use `/admin`, not normal onboarding. Admin APIs verify the Firebase ID token server-side and read the caller profile from Firestore. Do not trust client UI state for authorization.
+
+`kyletouchet@gmail.com` is the hardcoded owner bootstrap email. `POST /api/account/bootstrap` verifies the Firebase ID token and forces that email to:
+
+- `accountType: "owner"`
+- `role: "owner"`
+- `accountTypeLocked: true`
+- `accountTypeSource: "system"`
+
+## Gemini Live API Guardrails
+
+The audition flow depends on a very specific Gemini Live WebSocket protocol. This section is intentionally blunt because most mysterious audition failures come from changing one of these details.
+
+- Use API version `v1beta`.
+- Use `BidiGenerateContent`, not `BidiGenerateContentConstrained`.
+- Authenticate with `?key=` in the WebSocket URL.
+- Do not use ephemeral tokens with `models/gemini-3.1-flash-live-preview`.
+- The model name must include the `models/` prefix.
+- The first WebSocket message must use top-level `setup`, not `config`.
+- WebSocket message keys must be camelCase.
+- `inputAudioTranscription` must be an empty object.
+- Do not send audio until the server sends `setupComplete`.
+- Do not send synthetic `clientContent` text turns immediately after setup.
+- When Gemini sends a `toolCall`, halt outgoing audio until the `toolResponse` is sent.
+
+Working WebSocket URL shape:
+
+```text
+wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key={API_KEY}
+```
+
+Example setup shape:
+
+```json
+{
+  "setup": {
+    "model": "models/gemini-3.1-flash-live-preview",
+    "systemInstruction": { "parts": [{ "text": "..." }] },
+    "generationConfig": {
+      "responseModalities": ["AUDIO"],
+      "speechConfig": {
+        "voiceConfig": {
+          "prebuiltVoiceConfig": { "voiceName": "Aoede" }
+        }
+      }
+    },
+    "inputAudioTranscription": {},
+    "outputAudioTranscription": {}
+  }
+}
+```
+
+Audio chunks use this shape:
+
+```json
+{
+  "realtimeInput": {
+    "audio": {
+      "mimeType": "audio/pcm;rate=16000",
+      "data": "<base64-encoded PCM>"
+    }
+  }
+}
+```
+
+For deeper implementation notes, read `AGENTS.md`.
+
+## Local Development
+
+Install dependencies:
+
 ```bash
 npm install
 ```
 
-3. **Configure Firebase**
+Start the development server:
 
-   a. Go to [Firebase Console](https://console.firebase.google.com)
-
-   b. Create a new project or use existing
-
-   c. Enable Authentication:
-      - Go to Authentication → Sign-in method
-      - Enable **Google** provider
-      - Add your domain to authorized domains
-
-   d. Create a web app:
-      - Go to Project Settings → General → Your apps
-      - Add web app (</>)
-      - Copy the config values
-
-4. **Set up environment variables**
-
-   Create a `.env.local` file:
-```env
-# Firebase Configuration
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-```
-
-5. **Run development server**
 ```bash
 npm run dev
 ```
 
-6. Open [http://localhost:3000](http://localhost:3000)
+Open `http://localhost:3000`.
 
----
+Build for production:
 
-## Project Structure
-
-```
-CoStar/
-├── src/
-│   ├── app/                    # Next.js App Router pages
-│   │   ├── page.tsx            # Landing page
-│   │   ├── layout.tsx           # Root layout
-│   │   ├── dashboard/            # User dashboard
-│   │   │   └── page.tsx
-│   │   ├── onboarding/           # Onboarding flow
-│   │   │   └── page.tsx
-│   │   ├── sign-in/              # Sign-in page
-│   │   │   └── [[...sign-in]]
-│   │   │       └── page.tsx
-│   │   └── sign-up/             # Sign-up page
-│   │       └── [[...sign-up]]
-│   │           └── page.tsx
-│   ├── context/
-│   │   └── AuthContext.jsx      # Firebase Auth context
-│   └── lib/
-│       └── firebase.ts           # Firebase configuration
-├── public/                     # Static assets
-├── .env.local                  # Local environment variables
-├── next.config.js              # Next.js configuration
-├── tailwind.config.ts          # Tailwind CSS configuration
-├── tsconfig.json               # TypeScript configuration
-├── vercel.json                 # Vercel deployment configuration
-└── package.json                # Dependencies
+```bash
+npm run build
 ```
 
----
+Run linting:
 
-## Firebase Setup Guide
+```bash
+npm run lint
+```
 
-### 1. Create Firebase Project
+### Local Secrets Note
 
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Click "Add project"
-3. Follow the steps to create your project
+The committed `.env.local` values are placeholders. Local UI and layout work can run normally, but anything that hits Gemini or Firebase Admin routes needs real credentials. The real secrets live in Vercel's environment variable dashboard and should never be committed.
 
-### 2. Enable Authentication
+If you need full local API testing, temporarily copy the real values into `.env.local` and keep that file out of commits.
 
-1. In Firebase Console, go to **Authentication** → **Sign-in method**
-2. Click "Add provider" → **Google**
-3. Enable the Google provider
-4. Configure:
-   - Project support email: Your email
-   - Add your production domain to "Authorized domains"
+## Environment Variables
 
-### 3. Set Up Firestore Database
+Client-side Firebase config:
 
-1. Go to **Firestore Database** → **Create database**
-2. Start in test mode (or configure security rules)
-3. Database will be automatically used for talent profiles
-
-### 4. Get Configuration
-
-1. Go to **Project Settings** → **General**
-2. Scroll to "Your apps" → Click web app (</>)
-3. Copy the `firebaseConfig` object
-
-### 5. Environment Variables
-
-Add these to your `.env.local`:
 ```env
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSy...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abc123
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
 ```
 
----
+Server-side Firebase Admin config:
 
-## Vercel Deployment
-
-### Project Workflow
-
-1. Commit changes to a GitHub branch and open a pull request.
-2. GitHub/Vercel automatically deploys the PR preview.
-3. Test the preview deployment.
-4. Merge after review.
-5. Wait for the production redeploy, then test the live site.
-
-### Quick Deploy
-
-1. Push your code to GitHub
-2. Import project in Vercel:
-   - Go to https://vercel.com/new
-   - Import from GitHub
-3. Configure environment variables in Vercel:
-   - Go to Project Settings → Environment Variables
-   - Add all Firebase variables from above
-4. Deploy!
-
-### Using Vercel CLI
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Login
-vercel login
-
-# Deploy
-vercel --prod
+```env
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
 ```
 
-### Environment Variables in Vercel
+AI and job integrations:
 
-Add these via Vercel Dashboard:
-- Project Settings → Environment Variables
-
-```
-NEXT_PUBLIC_FIREBASE_API_KEY
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-NEXT_PUBLIC_FIREBASE_PROJECT_ID
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-NEXT_PUBLIC_FIREBASE_APP_ID
+```env
+GEMINI_API_KEY=
+CAREERJET_API_KEY=
+JOOBLE_API_KEY=
 ```
 
----
+`GEMINI_API_KEY` is the fallback key used when a user has not saved a personal Gemini API key in Settings. In Vercel, `FIREBASE_PRIVATE_KEY` must be configured so escaped `\n` sequences can be converted back to real newlines by the route handler.
 
-## Database Schema (Firestore)
+## Firestore Data Model
 
-### Users Collection
+The major collections are:
 
-```javascript
-// users/{uid}
-{
-  uid: string,                    // Firebase Auth UID
-  email: string,                 // User email
-  displayName: string,           // Full name
-  photoURL: string,              // Profile photo
-  role: "talent" | "business" | "agency" | "admin" | "owner",
-  accountType: "talent" | "business" | "agency" | "admin" | "owner",
-  accountTypeLocked: boolean,    // Once true, account type is immutable via client writes
-  accountTypeLockedAt: timestamp,
-  accountTypeSource: "signup" | "legacy" | "migration" | "system",
-  emailNormalized: string,
-  moderationStatus: "active" | "suspended",
-  disabled: boolean,
+- `users/{uid}`: account type, role, profile, public profile state, moderation state, business/agency details, and profile completion.
+- `auditionSettings/{uid}`: per-user Gemini key override, voice, live API host, interviewer name/tone/style, and saved presets.
+- `auditionSessions/{uid}/sessions/{sessionId}`: interview status, timestamps, transcript, score, feedback, strengths, improvements, and optional ultra feedback.
+- `conversations/{id}`: participant IDs, latest message metadata, and unread state for the messaging inbox.
+- `conversations/{id}/messages/{messageId}`: individual chat messages, including TipTap JSON content.
+- `jobs`: scraped or imported job listings.
+- `companies`: company profile data used by business pages and jobs.
+- `blogPosts`: draft and published blog posts.
 
-  // Work Vibe
-  workVibe: {
-    style: string[],            // ["remote", "hybrid"]
-    culture: string[],           // ["startup", "enterprise"]
-    values: string,             // Free text
-  },
+Firestore security rules are in `firestore.rules`. The messaging rules are intentionally strict: a user must be listed in a conversation's `participantIds` array to read or write that conversation or its messages.
 
-  // Social Connections
-  socialConnections: [
-    { platform: "github", id: "username", connected: true },
-    { platform: "linkedin", id: "profile-url", connected: false }
-  ],
+## API Routes
 
-  // Work Experience
-  workExperience: [
-    {
-      company: string,
-      title: string,
-      startDate: Date,
-      endDate: Date | null,
-      description: string,
-      highlights: string[]
-    }
-  ],
+### Account
 
-  // Education
-  education: [
-    {
-      institution: string,
-      degree: string,
-      field: string,
-      startDate: Date,
-      endDate: Date
-    }
-  ],
+- `POST /api/account/bootstrap`: Firebase-auth-gated profile bootstrap and owner enforcement.
 
-  // Accolades
-  accolades: [
-    {
-      type: "award" | "certification" | "publication",
-      title: string,
-      issuer: string,
-      date: Date,
-      description: string
-    }
-  ],
+### Admin
 
-  // Profile metadata
-  publicProfileEnabled: boolean,
-  profileComplete: number,       // 0-100
-  createdAt: timestamp,
-  updatedAt: timestamp
-}
+- `GET /api/admin/summary`: admin/owner only, returns counts and recent users.
+- `POST /api/admin/users/set-role`: owner only, promotes or demotes admins by email.
+- `POST /api/admin/users/set-status`: admin/owner only, suspends/reactivates users and toggles public profile visibility.
+- `POST /api/admin/migrate/talent`: admin migration helper.
+
+### Audition
+
+- `POST /api/audition/token`: Firebase-auth-gated, returns `{ key, host }` for the Gemini Live WebSocket. This does not mint ephemeral tokens.
+- `POST /api/audition/sessions`: Firebase-auth-gated, server-side session persistence with `merge: true`.
+- `POST /api/audition/ultra-feedback`: generates extended post-interview analysis from transcript and initial feedback.
+
+### Content, Jobs, And Search
+
+- `GET /api/jobs`: fetches job listings through configured providers.
+- `GET /api/search`: unified site search.
+- `POST /api/blog`: privileged blog creation.
+- `PATCH /api/blog/[postId]`: privileged blog updates.
+
+Blog listing and post reads currently happen through Firestore client queries, with privileged writes handled by the API routes above.
+
+## Project Map
+
+```text
+src/app                 Next.js routes and API handlers
+src/app/audition        Main audition route
+src/app/jobs            Job board, job detail, and job audition routes
+src/app/admin           Admin console
+src/app/blog            Blog index and post pages
+src/app/u               Public talent profiles
+src/app/companies       Public business profiles
+src/app/agencies        Public agency profiles
+src/components          Shared UI, public pages, jobs, search, profile components
+src/components/audition Audition screens, settings, history, feedback UI
+src/components/blog     Blog renderer and editor
+src/components/messaging Rich-text editor, inbox, chat window, floating widget
+src/context             Firebase auth and global messaging context
+src/hooks               Audition, audio, transcript, timer, video, and settings hooks
+src/lib                 Firebase, Admin SDK, jobs, profiles, search, messaging, blog helpers
+src/lib/audition        Audition config, prompts, serialization, audio utilities, types
+firestore.rules         Firestore authorization rules
+AGENTS.md               Deep implementation notes for AI coding agents
 ```
 
-### Account Type Rules
+## Deployment
 
-- Public sign-up only offers `talent`, `business`, and `agency`.
-- `admin` and `owner` are hidden privileged types and must never be exposed as selectable sign-up paths.
-- `kyletouchet@gmail.com` is the hardcoded owner bootstrap email. On authenticated account bootstrap, that email is forced to `accountType: "owner"` and `accountTypeSource: "system"`.
-- Account type is static once locked. Changing regular account paths requires deleting the account and recreating it.
-- Admin/owner tools live at `/admin`; admins can view platform data and moderate accounts, while owners can also promote/demote admins.
+Ladder Star deploys on Vercel.
 
-### Admin API Routes
+Recommended workflow:
 
-- `POST /api/account/bootstrap` - Firebase-auth-gated server sync for account profiles. Forces `kyletouchet@gmail.com` to owner.
-- `GET /api/admin/summary` - Admin/owner only. Returns platform counts and recent users.
-- `POST /api/admin/users/set-role` - Owner only. Promotes/demotes admin accounts by email.
-- `POST /api/admin/users/set-status` - Admin/owner only. Suspends/reactivates users and toggles public profile visibility.
+1. Create a branch.
+2. Commit changes.
+3. Open a GitHub pull request.
+4. Let the GitHub/Vercel integration create a preview deployment.
+5. Test the preview.
+6. Merge after review.
+7. Wait for production redeploy.
+8. Test the live site.
 
-### Companies Collection (Future)
+### Firebase Auth On Preview Deployments
 
-```javascript
-// companies/{companyId}
-{
-  name: string,
-  domain: string,
-  logo: string,
-  description: string,
-  vibeDescription: string,
-  cultureTags: string[],
-  subscription: {
-    tier: "free" | "pro" | "enterprise",
-    expiresAt: Date
-  },
-  createdAt: timestamp
-}
-```
+If Google sign-in fails on a Vercel preview URL, Firebase Auth probably blocked the domain. Add the preview domain in Firebase Console under Authentication -> Settings -> Authorized domains. For development previews, adding `vercel.app` allows Vercel subdomains. For production, prefer the exact production domain.
 
-### Jobs Collection (Future)
+## Contributor Notes
 
-```javascript
-// jobs/{jobId}
-{
-  companyId: string,
-  title: string,
-  description: string,
-  vibeRequirements: {
-    style: string[],
-    culture: string[],
-    values: string
-  },
-  skills: {
-    required: string[],
-    preferred: string[]
-  },
-  salary: {
-    min: number,
-    max: number,
-    currency: string
-  },
-  location: string,
-  remotePolicy: "remote" | "hybrid" | "office",
-  status: "draft" | "active" | "closed",
-  createdAt: timestamp
-}
-```
-
----
-
-## Features
-
-### User Features
-
-- **Google Sign-In**: Secure authentication via Firebase Auth
-- **Profile Builder**: Multi-step onboarding flow
-- **Work Vibe Assessment**: AI-powered culture fit analysis
-- **Social Integrations**: Connect GitHub, LinkedIn (coming soon)
-- **Job Matching**: AI-suggested positions based on profile
-- **Real-time Messaging**: Built-in rich text chat widget for communicating with recruiters and agencies
-
-### Business Features (Coming Soon)
-
-- **Company Profiles**: Branded company pages
-- **Talent Search**: AI-powered candidate discovery
-- **Pipeline Management**: Track candidates through hiring funnel
-- **Team Collaboration**: Multi-user hiring teams
-- **Candidate Messaging**: Direct communication channel with talent
-
----
-
-## Environment Variables Reference
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase Web API Key | Yes |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase Auth Domain | Yes |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase Project ID | Yes |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase Storage Bucket | Yes |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase Cloud Messaging Sender ID | Yes |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase App ID | Yes |
-
----
-
-## Development Commands
-
-```bash
-# Development
-npm run dev          # Start development server
-npm run build         # Build for production
-npm run start         # Start production server
-npm run lint          # Run ESLint
-```
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request and validate the Vercel preview
-5. Merge after review, wait for redeploy, and test live
-
----
+- Read `AGENTS.md` before changing audition, auth, admin, or messaging behavior.
+- Do not expose `admin` or `owner` in public sign-up.
+- Admin APIs must verify Firebase ID tokens and check Firestore profiles server-side.
+- Do not store TipTap messages as raw HTML; store serialized JSON.
+- Do not loosen messaging rules unless the privacy model is being deliberately redesigned.
+- Do not switch the Gemini Live API audition flow back to ephemeral tokens.
 
 ## License
 
-MIT License - see LICENSE file for details
-
----
-
-## Support
-
-- Open an issue for bugs
-- Use discussions for questions
-- Check Firebase/Vercel docs for platform-specific issues
-
-## Acknowledgments
-
-- [Next.js](https://nextjs.org)
-- [Firebase](https://firebase.google.com)
-- [Tailwind CSS](https://tailwindcss.com)
-- [Vercel](https://vercel.com)
+This repository is private. Add license details here if the project is published externally.
