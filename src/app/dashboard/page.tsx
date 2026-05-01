@@ -174,7 +174,7 @@ export default function DashboardPage() {
             </div>
 
             <button
-              onClick={() => router.push(isOperator ? `/dashboard/settings?preview=${previewType}` : "/onboarding")}
+              onClick={() => router.push(isOperator ? `/dashboard/settings?preview=${previewType}` : "/profile")}
               className="mt-6 w-full py-3 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-600 transition-colors"
             >
               {isOperator ? "Edit Preview Profile" : "Complete Your Profile"}
@@ -262,22 +262,22 @@ function getDashboardStats(
 function getQuickActions(accountType: UserProfile["accountType"] | null) {
   if (accountType === "business") {
     return [
-      { icon: Building2, label: "Edit Company Profile", iconClass: "text-blue-400", href: "/dashboard/settings" },
+      { icon: Building2, label: "Edit Company Profile", iconClass: "text-blue-400", href: "/profile" },
       { icon: Briefcase, label: "Post a Job", iconClass: "text-green-400", href: "/dashboard/jobs" },
     ];
   }
 
   if (accountType === "agency") {
     return [
-      { icon: User, label: "Edit Agency Profile", iconClass: "text-purple-400", href: "/dashboard/settings" },
+      { icon: User, label: "Edit Agency Profile", iconClass: "text-purple-400", href: "/profile" },
       { icon: Briefcase, label: "Browse Jobs", iconClass: "text-amber-400", href: "/jobs" },
     ];
   }
 
   return [
     { icon: Briefcase, label: "Browse Jobs", iconClass: "text-amber-400", href: "/jobs" },
-    { icon: Github, label: "Connect GitHub", iconClass: "text-slate-400", href: "/dashboard/settings#connections" },
-    { icon: Linkedin, label: "Import LinkedIn", iconClass: "text-blue-400", href: "/dashboard/settings#connections" },
+    { icon: Github, label: "Connect GitHub", iconClass: "text-slate-400", href: "/profile" },
+    { icon: Linkedin, label: "Import LinkedIn", iconClass: "text-blue-400", href: "/profile" },
   ];
 }
 

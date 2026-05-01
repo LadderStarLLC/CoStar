@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  addDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { CompanyData } from './companies';
@@ -56,11 +57,131 @@ export interface UserProfile {
   jobPreferences?: Record<string, unknown>;
   businessProfile?: BusinessProfile | null;
   agencyProfile?: AgencyProfile | null;
+  talentProfile?: TalentProfile | null;
+  privateProfile?: PrivateProfileData | null;
+  publicDraft?: PublicProfileDraft | null;
+  privateProfileComplete?: number;
+  publicProfileComplete?: number;
   profileComplete?: number;
   moderationStatus?: 'active' | 'suspended';
   disabled?: boolean;
   createdAt?: any;
   updatedAt?: any;
+}
+
+export type PublicProfileStatus = 'draft' | 'published' | 'hidden' | 'suspended';
+
+export interface ProfileAsset {
+  url?: string;
+  path?: string;
+  name?: string;
+  contentType?: string;
+  size?: number;
+  uploadedAt?: any;
+}
+
+export interface LinkItem {
+  label: string;
+  url: string;
+}
+
+export interface TalentProfile {
+  bio?: string;
+  phone?: string;
+  skills?: string[];
+  portfolioLinks?: LinkItem[];
+  resume?: ProfileAsset | null;
+  certifications?: string[];
+  availability?: string;
+  desiredRoles?: string[];
+  salaryExpectations?: string;
+  relocation?: string;
+  remotePreference?: string;
+}
+
+export interface BusinessCrmData {
+  billingContact?: string;
+  contactEmail?: string;
+  candidatePipeline?: string[];
+  notes?: string;
+  draftJobNotes?: string;
+}
+
+export interface AgencyCrmData {
+  clientNotes?: string;
+  representedTalentNotes?: string;
+  submissionHistory?: string;
+  contracts?: string;
+  pipeline?: string[];
+}
+
+export interface PrivateProfileData {
+  phone?: string;
+  contactEmail?: string;
+  billingEmail?: string;
+  businessCrm?: BusinessCrmData;
+  agencyCrm?: AgencyCrmData;
+}
+
+export interface PublicProfileFields {
+  displayName?: string | null;
+  photoURL?: string | null;
+  headline?: string;
+  location?: string;
+  email?: string | null;
+  phone?: string;
+  website?: string;
+  bio?: string;
+  socialConnections?: SocialConnection[];
+  workVibe?: WorkVibe | null;
+  talentProfile?: TalentProfile | null;
+  businessProfile?: BusinessProfile | null;
+  agencyProfile?: AgencyProfile | null;
+  showActiveJobsOnProfile?: boolean;
+  approvedTalentRoster?: PublicRosterMember[];
+}
+
+export type PublicFieldVisibility = Record<string, boolean>;
+
+export interface PublicProfileDraft {
+  fields?: PublicProfileFields;
+  visibility?: PublicFieldVisibility;
+  status?: PublicProfileStatus;
+  searchable?: boolean;
+  updatedAt?: any;
+  lastPublishedAt?: any;
+}
+
+export interface PublicRosterMember {
+  uid: string;
+  slug?: string;
+  displayName: string;
+  headline?: string;
+  photoURL?: string | null;
+}
+
+export interface AgencyRosterInvite {
+  id?: string;
+  agencyUid: string;
+  talentUid: string;
+  status: 'pending' | 'approved' | 'rejected';
+  memberSnapshot?: PublicRosterMember;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface PublicProfile {
+  uid: string;
+  accountType: PublicAccountType;
+  slug: string;
+  status: PublicProfileStatus;
+  searchable: boolean;
+  moderationStatus: 'active' | 'suspended';
+  visibility: PublicFieldVisibility;
+  fields: PublicProfileFields;
+  createdAt?: any;
+  updatedAt?: any;
+  publishedAt?: any;
 }
 
 export interface BusinessProfile {
@@ -79,6 +200,13 @@ export interface BusinessProfile {
     tags?: string[];
   };
   hiringGoals?: string;
+  logoUrl?: string;
+  industry?: string;
+  remotePolicy?: string;
+  benefits?: string[];
+  socialLinks?: LinkItem[];
+  verified?: boolean;
+  showActiveJobsOnProfile?: boolean;
 }
 
 export interface AgencyProfile {
@@ -89,6 +217,11 @@ export interface AgencyProfile {
   specialties?: string[];
   industries?: string[];
   services?: string[];
+  logoUrl?: string;
+  clientTypes?: string[];
+  successMetrics?: string;
+  featuredPlacements?: string[];
+  socialLinks?: LinkItem[];
 }
 
 export interface ProfileChecklistItem {
@@ -197,12 +330,179 @@ export function normalizeProfile(uid: string, data: Partial<UserProfile> = {}): 
     jobPreferences: data.jobPreferences ?? {},
     businessProfile: data.businessProfile ?? null,
     agencyProfile: data.agencyProfile ?? null,
-    profileComplete: data.profileComplete ?? 0,
+    talentProfile: data.talentProfile ?? null,
+    privateProfile: data.privateProfile ?? null,
+    publicDraft: data.publicDraft ?? null,
+    privateProfileComplete: data.privateProfileComplete ?? data.profileComplete ?? 0,
+    publicProfileComplete: data.publicProfileComplete ?? 0,
+    profileComplete: data.profileComplete ?? data.privateProfileComplete ?? 0,
     moderationStatus: data.moderationStatus ?? 'active',
     disabled: data.disabled ?? false,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
+}
+
+export function getPublicProfilePath(accountType: PublicAccountType, slugOrUid: string): string {
+  if (accountType === 'business') return `/business/${slugOrUid}`;
+  if (accountType === 'agency') return `/agency/${slugOrUid}`;
+  return `/talent/${slugOrUid}`;
+}
+
+export function normalizePublicProfile(uid: string, data: Partial<PublicProfile> = {}): PublicProfile | null {
+  const accountType = normalizeAccountType(data.accountType);
+  if (!isPublicAccountType(accountType)) return null;
+
+  return {
+    uid,
+    accountType,
+    slug: data.slug ?? createSlug(data.fields?.displayName ?? uid, uid),
+    status: data.status ?? 'draft',
+    searchable: data.searchable ?? false,
+    moderationStatus: data.moderationStatus ?? 'active',
+    visibility: data.visibility ?? {},
+    fields: data.fields ?? {},
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+    publishedAt: data.publishedAt,
+  };
+}
+
+export function getProfileDisplayName(profile: UserProfile | PublicProfile): string {
+  if ('fields' in profile) {
+    const business = profile.fields.businessProfile;
+    const agency = profile.fields.agencyProfile;
+    if (profile.accountType === 'business') return business?.companyName || profile.fields.displayName || 'Business Profile';
+    if (profile.accountType === 'agency') return agency?.agencyName || profile.fields.displayName || 'Agency Profile';
+    return profile.fields.displayName || 'Talent Profile';
+  }
+
+  if (profile.accountType === 'business') return profile.businessProfile?.companyName || profile.displayName || 'Business Profile';
+  if (profile.accountType === 'agency') return profile.agencyProfile?.agencyName || profile.displayName || 'Agency Profile';
+  return profile.displayName || 'Talent Profile';
+}
+
+export function defaultPublicVisibility(accountType?: AccountType | null): PublicFieldVisibility {
+  return {
+    displayName: true,
+    photoURL: false,
+    headline: false,
+    location: false,
+    email: false,
+    phone: false,
+    website: false,
+    bio: false,
+    socialConnections: false,
+    workVibe: false,
+    skills: false,
+    portfolioLinks: false,
+    resume: false,
+    workExperience: false,
+    education: false,
+    certifications: false,
+    availability: false,
+    desiredRoles: false,
+    salaryExpectations: false,
+    relocation: false,
+    remotePreference: false,
+    companySize: accountType === 'business' ? false : false,
+    industry: accountType === 'business' ? false : false,
+    headquarters: accountType === 'business' ? false : false,
+    culture: accountType === 'business' ? false : false,
+    benefits: accountType === 'business' ? false : false,
+    hiringGoals: accountType === 'business' ? false : false,
+    activeJobs: accountType === 'business' ? false : false,
+    services: accountType === 'agency' ? false : false,
+    specialties: accountType === 'agency' ? false : false,
+    industries: accountType === 'agency' ? false : false,
+    clientTypes: accountType === 'agency' ? false : false,
+    successMetrics: accountType === 'agency' ? false : false,
+    featuredPlacements: accountType === 'agency' ? false : false,
+    talentRoster: accountType === 'agency' ? false : false,
+  };
+}
+
+export function buildPublicFieldsFromPrivate(profile: UserProfile): PublicProfileFields {
+  return {
+    displayName: getProfileDisplayName(profile),
+    photoURL: profile.photoURL ?? null,
+    headline: profile.headline ?? '',
+    location: profile.location ?? '',
+    email: profile.email ?? null,
+    phone: profile.privateProfile?.phone ?? profile.talentProfile?.phone ?? '',
+    website: profile.businessProfile?.website ?? profile.agencyProfile?.website ?? '',
+    bio: profile.talentProfile?.bio ?? '',
+    socialConnections: profile.socialConnections ?? [],
+    workVibe: profile.workVibe ?? emptyWorkVibe,
+    talentProfile: profile.talentProfile ?? null,
+    businessProfile: profile.businessProfile ?? null,
+    agencyProfile: profile.agencyProfile ?? null,
+    showActiveJobsOnProfile: Boolean(profile.businessProfile?.showActiveJobsOnProfile),
+    approvedTalentRoster: profile.publicDraft?.fields?.approvedTalentRoster ?? [],
+  };
+}
+
+export function filterPublishedFields(fields: PublicProfileFields, visibility: PublicFieldVisibility): PublicProfileFields {
+  const business = fields.businessProfile;
+  const agency = fields.agencyProfile;
+  const talent = fields.talentProfile;
+
+  return {
+    displayName: fields.displayName,
+    photoURL: visibility.photoURL ? fields.photoURL ?? null : null,
+    headline: visibility.headline ? fields.headline : '',
+    location: visibility.location ? fields.location : '',
+    email: visibility.email ? fields.email ?? null : null,
+    phone: visibility.phone ? fields.phone : '',
+    website: visibility.website ? fields.website : '',
+    bio: visibility.bio ? fields.bio : '',
+    socialConnections: visibility.socialConnections ? fields.socialConnections ?? [] : [],
+    workVibe: visibility.workVibe ? fields.workVibe ?? emptyWorkVibe : emptyWorkVibe,
+    talentProfile: talent ? {
+      ...talent,
+      skills: visibility.skills ? talent.skills ?? [] : [],
+      portfolioLinks: visibility.portfolioLinks ? talent.portfolioLinks ?? [] : [],
+      resume: visibility.resume ? talent.resume ?? null : null,
+      certifications: visibility.certifications ? talent.certifications ?? [] : [],
+      availability: visibility.availability ? talent.availability ?? '' : '',
+      desiredRoles: visibility.desiredRoles ? talent.desiredRoles ?? [] : [],
+      salaryExpectations: visibility.salaryExpectations ? talent.salaryExpectations ?? '' : '',
+      relocation: visibility.relocation ? talent.relocation ?? '' : '',
+      remotePreference: visibility.remotePreference ? talent.remotePreference ?? '' : '',
+    } : null,
+    businessProfile: business ? {
+      ...business,
+      website: visibility.website ? business.website ?? '' : '',
+      companySize: visibility.companySize ? business.companySize ?? '' : '',
+      industry: visibility.industry ? business.industry ?? '' : '',
+      headquarters: visibility.headquarters ? business.headquarters : {},
+      culture: visibility.culture ? business.culture : { values: '', tags: [] },
+      benefits: visibility.benefits ? business.benefits ?? [] : [],
+      hiringGoals: visibility.hiringGoals ? business.hiringGoals ?? '' : '',
+      showActiveJobsOnProfile: Boolean(visibility.activeJobs && business.showActiveJobsOnProfile),
+    } : null,
+    agencyProfile: agency ? {
+      ...agency,
+      website: visibility.website ? agency.website ?? '' : '',
+      services: visibility.services ? agency.services ?? [] : [],
+      specialties: visibility.specialties ? agency.specialties ?? [] : [],
+      industries: visibility.industries ? agency.industries ?? [] : [],
+      clientTypes: visibility.clientTypes ? agency.clientTypes ?? [] : [],
+      successMetrics: visibility.successMetrics ? agency.successMetrics ?? '' : '',
+      featuredPlacements: visibility.featuredPlacements ? agency.featuredPlacements ?? [] : [],
+    } : null,
+    showActiveJobsOnProfile: Boolean(visibility.activeJobs && fields.showActiveJobsOnProfile),
+    approvedTalentRoster: visibility.talentRoster ? fields.approvedTalentRoster ?? [] : [],
+  };
+}
+
+export function calculatePublicProfileComplete(profile: Partial<UserProfile> | null): number {
+  if (!profile?.accountType) return 0;
+  const visibility = profile.publicDraft?.visibility ?? defaultPublicVisibility(profile.accountType);
+  const fields = profile.publicDraft?.fields ?? buildPublicFieldsFromPrivate(normalizeProfile(profile.uid ?? 'preview', profile));
+  const visibleCount = Object.values(visibility).filter(Boolean).length;
+  const hasRequiredName = Boolean(fields.displayName || fields.businessProfile?.companyName || fields.agencyProfile?.agencyName);
+  return Math.min(100, Math.round((hasRequiredName ? 20 : 0) + Math.min(80, visibleCount * 8)));
 }
 
 function mapCompanyToProfile(companyId: string, data: CompanyData): UserProfile {
@@ -386,60 +686,55 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 export async function getPublicProfileBySlugOrUid(
   slugOrUid: string,
   accountType?: AccountType
-): Promise<UserProfile | null> {
+): Promise<PublicProfile | null> {
   if (!db) throw new Error('Firestore not initialized');
 
   const normalizedSlug = slugOrUid.toLowerCase();
-  const shouldCheckCompanies = !accountType || accountType === 'business';
+  const normalizedType = normalizeAccountType(accountType);
 
-  const directSnap = await getDoc(doc(db, 'users', slugOrUid));
+  const directSnap = await getDoc(doc(db, 'publicProfiles', slugOrUid));
   if (directSnap.exists()) {
-    const directProfile = normalizeProfile(directSnap.id, directSnap.data() as Partial<UserProfile>);
+    const directProfile = normalizePublicProfile(directSnap.id, directSnap.data() as Partial<PublicProfile>);
     if (
-      directProfile.publicProfileEnabled &&
-      (!accountType || directProfile.accountType === accountType)
+      directProfile &&
+      directProfile.status === 'published' &&
+      directProfile.moderationStatus === 'active' &&
+      directProfile.searchable &&
+      (!normalizedType || directProfile.accountType === normalizedType)
     ) {
       return directProfile;
     }
   }
 
   const snapshot = await getDocs(query(
-    collection(db, 'users'),
+    collection(db, 'publicProfiles'),
     where('slug', '==', normalizedSlug),
+    where('status', '==', 'published'),
+    where('searchable', '==', true),
+    where('moderationStatus', '==', 'active'),
     limit(5)
   ));
   if (!snapshot.empty) {
     const profileSnap = snapshot.docs.find((docSnap) => {
-      const data = docSnap.data() as Partial<UserProfile>;
-      return data.publicProfileEnabled !== false && (!accountType || normalizeAccountType(data.accountType) === accountType);
+      const data = docSnap.data() as Partial<PublicProfile>;
+      return data.status === 'published' &&
+        data.searchable !== false &&
+        data.moderationStatus !== 'suspended' &&
+        (!normalizedType || normalizeAccountType(data.accountType) === normalizedType);
     });
     if (profileSnap) {
-      return normalizeProfile(profileSnap.id, profileSnap.data() as Partial<UserProfile>);
+      return normalizePublicProfile(profileSnap.id, profileSnap.data() as Partial<PublicProfile>);
     }
   }
 
-  if (!shouldCheckCompanies) return null;
+  return null;
+}
 
-  const directCompanySnap = await getDoc(doc(db, 'companies', slugOrUid));
-  if (directCompanySnap.exists()) {
-    return mapCompanyToProfile(directCompanySnap.id, {
-      companyId: directCompanySnap.id,
-      ...directCompanySnap.data(),
-    } as CompanyData);
-  }
-
-  const companySnapshot = await getDocs(query(
-    collection(db, 'companies'),
-    where('slug', '==', normalizedSlug),
-    limit(1)
-  ));
-  if (companySnapshot.empty) return null;
-
-  const companySnap = companySnapshot.docs[0];
-  return mapCompanyToProfile(companySnap.id, {
-    companyId: companySnap.id,
-    ...companySnap.data(),
-  } as CompanyData);
+export async function getPublishedPublicProfile(uid: string): Promise<PublicProfile | null> {
+  if (!db) throw new Error('Firestore not initialized');
+  const snap = await getDoc(doc(db, 'publicProfiles', uid));
+  if (!snap.exists()) return null;
+  return normalizePublicProfile(snap.id, snap.data() as Partial<PublicProfile>);
 }
 
 export async function saveUserProfile(uid: string, updates: Partial<UserProfile>): Promise<void> {
@@ -457,6 +752,7 @@ export async function saveUserProfile(uid: string, updates: Partial<UserProfile>
     emailNormalized: updates.emailNormalized ?? normalizeEmail(updates.email ?? current?.email),
   });
   const profileComplete = calculateProfileComplete(next);
+  const publicProfileComplete = calculatePublicProfileComplete(next);
   const profileRef = doc(db, 'users', uid);
 
   if (current) {
@@ -473,6 +769,8 @@ export async function saveUserProfile(uid: string, updates: Partial<UserProfile>
       ...protectedUpdates,
       emailNormalized: protectedUpdates.emailNormalized ?? normalizeEmail(protectedUpdates.email ?? current.email),
       profileComplete,
+      privateProfileComplete: profileComplete,
+      publicProfileComplete,
       updatedAt: serverTimestamp(),
     });
     return;
@@ -484,7 +782,119 @@ export async function saveUserProfile(uid: string, updates: Partial<UserProfile>
     accountTypeLockedAt: next.accountType ? serverTimestamp() : null,
     accountTypeSource: next.accountType ? next.accountTypeSource ?? 'signup' : null,
     profileComplete,
+    privateProfileComplete: profileComplete,
+    publicProfileComplete,
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function savePublicProfileDraft(
+  uid: string,
+  updates: {
+    fields?: PublicProfileFields;
+    visibility?: PublicFieldVisibility;
+    searchable?: boolean;
+    status?: PublicProfileStatus;
+  }
+): Promise<void> {
+  if (!db) throw new Error('Firestore not initialized');
+  const current = await getUserProfile(uid);
+  if (!current) throw new Error('Profile not found.');
+
+  const publicDraft: PublicProfileDraft = {
+    ...(current.publicDraft ?? {}),
+    fields: updates.fields ?? current.publicDraft?.fields ?? buildPublicFieldsFromPrivate(current),
+    visibility: updates.visibility ?? current.publicDraft?.visibility ?? defaultPublicVisibility(current.accountType),
+    searchable: updates.searchable ?? current.publicDraft?.searchable ?? true,
+    status: updates.status ?? current.publicDraft?.status ?? 'draft',
+    updatedAt: serverTimestamp(),
+    lastPublishedAt: current.publicDraft?.lastPublishedAt,
+  };
+
+  await updateDoc(doc(db, 'users', uid), {
+    publicDraft,
+    publicProfileComplete: calculatePublicProfileComplete({ ...current, publicDraft }),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function publishPublicProfile(uid: string): Promise<void> {
+  if (!db) throw new Error('Firestore not initialized');
+  const current = await getUserProfile(uid);
+  if (!current || !isPublicAccountType(current.accountType)) {
+    throw new Error('Only public account types can publish profiles.');
+  }
+
+  const fields = current.publicDraft?.fields ?? buildPublicFieldsFromPrivate(current);
+  const visibility = {
+    ...defaultPublicVisibility(current.accountType),
+    ...(current.publicDraft?.visibility ?? {}),
+    displayName: true,
+  };
+  const slug = await generateUniqueSlug(getProfileDisplayName(current), uid);
+  const publicProfile: PublicProfile = {
+    uid,
+    accountType: current.accountType,
+    slug,
+    status: 'published',
+    searchable: current.publicDraft?.searchable ?? true,
+    moderationStatus: current.moderationStatus ?? 'active',
+    visibility,
+    fields: filterPublishedFields(fields, visibility),
+    publishedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(doc(db, 'publicProfiles', uid), publicProfile, { merge: true });
+  await updateDoc(doc(db, 'users', uid), {
+    slug,
+    publicProfileEnabled: true,
+    publicDraft: {
+      ...(current.publicDraft ?? {}),
+      fields,
+      visibility,
+      searchable: publicProfile.searchable,
+      status: 'published',
+      lastPublishedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    publicProfileComplete: calculatePublicProfileComplete({ ...current, publicDraft: { fields, visibility } }),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function hidePublicProfile(uid: string): Promise<void> {
+  if (!db) throw new Error('Firestore not initialized');
+  await setDoc(doc(db, 'publicProfiles', uid), {
+    status: 'hidden',
+    searchable: false,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  await updateDoc(doc(db, 'users', uid), {
+    publicProfileEnabled: false,
+    'publicDraft.status': 'hidden',
+    'publicDraft.searchable': false,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function inviteTalentToAgencyRoster(agencyUid: string, talentUid: string): Promise<string> {
+  if (!db) throw new Error('Firestore not initialized');
+  const ref = await addDoc(collection(db, 'agencyRosterInvites'), {
+    agencyUid,
+    talentUid,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function respondToAgencyRosterInvite(inviteId: string, approved: boolean): Promise<void> {
+  if (!db) throw new Error('Firestore not initialized');
+  await updateDoc(doc(db, 'agencyRosterInvites', inviteId), {
+    status: approved ? 'approved' : 'rejected',
     updatedAt: serverTimestamp(),
   });
 }

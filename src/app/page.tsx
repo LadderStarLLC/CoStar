@@ -30,15 +30,10 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-6 py-16 md:py-24">
             <div className="grid lg:grid-cols-[1.02fr_0.98fr] gap-10 lg:gap-14 items-center">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#5DC99B]/30 bg-[#262A2E]/80 px-3 py-1.5 text-sm font-medium text-[#5DC99B]">
-                  <TrendingUp className="w-4 h-4" />
-                  Roles worth reaching for.
-                </div>
-
-                <h1 className="mt-6 text-5xl md:text-7xl font-black tracking-tight text-balance">
-                  Sharper guidance. Better filters.
+                <h1 className="text-5xl md:text-7xl font-black tracking-tight text-balance">
+                  Roles worth
                   <span className="block bg-gradient-to-r from-[#E5B536] to-[#5DC99B] bg-clip-text text-transparent">
-                    Better roles.
+                    reaching for.
                   </span>
                 </h1>
 

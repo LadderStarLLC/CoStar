@@ -16,7 +16,7 @@ export default function NavHeader() {
     ? isPrivilegedAccountType(accountType)
       ? '/account'
       : accountType
-      ? '/dashboard/settings'
+      ? '/profile'
       : '/onboarding'
     : '/sign-in';
 
@@ -58,12 +58,12 @@ export default function NavHeader() {
             </Link>
           )}
           {accountType === 'agency' && (
-            <Link href="/dashboard/settings" className="text-[#F4F5F7]/72 hover:text-[#5DC99B] transition-colors text-sm sm:text-base">
+            <Link href="/profile" className="text-[#F4F5F7]/72 hover:text-[#5DC99B] transition-colors text-sm sm:text-base">
               Agency Profile
             </Link>
           )}
           {accountType === 'business' && (
-            <Link href="/dashboard/settings" className="text-[#F4F5F7]/72 hover:text-[#5DC99B] transition-colors text-sm sm:text-base">Company Profile</Link>
+            <Link href="/profile" className="text-[#F4F5F7]/72 hover:text-[#5DC99B] transition-colors text-sm sm:text-base">Company Profile</Link>
           )}
           {(accountType === 'admin' || accountType === 'owner') && (
             <Link href="/admin" className="flex items-center gap-1.5 text-[#E5B536] hover:text-[#5DC99B] transition-colors font-medium text-sm sm:text-base">
