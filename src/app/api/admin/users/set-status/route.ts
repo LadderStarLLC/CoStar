@@ -49,6 +49,22 @@ export async function POST(req: NextRequest) {
     }
 
     await userRef.update(updates);
+
+    const publicUpdates: Record<string, unknown> = {
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    if (moderationStatus) {
+      publicUpdates.moderationStatus = moderationStatus;
+      if (moderationStatus === 'suspended') {
+        publicUpdates.status = 'suspended';
+        publicUpdates.searchable = false;
+      }
+    }
+    if (typeof publicProfileEnabled === 'boolean') {
+      publicUpdates.status = publicProfileEnabled ? 'published' : 'hidden';
+      publicUpdates.searchable = publicProfileEnabled;
+    }
+    await db.doc(`publicProfiles/${uid}`).set(publicUpdates, { merge: true });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return jsonError(err);

@@ -68,15 +68,47 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Account profiles - any authenticated user can read (for Connect feature), only owner can write
+    // Private account profiles - owner can read/write, admin/owner can read for operations.
     match /users/{userId} {
-      allow read: if request.auth != null || resource.data.publicProfileEnabled == true;
+      allow read: if isOwner(userId) || isPrivilegedAccount();
       allow create: if isOwner(userId) && accountTypeIsCreateValid();
       allow update: if isOwner(userId) &&
         accountTypeIsImmutable() &&
         lockMetadataIsImmutable() &&
         roleMatchesAccountType();
       allow delete: if isOwner(userId);
+    }
+
+    // Published public profile projections. These contain only opted-in fields.
+    match /publicProfiles/{userId} {
+      allow read: if resource.data.status == 'published' &&
+        resource.data.searchable == true &&
+        resource.data.moderationStatus == 'active';
+      allow create, update: if isOwner(userId) &&
+        validPublicAccountType(request.resource.data.accountType) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.status in ['draft', 'published', 'hidden', 'suspended'];
+      allow delete: if isOwner(userId);
+    }
+
+    // Agency roster approvals. Agencies can invite; talent controls approval for their own listing.
+    match /agencyRosterInvites/{inviteId} {
+      allow read: if signedIn() && (
+        request.auth.uid == resource.data.agencyUid ||
+        request.auth.uid == resource.data.talentUid ||
+        isPrivilegedAccount()
+      );
+      allow create: if signedIn() &&
+        request.resource.data.agencyUid == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow update: if signedIn() && (
+        request.auth.uid == resource.data.talentUid ||
+        request.auth.uid == resource.data.agencyUid
+      );
+      allow delete: if signedIn() && (
+        request.auth.uid == resource.data.agencyUid ||
+        isPrivilegedAccount()
+      );
     }
 
     // Private operator preview profiles for admin/owner layout testing.

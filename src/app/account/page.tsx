@@ -17,7 +17,7 @@ export default function AccountPage() {
     if (!loading && !user) {
       router.push("/sign-in");
     } else if (!loading && user && !isOperator) {
-      router.push(user.accountType ? "/dashboard/settings" : "/onboarding");
+      router.push(user.accountType ? "/profile" : "/onboarding");
     }
   }, [isOperator, loading, router, user]);
 
