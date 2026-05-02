@@ -9,6 +9,8 @@ import PublicProfileView from "@/components/PublicProfileView";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
 import { uploadProfileImage, uploadResume } from "@/lib/storage";
+import { fetchWalletSummary } from "@/lib/walletClient";
+import { walletLabel, type WalletSummary } from "@/lib/wallet";
 import {
   accountTypeLabels,
   buildPublicFieldsFromPrivate,
@@ -33,6 +35,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -102,6 +105,13 @@ export default function ProfilePage() {
         }
         setProfile(next);
         hydrate(next);
+        
+        try {
+          const ws = await fetchWalletSummary(user);
+          setWalletSummary(ws);
+        } catch (e) {
+          console.error("Failed to load wallet", e);
+        }
       } catch (err) {
         console.error(err);
         setError("Could not load your profile.");
@@ -352,7 +362,7 @@ export default function ProfilePage() {
   }
 
   if (authLoading || loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-[#1A1D20]"><Loader2 className="h-8 w-8 animate-spin text-[#E5B536]" /></div>;
+    return <ProfileLoadingShell />;
   }
 
   if (!profile || !publicAccountType) return null;
@@ -377,7 +387,15 @@ export default function ProfilePage() {
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-[#E5B536]">{accountTypeLabels[publicAccountType]} profile</p>
+            <div className="flex items-center gap-4">
+              <p className="text-sm font-semibold uppercase tracking-wide text-[#E5B536]">{accountTypeLabels[publicAccountType]} profile</p>
+              {walletSummary?.wallet && (
+                <div className="flex items-center gap-1.5 rounded-full border border-[#E5B536]/30 bg-[#E5B536]/10 px-3 py-1 text-xs font-semibold text-[#E5B536]">
+                  <span>{walletSummary.wallet.balance}</span>
+                  <span className="opacity-70">{walletLabel(walletSummary.wallet.currency)}</span>
+                </div>
+              )}
+            </div>
             <h1 className="mt-2 text-3xl font-bold text-white">Profile workspace</h1>
             <p className="mt-2 text-[#F4F5F7]/60">Private information stays private. Toggle individual fields, preview, then publish.</p>
           </div>
@@ -517,6 +535,53 @@ export default function ProfilePage() {
                 Hide public profile
               </button>
             </Panel>
+          </aside>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function ProfileLoadingShell() {
+  return (
+    <div className="min-h-screen bg-[#1A1D20]">
+      <NavHeader />
+      <main className="mx-auto max-w-6xl px-6 py-8">
+        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="mb-3 h-5 w-56 rounded bg-white/10" />
+            <div className="mb-3 h-9 w-72 rounded bg-white/10" />
+            <div className="h-5 w-full max-w-lg rounded bg-white/10" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 w-32 rounded-lg bg-white/10" />
+            <div className="h-10 w-24 rounded-lg bg-white/10" />
+            <div className="h-10 w-36 rounded-lg bg-white/10" />
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+          <div className="space-y-6">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <section key={index} className="min-h-[286px] rounded-lg border border-white/10 bg-[#262A2E]/70 p-6">
+                <div className="mb-5 h-7 w-44 rounded bg-white/10" />
+                <div className="space-y-4">
+                  <div className="h-12 rounded-lg bg-[#1A1D20]" />
+                  <div className="h-12 rounded-lg bg-[#1A1D20]" />
+                  <div className="h-12 rounded-lg bg-[#1A1D20]" />
+                </div>
+              </section>
+            ))}
+          </div>
+          <aside>
+            <section className="min-h-[210px] rounded-lg border border-white/10 bg-[#262A2E]/70 p-6">
+              <div className="mb-5 h-7 w-32 rounded bg-white/10" />
+              <div className="space-y-4">
+                <div className="h-12 rounded-lg bg-[#1A1D20]" />
+                <div className="h-20 rounded-lg bg-[#1A1D20]" />
+                <div className="h-10 rounded-lg bg-white/10" />
+              </div>
+            </section>
           </aside>
         </div>
       </main>

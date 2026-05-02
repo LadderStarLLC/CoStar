@@ -212,11 +212,7 @@ export default function EmployerJobsPage() {
   };
 
   if (authLoading || isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-      </div>
-    );
+    return <EmployerJobsLoadingShell />;
   }
 
   if (!user) {
@@ -595,6 +591,47 @@ export default function EmployerJobsPage() {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function EmployerJobsLoadingShell() {
+  return (
+    <div className="min-h-screen bg-slate-900">
+      <div className="bg-slate-800/50 border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/10" />
+              <div>
+                <div className="mb-2 h-7 w-56 rounded bg-white/10" />
+                <div className="h-5 w-72 rounded bg-white/10" />
+              </div>
+            </div>
+            <div className="hidden h-12 w-32 rounded-xl bg-white/10 sm:block" />
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="grid md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-[82px] rounded-xl border border-white/10 bg-slate-800/50 p-4">
+              <div className="h-full rounded bg-white/10" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 pb-12">
+        <div className="space-y-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-[86px] rounded-xl border border-white/10 bg-slate-800/50 p-4">
+              <div className="h-full rounded bg-white/10" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

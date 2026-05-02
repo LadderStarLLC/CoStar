@@ -17,7 +17,7 @@ export default function ChatWidget() {
   const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !isOpen) return;
     const unsubscribe = subscribeToConversations(
       user.uid,
       setConversations,
@@ -27,10 +27,10 @@ export default function ChatWidget() {
       },
     );
     return () => unsubscribe();
-  }, [user]);
+  }, [user, isOpen]);
 
   useEffect(() => {
-    if (!activeConversationId) {
+    if (!isOpen || !activeConversationId) {
       setMessages([]);
       return;
     }
@@ -43,7 +43,7 @@ export default function ChatWidget() {
       },
     );
     return () => unsubscribe();
-  }, [activeConversationId]);
+  }, [activeConversationId, isOpen]);
 
   if (!user) return null;
 
