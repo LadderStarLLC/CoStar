@@ -76,7 +76,7 @@ export default function AccountPage() {
               Admin Console
             </Link>
             <Link
-              href="/dashboard"
+              href="/dashboard/settings?preview=talent"
               className="inline-flex items-center gap-3 rounded-lg border border-white/10 bg-slate-900 p-4 text-white transition-colors hover:border-amber-500/50"
             >
               <User className="h-5 w-5 text-blue-400" />

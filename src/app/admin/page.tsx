@@ -50,7 +50,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!loading && !user) router.push("/sign-in");
-    if (!loading && user && !isPrivileged) router.push("/dashboard");
+    if (!loading && user && !isPrivileged) router.push(user.accountType ? "/profile" : "/onboarding");
   }, [isPrivileged, loading, router, user]);
 
   const fetchSummary = useCallback(async () => {

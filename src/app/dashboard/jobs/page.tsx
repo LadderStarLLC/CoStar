@@ -51,7 +51,7 @@ export default function EmployerJobsPage() {
       router.push('/sign-in');
     }
     if (!authLoading && user && user.accountType !== 'business') {
-      router.push(user.accountType ? '/dashboard' : '/onboarding');
+      router.push(user.accountType ? '/profile' : '/onboarding');
     }
   }, [user, authLoading, router]);
 
