@@ -126,7 +126,7 @@ export function InterviewScreen({
 
         <button
           onClick={onCancelInterview}
-          className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-500 hover:text-slate-300 hover:border-slate-600 text-sm transition-all"
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:text-white hover:border-slate-600 text-sm transition-all"
           title="Cancel without saving"
         >
           <X className="w-4 h-4" />

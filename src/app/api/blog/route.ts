@@ -2,9 +2,35 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { FieldValue, type Firestore } from 'firebase-admin/firestore';
+import { FieldValue, type Firestore, type Query } from 'firebase-admin/firestore';
 import { createBlogSlug } from '@/lib/blog';
-import { jsonError, requireAdmin } from '@/lib/firebaseAdmin';
+import { getCallerProfile, getAdminDb, isPrivilegedType, jsonError, requireAdmin } from '@/lib/firebaseAdmin';
+
+export async function GET(req: NextRequest) {
+  try {
+    const db = getAdminDb();
+    const slug = req.nextUrl.searchParams.get('slug')?.trim();
+    const includeDrafts = await callerCanManageBlog(req);
+    let ref: Query = db.collection('blogPosts');
+
+    if (slug) {
+      ref = ref.where('slug', '==', slug);
+    }
+    if (!includeDrafts) {
+      ref = ref.where('status', '==', 'published');
+    }
+
+    const snap = await ref.get();
+    const posts = snap.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .filter((post: any) => includeDrafts || post.status === 'published')
+      .sort((a: any, b: any) => timestampValue(b.publishedAt ?? b.updatedAt) - timestampValue(a.publishedAt ?? a.updatedAt));
+
+    return NextResponse.json({ posts });
+  } catch (err) {
+    return jsonError(err);
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -57,4 +83,24 @@ async function createUniqueSlug(db: Firestore, baseSlug: string): Promise<string
   }
 
   return `${baseSlug}-${Date.now()}`;
+}
+
+async function callerCanManageBlog(req: NextRequest): Promise<boolean> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) return false;
+
+  try {
+    const { profile } = await getCallerProfile(req);
+    return isPrivilegedType(profile?.accountType);
+  } catch {
+    return false;
+  }
+}
+
+function timestampValue(value: any): number {
+  if (!value) return 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (typeof value.toDate === 'function') return value.toDate().getTime();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }

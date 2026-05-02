@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 import { Edit3, FileText, Loader2, Plus, RefreshCw } from 'lucide-react';
 import NavHeader from '@/components/NavHeader';
 import { BlogEditor } from '@/components/blog/BlogEditor';
 import { useAuth } from '@/context/AuthContext';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import type { BlogPost, BlogPostStatus } from '@/lib/blog';
 import { serializeBlogTimestamp } from '@/lib/blog';
 
@@ -28,14 +27,16 @@ export function BlogPageClient() {
     setIsLoading(true);
     setError(null);
     try {
-      if (!db) throw new Error('Firestore is not initialized.');
-      const postsQuery = isPrivileged
-        ? query(collection(db, 'blogPosts'))
-        : query(collection(db, 'blogPosts'), where('status', '==', 'published'));
-      const snapshot = await getDocs(postsQuery);
-      const next = snapshot.docs
-        .map((docSnap) => normalizeBlogPost(docSnap.id, docSnap.data()))
-        .filter((post) => isPrivileged || post.status === 'published')
+      const headers: HeadersInit = {};
+      if (auth?.currentUser) {
+        headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+      }
+      const response = await fetch('/api/blog', { headers, cache: 'no-store' });
+      if (!response.ok) throw new Error(await response.text());
+      const data: { posts?: Array<Record<string, any>> } = await response.json();
+      const next = (data.posts ?? [])
+        .map((post: any) => normalizeBlogPost(post.id, post))
+        .filter((post: BlogPost) => isPrivileged || post.status === 'published')
         .sort((a, b) => dateValue(b.publishedAt ?? b.updatedAt) - dateValue(a.publishedAt ?? a.updatedAt));
       setPosts(next);
     } catch (err) {

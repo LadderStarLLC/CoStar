@@ -157,7 +157,7 @@ export function SetupScreen({
                   </button>
                   <button
                     onClick={() => { setSavingPreset(false); setPresetName(''); }}
-                    className="p-2 rounded-xl text-slate-500 hover:text-slate-300 hover:bg-slate-800/60 transition-all"
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-300 hover:bg-slate-800/60 transition-all"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -193,7 +193,7 @@ export function SetupScreen({
           <div className="flex justify-end">
             <button
               onClick={() => setSavingPreset(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 text-xs hover:text-slate-300 hover:bg-slate-800/60 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 text-xs hover:text-slate-300 hover:bg-slate-800/60 transition-all"
             >
               <BookmarkPlus className="w-3.5 h-3.5" />
               Save as preset
@@ -229,7 +229,7 @@ export function SetupScreen({
                     className={`flex-1 py-2 rounded-xl border text-sm font-semibold transition-all ${
                       config.difficulty === d.value
                         ? d.color
-                        : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:border-slate-600'
+                        : 'bg-slate-800/50 border-slate-700/50 text-slate-300 hover:border-slate-600'
                     }`}
                   >
                     {d.label}
