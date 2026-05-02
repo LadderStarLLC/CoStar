@@ -127,7 +127,7 @@ export function HistoryScreen() {
                 <button
                   onClick={(e) => handleDelete(e, session.id)}
                   disabled={deletingId === session.id}
-                  className="opacity-0 group-hover:opacity-100 shrink-0 p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                  className="opacity-0 group-hover:opacity-100 shrink-0 p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
                   title="Delete session"
                 >
                   {deletingId === session.id ? (

@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import NavHeader from '@/components/NavHeader';
 import { BlogContent } from '@/components/blog/BlogContent';
 import { useAuth } from '@/context/AuthContext';
-import { db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import type { BlogPost } from '@/lib/blog';
 import { serializeBlogTimestamp } from '@/lib/blog';
 
@@ -25,14 +24,16 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
       setIsLoading(true);
       setError(null);
       try {
-        if (!db) throw new Error('Firestore is not initialized.');
-        const postQuery = isPrivileged
-          ? query(collection(db, 'blogPosts'), where('slug', '==', params.slug))
-          : query(collection(db, 'blogPosts'), where('slug', '==', params.slug), where('status', '==', 'published'));
-        const snapshot = await getDocs(postQuery);
-        const match = snapshot.docs
-          .map((docSnap) => normalizeBlogPost(docSnap.id, docSnap.data()))
-          .find((candidate) => isPrivileged || candidate.status === 'published');
+        const headers: HeadersInit = {};
+        if (auth?.currentUser) {
+          headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+        }
+        const response = await fetch(`/api/blog?slug=${encodeURIComponent(params.slug)}`, { headers, cache: 'no-store' });
+        if (!response.ok) throw new Error(await response.text());
+        const data: { posts?: Array<Record<string, any>> } = await response.json();
+        const match = (data.posts ?? [])
+          .map((post: any) => normalizeBlogPost(post.id, post))
+          .find((candidate: BlogPost) => isPrivileged || candidate.status === 'published');
         setPost(match ?? null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not load this blog post.');

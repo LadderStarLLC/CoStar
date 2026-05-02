@@ -832,7 +832,7 @@ export async function publishPublicProfile(uid: string): Promise<void> {
     ...(current.publicDraft?.visibility ?? {}),
     displayName: true,
   };
-  const slug = await generateUniqueSlug(getProfileDisplayName(current), uid);
+  const slug = current.slug || createSlug(getProfileDisplayName(current), uid);
   const publicProfile: PublicProfile = {
     uid,
     accountType: current.accountType,
