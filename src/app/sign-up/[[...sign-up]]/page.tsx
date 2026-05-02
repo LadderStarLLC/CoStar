@@ -3,8 +3,8 @@
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
-import { ArrowLeft, Building2, Chrome, User, Users2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Building2, Chrome, Github, Mail, User, Users2 } from "lucide-react";
 import { accountTypeLabels, normalizeAccountType, type AccountType } from "@/lib/profile";
 import BrandLogo from "@/components/BrandLogo";
 
@@ -39,7 +39,7 @@ const accountTypeOptions: Array<{
 ];
 
 export default function SignUpPage() {
-  const { user, signInWithGoogle, loading } = useAuth();
+  const { user, signInWithGoogle, signInWithGithub, signUpWithEmail, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedTypeParam = searchParams.get("type");
@@ -48,13 +48,31 @@ export default function SignUpPage() {
     ? normalizedRequestedType
     : null;
 
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if (!loading && user) {
       router.push(user.accountType === "admin" || user.accountType === "owner" ? "/admin" : user.accountType ? "/profile" : "/onboarding");
     }
   }, [user, loading, router]);
 
-  if (loading) {
+  const handleEmailSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+    try {
+      await signUpWithEmail(email, password, requestedType);
+    } catch (err: any) {
+      setError(err.message || "Failed to create account. Please try again.");
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading || (user && !loading)) {
     return (
       <div className="min-h-screen flex items-center justify-center ladderstar-surface">
         <div className="text-[#F4F5F7]">Loading...</div>
@@ -66,11 +84,19 @@ export default function SignUpPage() {
     <div className="min-h-screen flex items-center justify-center ladderstar-surface px-4">
       <div className="w-full max-w-md p-8 bg-[#262A2E]/90 border border-white/10 rounded-lg shadow-2xl shadow-black/30">
         <button
-          onClick={() => router.push("/")}
+          onClick={() => {
+            if (showEmailForm) {
+              setShowEmailForm(false);
+            } else if (requestedType) {
+              router.push("/sign-up");
+            } else {
+              router.push("/");
+            }
+          }}
           className="flex items-center gap-2 text-[#F4F5F7]/62 hover:text-[#5DC99B] mb-8 transition-colors"
         >
           <ArrowLeft size={20} />
-          Back to Home
+          {showEmailForm ? "Back to all options" : requestedType ? "Back to account types" : "Back to Home"}
         </button>
 
         <div className="text-center mb-8">
@@ -86,13 +112,69 @@ export default function SignUpPage() {
         </div>
 
         {requestedType ? (
-          <button
-            onClick={() => signInWithGoogle(requestedType)}
-            className="w-full py-4 ladderstar-action text-[#1A1D20] rounded-lg font-bold text-lg hover:brightness-110 transition flex items-center justify-center gap-3"
-          >
-            <Chrome size={24} />
-            Continue with Google
-          </button>
+          showEmailForm ? (
+            <form onSubmit={handleEmailSignUp} className="space-y-4">
+              {error && (
+                <div className="p-3 text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-md">
+                  {error}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-[#F4F5F7] mb-1">Email</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-[#5DC99B]"
+                  placeholder="you@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#F4F5F7] mb-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-[#5DC99B]"
+                  placeholder="••••••••"
+                  minLength={6}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3 mt-4 ladderstar-action text-[#1A1D20] rounded-lg font-bold hover:brightness-110 transition disabled:opacity-50"
+              >
+                {isSubmitting ? "Creating account..." : "Sign Up"}
+              </button>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <button
+                onClick={() => signInWithGoogle(requestedType)}
+                className="w-full py-4 ladderstar-action text-[#1A1D20] rounded-lg font-bold text-lg hover:brightness-110 transition flex items-center justify-center gap-3"
+              >
+                <Chrome size={24} />
+                Continue with Google
+              </button>
+              <button
+                onClick={() => signInWithGithub(requestedType)}
+                className="w-full py-4 bg-[#24292e] text-white rounded-lg font-bold text-lg hover:brightness-110 transition flex items-center justify-center gap-3 border border-white/10"
+              >
+                <Github size={24} />
+                Continue with GitHub
+              </button>
+              <button
+                onClick={() => setShowEmailForm(true)}
+                className="w-full py-4 bg-white/5 text-white rounded-lg font-bold text-lg hover:bg-white/10 transition flex items-center justify-center gap-3 border border-white/10"
+              >
+                <Mail size={24} />
+                Continue with Email
+              </button>
+            </div>
+          )
         ) : (
           <div className="space-y-3">
             {accountTypeOptions.map(({ type, title, description, Icon, accent }) => (
