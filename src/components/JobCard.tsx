@@ -102,7 +102,7 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
   return (
     <Link href={jobLink}>
       <div
-        className="group bg-[#262A2E] border border-white/10 rounded-lg p-5 hover:border-[#5DC99B]/55 hover:shadow-[0_18px_44px_rgba(0,0,0,0.28)] transition-all duration-300 cursor-pointer"
+        className="group min-h-[222px] bg-[#262A2E] border border-white/10 rounded-lg p-5 hover:border-[#5DC99B]/55 hover:shadow-[0_18px_44px_rgba(0,0,0,0.28)] transition-colors duration-300 cursor-pointer"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -120,11 +120,11 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 className="text-[#F4F5F7] font-bold text-lg group-hover:text-[#E5B536] transition-colors truncate">
+                <h3 className="min-h-7 text-[#F4F5F7] font-bold text-lg group-hover:text-[#E5B536] transition-colors truncate">
                   {job.title}
                 </h3>
                 {showCompany && job.companyName && (
-                  <p className="text-[#F4F5F7]/62 text-sm">{job.companyName}</p>
+                  <p className="min-h-5 text-[#F4F5F7]/62 text-sm">{job.companyName}</p>
                 )}
               </div>
 
@@ -145,7 +145,7 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
             </div>
 
             {/* Meta Info */}
-            <div className="flex flex-wrap items-center gap-3 mt-3 text-sm text-[#F4F5F7]/62">
+            <div className="flex min-h-6 flex-wrap items-center gap-3 mt-3 text-sm text-[#F4F5F7]/62">
               {/* Location */}
               {(job.location?.city || job.location?.country) && (
                 <div className="flex items-center gap-1">
@@ -194,12 +194,12 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
 
             {/* Short Description */}
             {job.shortDescription && (
-              <p className="text-[#F4F5F7]/64 text-sm mt-2 line-clamp-2">{job.shortDescription}</p>
+              <p className="min-h-10 text-[#F4F5F7]/64 text-sm mt-2 line-clamp-2">{job.shortDescription}</p>
             )}
 
             {/* Tags */}
             {job.tags && job.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="flex min-h-7 flex-wrap gap-2 mt-3">
                 {job.tags.slice(0, 4).map((tag, index) => (
                   <span
                     key={index}

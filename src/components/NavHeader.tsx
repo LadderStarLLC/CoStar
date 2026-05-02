@@ -8,6 +8,8 @@ import { LogOut, User, Mic, Shield, ChevronDown, Settings } from 'lucide-react';
 import SiteSearch from './SiteSearch';
 import BrandLogo from './BrandLogo';
 import { useState, useRef, useEffect } from 'react';
+import { fetchWalletSummary } from "@/lib/walletClient";
+import { walletLabel, type WalletSummary } from "@/lib/wallet";
 
 export default function NavHeader() {
   const { user, logout, loading } = useAuth();
@@ -23,6 +25,7 @@ export default function NavHeader() {
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -36,6 +39,12 @@ export default function NavHeader() {
     };
   }, []);
 
+  useEffect(() => {
+    if (user && dropdownOpen && !walletSummary) {
+      fetchWalletSummary(user).then(setWalletSummary).catch(console.error);
+    }
+  }, [user, dropdownOpen, walletSummary]);
+
   const handleLogout = async () => {
     await logout();
     router.push('/');
@@ -43,9 +52,14 @@ export default function NavHeader() {
 
   if (loading) {
     return (
-      <header className="border-b border-white/10 bg-[#262A2E]/60 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="h-8 bg-[#1A1D20]/70 animate-pulse rounded"></div>
+      <header className="border-b border-white/10 bg-[#262A2E]/75 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto min-h-[73px] px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <BrandLogo size="sm" priority />
+            <span className="text-[#F4F5F7] font-bold tracking-tight">LadderStar</span>
+          </div>
+          <div className="hidden md:flex h-6 w-[280px] rounded bg-[#1A1D20]/70 animate-pulse" />
+          <div className="h-10 w-[104px] rounded-lg bg-[#1A1D20]/70 animate-pulse" />
         </div>
       </header>
     );
@@ -53,10 +67,10 @@ export default function NavHeader() {
 
   return (
     <header className="border-b border-white/10 bg-[#262A2E]/75 backdrop-blur-md sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
+      <div className="max-w-7xl mx-auto min-h-[73px] px-4 sm:px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
-            <BrandLogo size="sm" />
+            <BrandLogo size="sm" priority />
             <span className="text-[#F4F5F7] font-bold tracking-tight">LadderStar</span>
           </Link>
         </div>
@@ -112,6 +126,12 @@ export default function NavHeader() {
 
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-[#262A2E] border border-white/10 rounded-lg shadow-lg overflow-hidden py-1 z-50">
+                  {walletSummary?.wallet && (
+                    <div className="px-4 py-2 border-b border-white/10 mb-1">
+                      <div className="text-xs text-[#F4F5F7]/50 uppercase tracking-wider">{walletLabel(walletSummary.wallet.currency)}</div>
+                      <div className="text-sm font-bold text-[#E5B536]">{walletSummary.wallet.balance}</div>
+                    </div>
+                  )}
                   <Link
                     href={profileHref}
                     className="flex items-center gap-2 px-4 py-2 text-sm text-[#F4F5F7]/72 hover:text-[#5DC99B] hover:bg-white/5 w-full text-left transition-colors"

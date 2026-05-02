@@ -1,176 +1,27 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { getScrapedJobById, JobData } from '@/lib/jobs';
-import { deserializeCareerjetJob, serializeCareerjetJob } from '@/lib/careerjet';
 import Link from 'next/link';
-import NavHeader from '@/components/NavHeader';
-import { useAuth } from '@/context/AuthContext';
-import { getOrCreateConversation } from '@/lib/messaging';
-import { useMessaging } from '@/context/MessagingContext';
-import {
-  ArrowLeft,
-  MapPin,
-  Clock,
-  DollarSign,
-  Briefcase,
-  Globe,
-  Bookmark,
-  Share2,
-  ExternalLink,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-  Users,
-  Mic,
-  MessageCircle
-} from 'lucide-react';
+import { AlertCircle, ArrowLeft, Briefcase, Clock, DollarSign, MapPin } from 'lucide-react';
+import { deserializeCareerjetJob } from '@/lib/careerjet';
+import { getAdminDb } from '@/lib/firebaseAdmin';
+import { convertScrapedJobToJobData, JobData, ScrapedJobData } from '@/lib/jobs';
+import JobDetailActions from './JobDetailActions';
 
-export default function JobDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const jobId = params.jobId as string;
-  const { user } = useAuth();
-  const { openMessaging } = useMessaging();
+export const dynamic = 'force-dynamic';
 
-  const [job, setJob] = useState<JobData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [applied, setApplied] = useState(false);
-  const [isMessaging, setIsMessaging] = useState(false);
+type JobDetailPageProps = {
+  params: { jobId: string };
+  searchParams: Record<string, string | string[] | undefined>;
+};
 
-  const handleMessageRecruiter = async () => {
-    if (!user) {
-      router.push('/sign-in');
-      return;
-    }
-    
-    setIsMessaging(true);
-    try {
-      const recruiterId = job?.employerId || `mock_recruiter_${job?.companyName?.replace(/\s+/g, '') || 'unknown'}`;
-      const conversationId = await getOrCreateConversation({
-        [user.uid]: {
-          uid: user.uid,
-          name: user.displayName || 'Talent',
-          avatarUrl: user.photoURL || null,
-          role: 'talent'
-        },
-        [recruiterId]: {
-          uid: recruiterId,
-          name: `${job?.companyName || 'Company'} Recruiter`,
-          avatarUrl: null,
-          role: 'agency'
-        }
-      });
-      openMessaging(conversationId);
-    } catch (err) {
-      console.error('Failed to start conversation:', err);
-      alert('Failed to start conversation. Please try again.');
-    } finally {
-      setIsMessaging(false);
-    }
-  };
+export default async function JobDetailPage({ params, searchParams }: JobDetailPageProps) {
+  const job = await loadJob(params.jobId, searchParams);
 
-  useEffect(() => {
-    const loadJob = async () => {
-      if (!jobId) return;
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const payloadJob = deserializeCareerjetJob(searchParams.get('job'));
-
-        if (payloadJob && payloadJob.jobId === jobId) {
-          setJob(payloadJob);
-          return;
-        }
-
-        const jobData = await getScrapedJobById(jobId);
-
-        if (!jobData) {
-          setError('Job not found');
-          setIsLoading(false);
-          return;
-        }
-
-        setJob(jobData);
-      } catch (err) {
-        setError('Failed to load job details');
-        console.error('Error loading job:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadJob();
-  }, [jobId, searchParams]);
-
-  const formatSalary = () => {
-    if (!job?.salary?.visible || (!job.salary?.min && !job.salary?.max)) return 'Salary not disclosed';
-
-    const currency = job.salary.currency || 'USD';
-    const formatNumber = (num: number) => {
-      if (num >= 1000) return `$${(num / 1000).toFixed(0)}k`;
-      return `$${num}`;
-    };
-
-    const min = job.salary.min ? formatNumber(job.salary.min) : '';
-    const max = job.salary.max ? formatNumber(job.salary.max) : '';
-
-    return `${min}${min && max ? ' - ' : ''}${max} /${job.salary.period === 'yearly' ? 'yr' : job.salary.period === 'monthly' ? 'mo' : 'hr'}`;
-  };
-
-  const formatDate = () => {
-    if (!job?.createdAt) return '';
-
-    let date;
-    if (job.createdAt.toDate) {
-      date = job.createdAt.toDate();
-    } else {
-      date = new Date(job.createdAt);
-    }
-
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const handleApply = () => {
-    // Always try to open the application URL if it exists
-    if (job?.application?.url) {
-      window.open(job.application.url, '_blank');
-    } else if (job?.application?.email) {
-      window.location.href = `mailto:${job.application.email}`;
-    } else {
-      setApplied(true);
-    }
-  };
-
-  const handleSave = () => {
-    setSaved(!saved);
-  };
-
-  if (isLoading) {
+  if (!job) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-      </div>
-    );
-  }
-
-  if (error || !job) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
           <h2 className="text-white text-xl font-semibold mb-2">Job not found</h2>
-          <p className="text-slate-400 mb-6">{error || 'This job may have been removed'}</p>
+          <p className="text-slate-400 mb-6">This job may have been removed</p>
           <Link
             href="/jobs"
             className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl font-medium"
@@ -185,40 +36,32 @@ export default function JobDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      {/* Header */}
       <div className="bg-slate-800/50 border-b border-white/10">
-        <div className="max-w-5xl mx-auto px-4 py-6">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
-          >
+        <div className="max-w-5xl mx-auto px-4 py-6 min-h-[97px]">
+          <Link href="/jobs" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Back to jobs
-          </button>
+          </Link>
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Job Details */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Job Header */}
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold text-white mb-2">{job.title}</h1>
-                  <div className="flex items-center gap-2 text-slate-400 flex-wrap">
+            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6 min-h-[214px]">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h1 className="text-2xl font-bold text-white mb-2 break-words">{job.title}</h1>
+                  <div className="flex items-center gap-2 text-slate-400 flex-wrap min-h-6">
                     <span className="font-medium text-amber-400">{job.companyName}</span>
                     {job.employment?.experienceLevel && (
                       <>
-                        <span>•</span>
+                        <span>-</span>
                         <span className="capitalize">{job.employment.experienceLevel}</span>
                       </>
                     )}
                   </div>
-                  {/* Category and Source */}
-                  <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-2 mt-2 min-h-6 flex-wrap">
                     {job.category && (
                       <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full text-xs">
                         {job.category}
@@ -232,48 +75,20 @@ export default function JobDetailPage() {
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleSave}
-                    className={`p-3 rounded-xl border transition-colors ${
-                      saved
-                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
-                        : 'border-white/10 text-slate-400 hover:text-white hover:border-white/20'
-                    }`}
-                  >
-                    <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
-                  </button>
-                  <button className="p-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-colors">
-                    <Share2 className="w-5 h-5" />
-                  </button>
-                </div>
+                <div className="hidden h-11 w-[94px] shrink-0 sm:block" aria-hidden="true" />
               </div>
 
-              {/* Meta Info */}
-              <div className="flex flex-wrap items-center gap-4 mt-6 pt-6 border-t border-white/10">
+              <div className="flex flex-wrap items-center gap-4 mt-6 pt-6 border-t border-white/10 min-h-[53px]">
                 {(job.location?.city || job.location?.country) && (
                   <div className="flex items-center gap-2 text-slate-300">
                     <MapPin className="w-4 h-4 text-slate-500" />
-                    <span>
-                      {[job.location.city, job.location.country].filter(Boolean).join(', ')}
-                    </span>
+                    <span>{[job.location.city, job.location.country].filter(Boolean).join(', ')}</span>
                   </div>
                 )}
 
                 {job.location?.remotePolicy && (
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${
-                    job.location.remotePolicy === 'remote'
-                      ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                      : job.location.remotePolicy === 'hybrid'
-                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                      : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                  }`}>
-                    {job.location.remotePolicy === 'remote'
-                      ? 'Remote'
-                      : job.location.remotePolicy === 'hybrid'
-                      ? 'Hybrid'
-                      : 'On-site'}
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${remoteBadgeClass(job.location.remotePolicy)}`}>
+                    {job.location.remotePolicy === 'remote' ? 'Remote' : job.location.remotePolicy === 'hybrid' ? 'Hybrid' : 'On-site'}
                   </span>
                 )}
 
@@ -284,71 +99,44 @@ export default function JobDetailPage() {
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Clock className="w-4 h-4 text-slate-500" />
-                  <span>Posted {formatDate()}</span>
-                </div>
+                {formatDate(job.createdAt) && (
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Clock className="w-4 h-4 text-slate-500" />
+                    <span>Posted {formatDate(job.createdAt)}</span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2 text-green-400 font-medium">
                   <DollarSign className="w-4 h-4" />
-                  <span>{formatSalary()}</span>
+                  <span>{formatSalary(job)}</span>
                 </div>
               </div>
             </div>
 
-            {/* Description */}
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6 min-h-[210px]">
               <h2 className="text-white font-semibold text-lg mb-4">About this role</h2>
               <div className="prose prose-invert max-w-none">
                 <p className="text-slate-300 whitespace-pre-wrap break-words">{job.description}</p>
               </div>
             </div>
 
-            {/* Skills */}
             {job.skills && ((job.skills.required?.length ?? 0) > 0 || (job.skills.preferred?.length ?? 0) > 0) && (
               <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
                 <h2 className="text-white font-semibold text-lg mb-4">Skills & Requirements</h2>
-
                 {(job.skills.required?.length ?? 0) > 0 && (
-                  <div className="mb-4">
-                    <h3 className="text-slate-400 text-sm font-medium mb-2">Required Skills</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {job.skills?.required?.map(skill => (
-                        <span
-                          key={skill}
-                          className="px-3 py-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-lg text-sm"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  <SkillGroup title="Required Skills" skills={job.skills.required || []} tone="required" />
                 )}
-
                 {(job.skills.preferred?.length ?? 0) > 0 && (
-                  <div>
-                    <h3 className="text-slate-400 text-sm font-medium mb-2">Nice to Have</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {job.skills?.preferred?.map(skill => (
-                        <span
-                          key={skill}
-                          className="px-3 py-1.5 bg-slate-700/50 text-slate-300 border border-white/10 rounded-lg text-sm"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  <SkillGroup title="Nice to Have" skills={job.skills.preferred || []} tone="preferred" />
                 )}
               </div>
             )}
 
-            {/* Tags */}
             {(job.tags?.length ?? 0) > 0 && (
               <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
                 <h2 className="text-white font-semibold text-lg mb-4">Tags</h2>
                 <div className="flex flex-wrap gap-2">
-                  {job.tags?.map(tag => (
+                  {job.tags?.map((tag) => (
                     <Link
                       key={tag}
                       href={`/jobs?tag=${encodeURIComponent(tag)}`}
@@ -361,13 +149,12 @@ export default function JobDetailPage() {
               </div>
             )}
 
-            {/* Screening Process */}
             {job.screening?.stages && (job.screening.stages.length ?? 0) > 0 && (
               <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
                 <h2 className="text-white font-semibold text-lg mb-4">Interview Process</h2>
                 <div className="space-y-3">
-                  {job.screening?.stages?.map((stage, index) => (
-                    <div key={index} className="flex items-center gap-3">
+                  {job.screening.stages.map((stage, index) => (
+                    <div key={stage} className="flex items-center gap-3">
                       <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm font-medium">
                         {index + 1}
                       </div>
@@ -379,92 +166,14 @@ export default function JobDetailPage() {
             )}
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Apply Card */}
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6 sticky top-4">
-              {applied ? (
-                <div className="text-center py-4">
-                  <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-3" />
-                  <h3 className="text-white font-semibold mb-1">Application Submitted!</h3>
-                  <p className="text-slate-400 text-sm">
-                    Good luck with your application
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {job.application?.url ? (
-                    <a
-                      href={job.application.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-900 rounded-xl font-bold mb-4"
-                    >
-                      Apply on Company Site
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  ) : (
-                    <button
-                      onClick={handleApply}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-900 rounded-xl font-bold mb-4"
-                    >
-                      Apply Now
-                    </button>
-                  )}
-
-                  {user ? (
-                    <Link
-                      href={{
-                        pathname: `/jobs/${jobId}/audition`,
-                        query: { job: serializeCareerjetJob(job) },
-                      }}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 mb-1
-                        bg-gradient-to-r from-violet-600 to-purple-600
-                        hover:from-violet-500 hover:to-purple-500
-                        text-white rounded-xl font-bold transition-all border border-violet-500/30"
-                    >
-                      <Mic className="w-4 h-4" />
-                      Practice Audition
-                      <span className="ml-auto text-xs font-normal opacity-70">AI Interview</span>
-                    </Link>
-                  ) : (
-                    <button
-                      onClick={() => router.push('/sign-in')}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 mb-1
-                        bg-gradient-to-r from-violet-600 to-purple-600
-                        hover:from-violet-500 hover:to-purple-500
-                        text-white rounded-xl font-bold transition-all border border-violet-500/30"
-                    >
-                      <Mic className="w-4 h-4" />
-                      Sign in to practice
-                      <span className="ml-auto text-xs font-normal opacity-70">AI Interview</span>
-                    </button>
-                  )}
-                </>
-              )}
-
-              {/* Quick Info */}
-              <div className="mt-6 pt-6 border-t border-white/10 space-y-3">
-                <div className="flex items-center gap-3 text-slate-400">
-                  <Users className="w-4 h-4" />
-                  <span className="text-sm">
-                    {job.metrics?.applications || 0} applicants
-                  </span>
-                </div>
-                {job.employment?.type && (
-                  <div className="flex items-center gap-3 text-slate-400">
-                    <Briefcase className="w-4 h-4" />
-                    <span className="text-sm capitalize">{job.employment.type.replace('-', ' ')}</span>
-                  </div>
-                )}
-              </div>
+            <div className="lg:sticky lg:top-6">
+              <JobDetailActions job={job} jobId={params.jobId} />
             </div>
 
-            {/* Company Info */}
             {job.companyName && (
-              <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+              <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6 min-h-[134px]">
                 <h3 className="text-white font-semibold mb-4">About {job.companyName}</h3>
-
                 {job.source && (
                   <p className="text-slate-400 text-sm mb-4">
                     <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs">
@@ -472,27 +181,92 @@ export default function JobDetailPage() {
                     </span>
                   </p>
                 )}
-
                 {job.location?.city && (
                   <div className="flex items-center gap-3 text-slate-400 text-sm mb-2">
                     <MapPin className="w-4 h-4" />
-                    <span>
-                      {[job.location.city, job.location.country].filter(Boolean).join(', ')}
-                    </span>
+                    <span>{[job.location.city, job.location.country].filter(Boolean).join(', ')}</span>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Similar Jobs Link */}
-            <Link
-              href="/jobs"
-              className="block text-center text-amber-400 hover:text-amber-300 text-sm"
-            >
-              ← Browse more jobs
+            <Link href="/jobs" className="block text-center text-amber-400 hover:text-amber-300 text-sm">
+              Browse more jobs
             </Link>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+async function loadJob(jobId: string, searchParams: JobDetailPageProps['searchParams']) {
+  const payload = Array.isArray(searchParams.job) ? searchParams.job[0] : searchParams.job;
+  const payloadJob = deserializeCareerjetJob(payload || null);
+  if (payloadJob && payloadJob.jobId === jobId) return toSerializableJob(payloadJob);
+
+  try {
+    const snap = await getAdminDb().doc(`scrapedJobs/${jobId}`).get();
+    if (!snap.exists) return null;
+    return toSerializableJob(convertScrapedJobToJobData({ ...(snap.data() as ScrapedJobData), id: snap.id }));
+  } catch (error) {
+    console.warn('[jobs/detail] Unable to load job on server:', error);
+    return null;
+  }
+}
+
+function toSerializableJob(job: JobData): JobData {
+  return JSON.parse(JSON.stringify(job));
+}
+
+function formatSalary(job: JobData) {
+  if (!job.salary?.visible || (!job.salary?.min && !job.salary?.max)) return 'Salary not disclosed';
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000) return `$${(num / 1000).toFixed(0)}k`;
+    return `$${num}`;
+  };
+
+  const min = job.salary.min ? formatNumber(job.salary.min) : '';
+  const max = job.salary.max ? formatNumber(job.salary.max) : '';
+
+  return `${min}${min && max ? ' - ' : ''}${max} /${job.salary.period === 'yearly' ? 'yr' : job.salary.period === 'monthly' ? 'mo' : 'hr'}`;
+}
+
+function formatDate(value: unknown) {
+  if (!value) return '';
+  const date = new Date(value as string);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function remoteBadgeClass(remotePolicy: string) {
+  if (remotePolicy === 'remote') return 'bg-green-500/20 text-green-400 border-green-500/30';
+  if (remotePolicy === 'hybrid') return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+  return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+}
+
+function SkillGroup({ title, skills, tone }: { title: string; skills: string[]; tone: 'required' | 'preferred' }) {
+  return (
+    <div className="mb-4 last:mb-0">
+      <h3 className="text-slate-400 text-sm font-medium mb-2">{title}</h3>
+      <div className="flex flex-wrap gap-2">
+        {skills.map((skill) => (
+          <span
+            key={skill}
+            className={
+              tone === 'required'
+                ? 'px-3 py-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-lg text-sm'
+                : 'px-3 py-1.5 bg-slate-700/50 text-slate-300 border border-white/10 rounded-lg text-sm'
+            }
+          >
+            {skill}
+          </span>
+        ))}
       </div>
     </div>
   );

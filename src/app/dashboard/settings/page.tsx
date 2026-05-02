@@ -330,11 +330,7 @@ export default function AccountSettingsPage() {
   };
 
   if (authLoading || isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-      </div>
-    );
+    return <SettingsLoadingShell />;
   }
 
   if (!user) return null;
@@ -747,6 +743,33 @@ function splitCsv(value: string): string[] {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function SettingsLoadingShell() {
+  return (
+    <div className="min-h-screen bg-slate-900">
+      <NavHeader />
+      <main className="max-w-4xl mx-auto px-6 py-8">
+        <div className="mb-8">
+          <div className="mb-3 h-9 w-72 rounded bg-white/10" />
+          <div className="h-5 w-full max-w-lg rounded bg-white/10" />
+        </div>
+        <div className="space-y-6">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <section key={index} className="min-h-[220px] rounded-xl border border-white/10 bg-slate-800/50 p-6">
+              <div className="mb-6 h-7 w-48 rounded bg-white/10" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="h-12 rounded-xl bg-slate-900" />
+                <div className="h-12 rounded-xl bg-slate-900" />
+                <div className="h-12 rounded-xl bg-slate-900" />
+                <div className="h-12 rounded-xl bg-slate-900" />
+              </div>
+            </section>
+          ))}
+        </div>
+      </main>
+    </div>
+  );
 }
 
 function formatWalletDate(value: unknown): string {
