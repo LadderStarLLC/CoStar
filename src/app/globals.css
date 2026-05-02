@@ -147,6 +147,19 @@ body {
     color: #F4F5F7;
   }
 
+  button.bg-blue-500,
+  a.bg-blue-500,
+  button.bg-green-500,
+  a.bg-green-500,
+  button.bg-purple-500,
+  a.bg-purple-500,
+  button.bg-violet-500,
+  a.bg-violet-500,
+  button.bg-violet-600,
+  a.bg-violet-600 {
+    color: #1A1D20;
+  }
+
   .text-slate-200,
   .text-slate-300 {
     color: rgb(244 245 247 / 0.76);

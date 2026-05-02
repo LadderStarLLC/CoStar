@@ -3,7 +3,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
     GoogleAuthProvider,
+    GithubAuthProvider,
     signInWithPopup,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
     signOut,
     onAuthStateChanged
 } from 'firebase/auth';
@@ -55,8 +58,54 @@ export const AuthProvider = ({ children }) => {
             }
             await signInWithPopup(auth, provider);
         } catch (error) {
-            console.error("Error signing in:", error);
+            console.error("Error signing in with Google:", error);
             alert("Sign-In Error: " + error.message);
+        }
+    };
+
+    const signInWithGithub = async (requestedType = null) => {
+        if (!auth) {
+            alert("Firebase Auth not initialized. Please check environment variables.");
+            return;
+        }
+        const provider = new GithubAuthProvider();
+        try {
+            if (requestedType && isAccountType(requestedType)) {
+                window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
+            }
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            console.error("Error signing in with Github:", error);
+            alert("Sign-In Error: " + error.message);
+        }
+    };
+
+    const signInWithEmail = async (email, password) => {
+        if (!auth) {
+            alert("Firebase Auth not initialized.");
+            return;
+        }
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            console.error("Error signing in with email:", error);
+            throw error;
+        }
+    };
+
+    const signUpWithEmail = async (email, password, requestedType = null) => {
+        if (!auth) {
+            alert("Firebase Auth not initialized.");
+            return;
+        }
+        try {
+            if (requestedType && isAccountType(requestedType)) {
+                window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
+            }
+            await createUserWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            console.error("Error signing up with email:", error);
+            throw error;
         }
     };
 
@@ -137,6 +186,9 @@ export const AuthProvider = ({ children }) => {
     const value = {
         user,
         signInWithGoogle,
+        signInWithGithub,
+        signInWithEmail,
+        signUpWithEmail,
         logout,
         loading
     };

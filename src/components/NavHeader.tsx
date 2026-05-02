@@ -8,8 +8,8 @@ import { LogOut, User, Mic, Shield, ChevronDown, Settings } from 'lucide-react';
 import SiteSearch from './SiteSearch';
 import BrandLogo from './BrandLogo';
 import { useState, useRef, useEffect } from 'react';
-import { fetchWalletSummary } from "@/lib/walletClient";
-import { walletLabel, type WalletSummary } from "@/lib/wallet";
+import { fetchWalletSummary, getCachedWalletSummary } from "@/lib/walletClient";
+import { currencyForAccountType, walletLabel, type WalletSummary } from "@/lib/wallet";
 
 export default function NavHeader() {
   const { user, logout, loading } = useAuth();
@@ -40,15 +40,33 @@ export default function NavHeader() {
   }, []);
 
   useEffect(() => {
-    if (user && dropdownOpen && !walletSummary) {
-      fetchWalletSummary(user).then(setWalletSummary).catch(console.error);
+    if (!user) {
+      setWalletSummary(null);
+      return;
     }
-  }, [user, dropdownOpen, walletSummary]);
+
+    let cancelled = false;
+    const cached = getCachedWalletSummary(user.uid);
+    if (cached) setWalletSummary(cached);
+
+    fetchWalletSummary(user)
+      .then((summary) => {
+        if (!cancelled) setWalletSummary(summary);
+      })
+      .catch(console.error);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const handleLogout = async () => {
     await logout();
     router.push('/');
   };
+
+  const menuCurrency = walletSummary?.wallet?.currency ?? currencyForAccountType(accountType);
+  const menuBalance = walletSummary?.wallet?.balance;
 
   if (loading) {
     return (
@@ -126,10 +144,10 @@ export default function NavHeader() {
 
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-[#262A2E] border border-white/10 rounded-lg shadow-lg overflow-hidden py-1 z-50">
-                  {walletSummary?.wallet && (
+                  {menuCurrency && (
                     <div className="px-4 py-2 border-b border-white/10 mb-1">
-                      <div className="text-xs text-[#F4F5F7]/50 uppercase tracking-wider">{walletLabel(walletSummary.wallet.currency)}</div>
-                      <div className="text-sm font-bold text-[#E5B536]">{walletSummary.wallet.balance}</div>
+                      <div className="text-xs text-[#F4F5F7]/50 uppercase tracking-wider">{walletLabel(menuCurrency)}</div>
+                      <div className="text-sm font-bold text-[#E5B536]">{typeof menuBalance === 'number' ? menuBalance : '...'}</div>
                     </div>
                   )}
                   <Link
