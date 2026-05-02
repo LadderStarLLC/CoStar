@@ -12,7 +12,7 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push(user.accountType === "admin" || user.accountType === "owner" ? "/admin" : user.accountType ? "/dashboard" : "/onboarding");
+      router.push(user.accountType === "admin" || user.accountType === "owner" ? "/admin" : user.accountType ? "/profile" : "/onboarding");
     }
   }, [user, loading, router]);
 

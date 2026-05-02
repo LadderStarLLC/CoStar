@@ -230,7 +230,7 @@ export default function OnboardingPage() {
         ...nextProfile,
         profileComplete: calculateProfileComplete(nextProfile),
       });
-      router.push("/dashboard");
+      router.push("/profile");
     } catch (err) {
       console.error("Failed to save profile:", err);
       setError("Could not save your profile. Check your connection and try again.");
