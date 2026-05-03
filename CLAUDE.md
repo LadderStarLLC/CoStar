@@ -1,8 +1,8 @@
 # CoStar / LadderStar - Agent and AI Context
 
 This document is read by AI coding agents working in this repository. `AGENTS.md`,
-`CLAUDE.md`, and `GEMINI.md` should stay synchronized unless there is a
-specific reason for one agent to receive different instructions.
+`CLAUDE.md`, `GEMINI.md`, and `CODEX.md` should stay synchronized unless there
+is a specific reason for one agent to receive different instructions.
 
 The repository/package is still named `costar`, but the product UI and public
 brand are LadderStar.
@@ -281,6 +281,42 @@ organized around:
 - Security: connected providers and account deletion controls.
 
 Detailed public-field publishing controls live on `/profile`.
+
+---
+
+## Public Footer, Company Pages, and Legal Pages
+
+The public site uses a shared LadderStar footer with links to platform,
+company, account, and legal resources. The footer is intended for public pages
+and should not be shown on operational app surfaces where it would distract
+from the workflow, such as admin, dashboard, account, onboarding, profile, and
+active audition pages.
+
+Company and legal pages include:
+- `/about`
+- `/contact`
+- `/privacy`
+- `/terms`
+- `/cookies`
+- `/acceptable-use`
+- `/refund-policy`
+- `/accessibility`
+- `/security`
+- `/ai-policy`
+
+Legal operator identity:
+- Ladder Star LLC
+- 30 N Gould St, STE R, Sheridan, WY 82801, USA
+- Support: `support@ladderstar.com`
+- Privacy: `privacy@ladderstar.com`
+- Legal: `legal@ladderstar.com`
+
+Privacy and terms content should reflect the actual systems in this repo:
+Firebase Auth, Firestore profiles and public profile projections, Gemini Live
+API audition practice, TipTap messaging, Stripe billing, Vercel analytics and
+speed insights, admin audit logs, and premium wallets. Do not claim compliance
+certifications, audits, or security guarantees that are not implemented and
+verified.
 
 ---
 
