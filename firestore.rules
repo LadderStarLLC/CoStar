@@ -169,6 +169,12 @@ service cloud.firestore {
       }
     }
 
+    // Immutable admin operation audit trail. Server routes write these through Admin SDK.
+    match /adminAuditLogs/{logId} {
+      allow read: if isPrivilegedAccount();
+      allow create, update, delete: if false;
+    }
+
     // Blog posts - published posts are public; drafts and writes are admin/owner only.
     match /blogPosts/{postId} {
       allow read: if resource.data.status == 'published' || isPrivilegedAccount();

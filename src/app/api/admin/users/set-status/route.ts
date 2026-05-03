@@ -4,11 +4,12 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue } from 'firebase-admin/firestore';
+import { auditSnapshot, writeAdminAuditLog } from '@/lib/adminAudit';
 import { getAdminApp, jsonError, requireAdmin } from '@/lib/firebaseAdmin';
 
 export async function POST(req: NextRequest) {
   try {
-    const { db } = await requireAdmin(req);
+    const { decoded, profile, db } = await requireAdmin(req);
     const body = await req.json();
     const uid = String(body.uid ?? '');
     const moderationStatus = body.moderationStatus as 'active' | 'suspended' | undefined;
@@ -48,6 +49,9 @@ export async function POST(req: NextRequest) {
       updates.publicProfileEnabled = publicProfileEnabled;
     }
 
+    const before = auditSnapshot(data, ['moderationStatus', 'disabled', 'publicProfileEnabled']);
+    updates.lastAdminActionBy = decoded.uid;
+    updates.lastAdminActionAt = FieldValue.serverTimestamp();
     await userRef.update(updates);
 
     const publicUpdates: Record<string, unknown> = {
@@ -65,6 +69,20 @@ export async function POST(req: NextRequest) {
       publicUpdates.searchable = publicProfileEnabled;
     }
     await db.doc(`publicProfiles/${uid}`).set(publicUpdates, { merge: true });
+    await writeAdminAuditLog({
+      db,
+      actor: decoded,
+      actorRole: profile?.accountType ?? null,
+      targetUid: uid,
+      targetEmail: data.email ?? null,
+      action: moderationStatus ? 'user.status.updated' : 'user.public_profile.updated',
+      before,
+      after: {
+        ...(moderationStatus ? { moderationStatus, disabled: moderationStatus === 'suspended' } : {}),
+        ...(typeof publicProfileEnabled === 'boolean' ? { publicProfileEnabled } : {}),
+      },
+      reason: moderationStatus ? `Legacy status action: ${moderationStatus}` : 'Legacy public profile action',
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return jsonError(err);

@@ -3,11 +3,12 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
+import { writeAdminAuditLog } from '@/lib/adminAudit';
 import { jsonError, requireOwner } from '@/lib/firebaseAdmin';
 
 export async function POST(req: NextRequest) {
   try {
-    const { db } = await requireOwner(req);
+    const { decoded, profile, db } = await requireOwner(req);
     const snap = await db.collection('users').where('accountType', '==', 'user').get();
 
     if (snap.empty) {
@@ -39,6 +40,17 @@ export async function POST(req: NextRequest) {
     if (batchSize > 0) {
       await batch.commit();
     }
+
+    await writeAdminAuditLog({
+      db,
+      actor: decoded,
+      actorRole: profile?.accountType ?? null,
+      targetUid: 'migration:talent',
+      action: 'migration.talent.updated',
+      before: { accountType: 'user' },
+      after: { accountType: 'talent', migrated },
+      reason: 'Legacy user account migration',
+    });
 
     return NextResponse.json({ ok: true, migrated });
   } catch (err) {

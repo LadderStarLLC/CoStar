@@ -3,11 +3,12 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
+import { auditSnapshot, writeAdminAuditLog } from '@/lib/adminAudit';
 import { jsonError, normalizeAdminEmail, requireOwner } from '@/lib/firebaseAdmin';
 
 export async function POST(req: NextRequest) {
   try {
-    const { db } = await requireOwner(req);
+    const { decoded, profile, db } = await requireOwner(req);
     const body = await req.json();
     const email = normalizeAdminEmail(body.email);
     const action = body.action as 'promote-admin' | 'demote-admin';
@@ -32,7 +33,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Only admin accounts can be demoted with this action.' }, { status: 400 });
     }
 
-    await userDoc.ref.update({
+    const before = auditSnapshot(data, ['accountType', 'role', 'accountTypeLocked', 'accountTypeSource']);
+    const updates = {
       accountType: nextType,
       role: nextType,
       accountTypeLocked: true,
@@ -40,7 +42,22 @@ export async function POST(req: NextRequest) {
       accountTypeSource: action === 'promote-admin' ? 'system' : data.accountTypeSource ?? 'system',
       moderationStatus: data.moderationStatus ?? 'active',
       disabled: false,
+      lastAdminActionBy: decoded.uid,
+      lastAdminActionAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    await userDoc.ref.update(updates);
+    await writeAdminAuditLog({
+      db,
+      actor: decoded,
+      actorRole: profile?.accountType ?? null,
+      targetUid: userDoc.id,
+      targetEmail: data.email ?? email,
+      action: 'user.role.updated',
+      before,
+      after: { accountType: nextType, role: nextType, disabled: false },
+      reason: action,
     });
 
     return NextResponse.json({ ok: true, uid: userDoc.id, accountType: nextType });

@@ -217,7 +217,7 @@ export async function setWalletBalance(
       balanceBefore: previousBalance,
       balanceAfter: balance,
       reason: trimmedReason,
-      actorUid: 'system',
+      actorUid: 'stripe',
       actorEmail: null,
       type: 'subscription_allowance',
       createdAt: FieldValue.serverTimestamp(),
