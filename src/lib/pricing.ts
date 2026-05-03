@@ -8,6 +8,7 @@ export type PricingTierId =
   | "talent-plus"
   | "talent-pro"
   | "business-free"
+  | "business-starter"
   | "business-growth"
   | "business-scale"
   | "agency-free"
@@ -44,17 +45,17 @@ export const pricingAudiences: PricingAudience[] = [
     key: "talent",
     label: "Talent",
     eyebrow: "For ambitious candidates",
-    summary: "Practice interviews, refine your story, and move from discovery to offer with stronger signals.",
+    summary: "Practice interviews, strengthen your story, and walk into offer-stage conversations with leverage.",
     signupHref: "/sign-up?type=talent",
     currencyLabel: "Interview minutes",
     tiers: [
       {
         id: "talent-free",
         name: "Free",
-        description: "Start practicing with enough AI time to build a weekly habit.",
+        description: "Try a focused audition and see where your answers need work.",
         monthlyPrice: 0,
-        monthlyAllowance: 30,
-        allowance: "30 minutes",
+        monthlyAllowance: 15,
+        allowance: "15 minutes",
         allowanceDetail: "Monthly AI audition allowance",
         cta: "Start free",
         features: [
@@ -68,9 +69,9 @@ export const pricingAudiences: PricingAudience[] = [
         id: "talent-plus",
         name: "Plus",
         description: "More interview reps, better feedback, and faster preparation for active searches.",
-        monthlyPrice: 19,
-        monthlyAllowance: 240,
-        allowance: "240 minutes",
+        monthlyPrice: 24,
+        monthlyAllowance: 200,
+        allowance: "200 minutes",
         allowanceDetail: "Monthly AI audition allowance",
         featured: true,
         cta: "Choose Plus",
@@ -85,18 +86,18 @@ export const pricingAudiences: PricingAudience[] = [
       {
         id: "talent-pro",
         name: "Pro",
-        description: "High-volume preparation for serious interview loops and career transitions.",
+        description: "Offer-stage preparation with deeper feedback and negotiation support.",
         monthlyPrice: 49,
-        monthlyAllowance: 900,
-        allowance: "900 minutes",
+        monthlyAllowance: 1000,
+        allowance: "1,000 minutes",
         allowanceDetail: "Monthly AI audition allowance",
         cta: "Go Pro",
         features: [
           "Everything in Plus",
           "Unlimited saved feedback reports",
           "Deep post-interview analysis",
-          "Compensation and positioning prompts",
-          "Premium career momentum workflows",
+          "Salary negotiation playbook",
+          "Offer prep and positioning workflows",
         ],
       },
     ],
@@ -112,34 +113,51 @@ export const pricingAudiences: PricingAudience[] = [
       {
         id: "business-free",
         name: "Free",
-        description: "Launch a hiring presence and test candidate screening on a light workflow.",
+        description: "Launch a hiring presence with one active role.",
         monthlyPrice: 0,
-        monthlyAllowance: 5,
-        allowance: "5 screenings",
-        allowanceDetail: "Monthly candidate screening allowance",
+        monthlyAllowance: 0,
+        allowance: "1 active job",
+        allowanceDetail: "Free hiring presence",
         cta: "Start free",
         features: [
           "Company profile",
           "One active job post",
           "Basic applicant messaging",
-          "Light AI screening capacity",
+          "Manual candidate review",
+        ],
+      },
+      {
+        id: "business-starter",
+        name: "Starter",
+        description: "A practical paid entry point for active hiring teams.",
+        monthlyPrice: 79,
+        monthlyAllowance: 40,
+        allowance: "40 screenings",
+        allowanceDetail: "Monthly candidate screening allowance",
+        featured: true,
+        cta: "Choose Starter",
+        features: [
+          "Everything in Free",
+          "Up to 3 active job posts",
+          "Branded company profile",
+          "Candidate screening summaries",
+          "Hiring pipeline organization",
         ],
       },
       {
         id: "business-growth",
         name: "Growth",
-        description: "A practical operating plan for steady hiring and repeat candidate evaluation.",
-        monthlyPrice: 99,
-        monthlyAllowance: 80,
-        allowance: "80 screenings",
+        description: "For teams repeatedly hiring across multiple roles.",
+        monthlyPrice: 149,
+        monthlyAllowance: 125,
+        allowance: "125 screenings",
         allowanceDetail: "Monthly candidate screening allowance",
-        featured: true,
         cta: "Choose Growth",
         features: [
-          "Everything in Free",
+          "Everything in Starter",
           "Up to 10 active job posts",
-          "Branded company profile",
-          "Candidate screening summaries",
+          "Priority job visibility",
+          "Shortlist-ready summaries",
           "Hiring pipeline organization",
         ],
       },
@@ -147,14 +165,14 @@ export const pricingAudiences: PricingAudience[] = [
         id: "business-scale",
         name: "Scale",
         description: "For teams managing higher volume, multiple roles, and faster shortlist decisions.",
-        monthlyPrice: 249,
-        monthlyAllowance: 250,
-        allowance: "250 screenings",
+        monthlyPrice: 299,
+        monthlyAllowance: 350,
+        allowance: "350 screenings",
         allowanceDetail: "Monthly candidate screening allowance",
         cta: "Scale hiring",
         features: [
           "Everything in Growth",
-          "Unlimited active job posts",
+          "Expanded active job capacity",
           "Priority listing placement",
           "Team collaboration support",
           "Executive-ready candidate shortlists",
@@ -175,8 +193,8 @@ export const pricingAudiences: PricingAudience[] = [
         name: "Free",
         description: "Build an agency profile and support a small roster with guided interview practice.",
         monthlyPrice: 0,
-        monthlyAllowance: 60,
-        allowance: "60 minutes",
+        monthlyAllowance: 30,
+        allowance: "30 minutes",
         allowanceDetail: "Monthly represented talent allowance",
         cta: "Start free",
         features: [
@@ -190,9 +208,9 @@ export const pricingAudiences: PricingAudience[] = [
         id: "agency-studio",
         name: "Studio",
         description: "A stronger workflow for boutique teams preparing talent across multiple roles.",
-        monthlyPrice: 79,
-        monthlyAllowance: 600,
-        allowance: "600 minutes",
+        monthlyPrice: 99,
+        monthlyAllowance: 750,
+        allowance: "750 minutes",
         allowanceDetail: "Monthly represented talent allowance",
         featured: true,
         cta: "Choose Studio",
@@ -208,9 +226,9 @@ export const pricingAudiences: PricingAudience[] = [
         id: "agency-network",
         name: "Network",
         description: "High-capacity preparation and presentation tools for active recruiting networks.",
-        monthlyPrice: 199,
-        monthlyAllowance: 2000,
-        allowance: "2,000 minutes",
+        monthlyPrice: 249,
+        monthlyAllowance: 2500,
+        allowance: "2,500 minutes",
         allowanceDetail: "Monthly represented talent allowance",
         cta: "Build your network",
         features: [
@@ -231,6 +249,11 @@ export function findPricingTier(tierId: string) {
     if (tier) return { audience, tier };
   }
   return null;
+}
+
+export function getFreeTierForAccountType(accountType: PricingAudienceKey) {
+  const audience = pricingAudiences.find((item) => item.key === accountType);
+  return audience?.tiers.find((tier) => tier.monthlyPrice === 0) ?? null;
 }
 
 export function getTierAmountCents(tier: PricingTier, billingCycle: BillingCycle) {

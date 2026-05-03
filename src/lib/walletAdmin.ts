@@ -2,6 +2,7 @@ import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { currencyForAccountType, type AccountWallet, type WalletSummary, type WalletTransaction } from './wallet';
 import type { AccountType } from './profile';
+import { resolveProfileEntitlements } from './entitlements';
 
 type WalletAdjustmentInput = {
   uid: string;
@@ -13,6 +14,12 @@ type WalletAdjustmentInput = {
 type WalletSetInput = {
   uid: string;
   balance: number;
+  reason: string;
+};
+
+type WalletUsageInput = {
+  uid: string;
+  amount: number;
   reason: string;
 };
 
@@ -33,6 +40,8 @@ export async function getOrCreateWalletSummary(db: Firestore, uid: string): Prom
     const accountType = normalizeWalletAccountType(profile.accountType);
     const currency = currencyForAccountType(accountType);
     if (!accountType || !currency) return null;
+    const resolved = resolveProfileEntitlements(profile);
+    const startingBalance = resolved?.monthlyAllowance ?? 0;
 
     if (walletSnap.exists) {
       const existing = walletSnap.data() as Partial<AccountWallet>;
@@ -60,7 +69,7 @@ export async function getOrCreateWalletSummary(db: Firestore, uid: string): Prom
       uid,
       accountType,
       currency,
-      balance: 0,
+      balance: startingBalance,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -69,7 +78,7 @@ export async function getOrCreateWalletSummary(db: Firestore, uid: string): Prom
       uid,
       accountType,
       currency,
-      balance: 0,
+      balance: startingBalance,
     };
   });
 
@@ -231,6 +240,85 @@ export async function setWalletBalance(
       accountType,
       currency,
       balance,
+    };
+  });
+}
+
+export async function consumeWalletBalance(
+  db: Firestore,
+  { uid, amount, reason }: WalletUsageInput
+): Promise<AccountWallet> {
+  if (!uid.trim()) {
+    throw new Response(JSON.stringify({ error: 'User uid is required.' }), { status: 400 });
+  }
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new Response(JSON.stringify({ error: 'Usage amount must be a positive integer.' }), { status: 400 });
+  }
+
+  const trimmedReason = reason.trim();
+  if (!trimmedReason || trimmedReason.length > 240) {
+    throw new Response(JSON.stringify({ error: 'Reason is required and must be 240 characters or fewer.' }), { status: 400 });
+  }
+
+  return db.runTransaction(async (transaction) => {
+    const profileRef = db.doc(`users/${uid}`);
+    const walletRef = db.doc(`accountWallets/${uid}`);
+    const transactionRef = walletRef.collection('transactions').doc();
+    const [profileSnap, walletSnap] = await Promise.all([
+      transaction.get(profileRef),
+      transaction.get(walletRef),
+    ]);
+
+    if (!profileSnap.exists) {
+      throw new Response(JSON.stringify({ error: 'User profile not found.' }), { status: 404 });
+    }
+
+    const profile = profileSnap.data() ?? {};
+    const accountType = normalizeWalletAccountType(profile.accountType);
+    const currency = currencyForAccountType(accountType);
+    if (!accountType || !currency) {
+      throw new Response(JSON.stringify({ error: 'This account type does not support a wallet.' }), { status: 400 });
+    }
+
+    const previousBalance = walletSnap.exists
+      ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance)
+      : 0;
+    if (previousBalance < amount) {
+      throw new Response(JSON.stringify({ error: `Not enough ${currency} remaining.` }), { status: 402 });
+    }
+
+    const nextBalance = previousBalance - amount;
+    const walletPatch = {
+      uid,
+      accountType,
+      currency,
+      balance: nextBalance,
+      updatedAt: FieldValue.serverTimestamp(),
+      ...(walletSnap.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+    };
+
+    const ledgerEntry: Omit<WalletTransaction, 'id'> = {
+      uid,
+      accountType,
+      currency,
+      delta: -amount,
+      balanceBefore: previousBalance,
+      balanceAfter: nextBalance,
+      reason: trimmedReason,
+      actorUid: 'system',
+      actorEmail: null,
+      type: 'usage_debit',
+      createdAt: FieldValue.serverTimestamp(),
+    };
+
+    transaction.set(walletRef, walletPatch, { merge: true });
+    transaction.create(transactionRef, ledgerEntry);
+
+    return {
+      uid,
+      accountType,
+      currency,
+      balance: nextBalance,
     };
   });
 }

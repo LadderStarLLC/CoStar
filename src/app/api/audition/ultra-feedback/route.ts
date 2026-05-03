@@ -1,21 +1,9 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
 import type { TranscriptEntry } from '@/lib/audition/types';
-
-function getAdminApp() {
-  if (getApps().length > 0) return getApps()[0];
-  return initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-}
+import { getAdminDb, verifyBearerToken } from '@/lib/firebaseAdmin';
+import { resolveProfileEntitlements } from '@/lib/entitlements';
 
 interface UltraFeedbackRequest {
   sessionId: string;
@@ -34,18 +22,27 @@ export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('Authorization');
     let apiKey = process.env.GEMINI_API_KEY;
+    let uid: string | null = null;
 
     if (authHeader?.startsWith('Bearer ')) {
       try {
-        const app = getAdminApp();
-        const { uid } = await getAuth(app).verifyIdToken(authHeader.slice(7));
-        const snap = await getFirestore(app).doc(`auditionSettings/${uid}`).get();
-        if (snap.exists) {
-          const data = snap.data() as Record<string, string>;
+        const decoded = await verifyBearerToken(req);
+        uid = decoded.uid;
+        const db = getAdminDb();
+        const [settingsSnap, userSnap] = await Promise.all([
+          db.doc(`auditionSettings/${uid}`).get(),
+          db.doc(`users/${uid}`).get(),
+        ]);
+        const entitlements = userSnap.exists ? resolveProfileEntitlements(userSnap.data() ?? {}) : null;
+        if (!entitlements?.features.ultraFeedback) {
+          return NextResponse.json({ error: 'Ultra Feedback requires a Pro or Network plan.' }, { status: 403 });
+        }
+        if (settingsSnap.exists) {
+          const data = settingsSnap.data() as Record<string, string>;
           if (data.geminiApiKey) apiKey = data.geminiApiKey;
         }
       } catch {
-        // fall through to env var
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
     }
 

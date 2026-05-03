@@ -22,6 +22,7 @@ import { useAudioPlayback } from '@/hooks/useAudioPlayback';
 import { useTranscript } from '@/hooks/useTranscript';
 import { useAuditionSettings } from '@/hooks/useAuditionSettings';
 import { useAuditionSessions } from '@/hooks/useAuditionSessions';
+import type { WalletSummary } from '@/lib/wallet';
 
 import { SetupScreen } from './SetupScreen';
 import { InterviewScreen } from './InterviewScreen';
@@ -72,6 +73,7 @@ function resolvePersona(settings: { interviewerName: string; interviewerTone: st
 
 type FeedbackArgs = { score: number; feedback: string; strengths: string[]; improvements: string[] };
 type SessionPatch = Partial<AuditionSession> & { id: string };
+type EntitlementResponse = { walletSummary?: WalletSummary };
 
 export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
   const router = useRouter();
@@ -113,6 +115,32 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     } catch (err) {
       console.error('[Audition] Server session save failed:', err);
       return false;
+    }
+  }, [user]);
+
+  const loadPremiumState = useCallback(async (): Promise<EntitlementResponse | null> => {
+    if (!user) return null;
+    const idToken = await user.getIdToken();
+    const res = await fetch('/api/billing/entitlements', {
+      headers: { Authorization: `Bearer ${idToken}` },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  }, [user]);
+
+  const consumeAuditionMinutes = useCallback(async (durationSeconds: number, reason: string) => {
+    if (!user) return;
+    if (durationSeconds <= 0) return;
+    const minutes = Math.max(1, Math.ceil(durationSeconds / 60));
+    const idToken = await user.getIdToken();
+    const res = await fetch('/api/billing/usage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ currency: 'minutes', amount: minutes, reason }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      console.error('[Audition] Premium usage debit failed:', data.error || res.status);
     }
   }, [user]);
 
@@ -215,6 +243,11 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
 
     try {
       if (!user) throw new Error('Not authenticated');
+      const premiumState = await loadPremiumState();
+      const wallet = premiumState?.walletSummary?.wallet;
+      if (wallet?.currency !== 'minutes' || wallet.balance <= 0) {
+        throw new Error('You are out of interview minutes. Upgrade or wait for your monthly allowance to reset.');
+      }
       const idToken = await user.getIdToken();
 
       const res = await fetch('/api/audition/token', {
@@ -275,7 +308,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
       setSessionError(err instanceof Error ? err.message : 'Failed to start session');
       setPhase('setup');
     }
-  }, [user, job, jobText, mode, config, audioCapture, connect, settings, jobId, saveSessionToServer]);
+  }, [user, job, jobText, mode, config, audioCapture, connect, settings, jobId, saveSessionToServer, loadPremiumState]);
 
   const handleEndInterview = useCallback(async () => {
     setPhase('ending');
@@ -330,6 +363,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
 
     // Server-side save first (authoritative)
     await saveSessionToServer(completedSession);
+    await consumeAuditionMinutes(durationSeconds, `Audition completed: ${resolvedTitle}`);
 
     // Client-side save as secondary path
     if (user) {
@@ -341,7 +375,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     }
 
     setPhase('results');
-  }, [disconnect, audioCapture, stopPlayback, sendClientText, job, mode, config, settings, user, jobId, saveSession, saveSessionToServer]);
+  }, [disconnect, audioCapture, stopPlayback, sendClientText, job, mode, config, settings, user, jobId, saveSession, saveSessionToServer, consumeAuditionMinutes]);
 
   useEffect(() => {
     if (pendingEndRef.current && !isPlaying) {
@@ -352,14 +386,16 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
 
   const handleCancelInterview = useCallback(() => {
     if (sessionIdRef.current && user) {
+      const durationSeconds = Math.round((Date.now() - interviewStartTimeRef.current) / 1000);
       saveSessionToServer({
         id: sessionIdRef.current,
         userId: user.uid,
         status: 'cancelled',
         endedAt: new Date().toISOString(),
         transcript: latestEntriesRef.current.map((e) => ({ ...e, isFinal: true })),
-        durationSeconds: Math.round((Date.now() - interviewStartTimeRef.current) / 1000),
+        durationSeconds,
       });
+      consumeAuditionMinutes(durationSeconds, 'Audition cancelled');
     }
     disconnect();
     audioCapture.stopCapture();
@@ -368,7 +404,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     sessionIdRef.current = '';
     setSessionError(null);
     setPhase('setup');
-  }, [disconnect, audioCapture, stopPlayback, resetTranscript, user, saveSessionToServer]);
+  }, [disconnect, audioCapture, stopPlayback, resetTranscript, user, saveSessionToServer, consumeAuditionMinutes]);
 
   const handleTryAgain = useCallback(() => {
     closePlayback();

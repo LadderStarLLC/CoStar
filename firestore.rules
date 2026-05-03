@@ -50,6 +50,16 @@ service cloud.firestore {
         request.resource.data.role == request.resource.data.accountType;
     }
 
+    function billingFieldsAreServerOwnedOnCreate() {
+      return !('billing' in request.resource.data) &&
+        !('entitlements' in request.resource.data);
+    }
+
+    function billingFieldsAreImmutable() {
+      return request.resource.data.billing == resource.data.billing &&
+        request.resource.data.entitlements == resource.data.entitlements;
+    }
+
     // Job listings - require authentication
     match /jobs/{jobId} {
       allow read: if request.auth != null;
@@ -71,12 +81,20 @@ service cloud.firestore {
     // Private account profiles - owner can read/write, admin/owner can read for operations.
     match /users/{userId} {
       allow read: if isOwner(userId) || isPrivilegedAccount();
-      allow create: if isOwner(userId) && accountTypeIsCreateValid();
+      allow create: if isOwner(userId) &&
+        accountTypeIsCreateValid() &&
+        billingFieldsAreServerOwnedOnCreate();
       allow update: if isOwner(userId) &&
         accountTypeIsImmutable() &&
         lockMetadataIsImmutable() &&
-        roleMatchesAccountType();
+        roleMatchesAccountType() &&
+        billingFieldsAreImmutable();
       allow delete: if isOwner(userId);
+    }
+
+    // Stripe webhook idempotency records are written only through the Admin SDK.
+    match /stripeEvents/{eventId} {
+      allow read, write: if false;
     }
 
     // Published public profile projections. These contain only opted-in fields.
