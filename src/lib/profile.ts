@@ -761,14 +761,14 @@ export async function getPublicProfileBySlugOrUid(
 
   const snapshot = await getDocs(query(
     collection(db, 'publicProfiles'),
-    where('slug', '==', normalizedSlug)
+    where('slug', '==', normalizedSlug),
+    where('status', '==', 'published'),
+    where('moderationStatus', '==', 'active')
   ));
   if (!snapshot.empty) {
     const profileSnap = snapshot.docs.find((docSnap) => {
       const data = docSnap.data() as Partial<PublicProfile>;
-      return data.status === 'published' &&
-        data.moderationStatus !== 'suspended' &&
-        (!normalizedType || normalizeAccountType(data.accountType) === normalizedType);
+      return (!normalizedType || normalizeAccountType(data.accountType) === normalizedType);
     });
     if (profileSnap) {
       return normalizePublicProfile(profileSnap.id, profileSnap.data() as Partial<PublicProfile>);

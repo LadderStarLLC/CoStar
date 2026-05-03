@@ -100,7 +100,6 @@ service cloud.firestore {
     // Published public profile projections. These contain only opted-in fields.
     match /publicProfiles/{userId} {
       allow read: if resource.data.status == 'published' &&
-        resource.data.searchable == true &&
         resource.data.moderationStatus == 'active';
       allow create, update: if isOwner(userId) &&
         validPublicAccountType(request.resource.data.accountType) &&
