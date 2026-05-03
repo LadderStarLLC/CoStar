@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GithubAuthProvider, deleteUser, linkWithPopup, updateProfile } from "firebase/auth";
 import { deleteDoc, doc } from "firebase/firestore";
-import { Loader2, Save, Github, Linkedin, CheckCircle2, AlertCircle, Trash2, Upload, Camera } from "lucide-react";
+import { Loader2, Save, Github, Linkedin, CheckCircle2, AlertCircle, Trash2, Camera, UserCog, Eye, Wallet, Lock, Shield } from "lucide-react";
 import NavHeader from "@/components/NavHeader";
 import { useAuth } from "@/context/AuthContext";
 import { auth, db } from "@/lib/firebase";
@@ -42,6 +42,7 @@ export default function AccountSettingsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
+  const [activeTab, setActiveTab] = useState<"account" | "profile" | "privacy" | "wallet" | "security">("account");
 
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [previewType, setPreviewType] = useState<PublicAccountType>("talent");
@@ -123,6 +124,13 @@ export default function AccountSettingsPage() {
 
   const githubConnection = getSocialConnection({ socialConnections }, "github");
   const linkedInConnection = getSocialConnection({ socialConnections }, "linkedin");
+  const tabs = [
+    { id: "account", label: "Account", icon: UserCog },
+    { id: "profile", label: "Profile", icon: Save },
+    { id: "privacy", label: "Privacy", icon: Eye },
+    { id: "wallet", label: "Wallet", icon: Wallet },
+    { id: "security", label: "Security", icon: Lock },
+  ] as const;
 
   const saveProfile = async (nextConnections = socialConnections) => {
     if (!user) return;
@@ -383,8 +391,27 @@ export default function AccountSettingsPage() {
           </div>
         )}
 
+        <div className="mb-6 overflow-x-auto border-b border-white/10">
+          <div className="flex min-w-max gap-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                  activeTab === tab.id
+                    ? "border-[#E5B536] text-[#E5B536]"
+                    : "border-transparent text-[#F4F5F7]/62 hover:text-[#5DC99B]"
+                }`}
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="space-y-6">
-          {walletSummary?.wallet && (
+          {activeTab === "wallet" && walletSummary?.wallet && (
             <section className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -424,22 +451,23 @@ export default function AccountSettingsPage() {
             </section>
           )}
 
+          {activeTab === "wallet" && !walletSummary?.wallet && (
+            <section className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+              <h2 className="text-xl font-bold text-white">Premium Balance</h2>
+              <p className="mt-2 text-slate-400">
+                This account type does not currently use a premium wallet.
+              </p>
+            </section>
+          )}
+
+          {activeTab === "account" && (
           <section className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Profile</h2>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <span className="text-sm font-medium text-slate-300">Public Profile</span>
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={publicProfileEnabled}
-                    onChange={(e) => setPublicProfileEnabled(e.target.checked)}
-                    className="sr-only"
-                  />
-                  <div className={`block w-10 h-6 rounded-full transition-colors ${publicProfileEnabled ? 'bg-amber-500' : 'bg-slate-700'}`}></div>
-                  <div className={`absolute left-1 top-1 w-4 h-4 rounded-full bg-white transition-transform ${publicProfileEnabled ? 'translate-x-4' : ''}`}></div>
-                </div>
-              </label>
+              <h2 className="text-xl font-bold text-white">Identity</h2>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900 px-3 py-1 text-sm text-slate-300">
+                {isOperator ? <Shield className="h-4 w-4 text-amber-300" /> : <UserCog className="h-4 w-4 text-emerald-300" />}
+                {accountType ? accountTypeLabels[accountType] : "Unassigned"}
+              </div>
             </div>
             
             <div className="mb-6 flex items-center gap-4">
@@ -495,8 +523,45 @@ export default function AccountSettingsPage() {
               </div>
             </div>
           </section>
+          )}
 
-          {accountType === "business" && (
+          {activeTab === "privacy" && (
+          <section className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-2">Privacy</h2>
+            <p className="mb-6 text-sm text-slate-400">
+              Control whether your public profile can be shown. Detailed public field controls live on the Profile page.
+            </p>
+            <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-slate-900 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="font-semibold text-white">Public profile visibility</div>
+                <div className="text-sm text-slate-400">
+                  {publicProfileEnabled ? "Your published profile can be visible and searchable." : "Your public profile is hidden."}
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-sm font-medium text-slate-300">{publicProfileEnabled ? "Visible" : "Hidden"}</span>
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={publicProfileEnabled}
+                    onChange={(e) => setPublicProfileEnabled(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`block w-10 h-6 rounded-full transition-colors ${publicProfileEnabled ? 'bg-amber-500' : 'bg-slate-700'}`}></div>
+                  <div className={`absolute left-1 top-1 w-4 h-4 rounded-full bg-white transition-transform ${publicProfileEnabled ? 'translate-x-4' : ''}`}></div>
+                </div>
+              </label>
+            </div>
+            <div className="mt-4 rounded-xl border border-white/10 bg-slate-900 p-4">
+              <div className="font-semibold text-white">Public field controls</div>
+              <p className="mt-1 text-sm text-slate-400">
+                Use `/profile` to choose exactly which profile fields are published, then return here for account-wide controls.
+              </p>
+            </div>
+          </section>
+          )}
+
+          {activeTab === "profile" && accountType === "business" && (
             <section className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
               <h2 className="text-xl font-bold text-white mb-6">Company Profile</h2>
               <div className="grid md:grid-cols-2 gap-4">
@@ -549,7 +614,7 @@ export default function AccountSettingsPage() {
             </section>
           )}
 
-          {accountType === "agency" && (
+          {activeTab === "profile" && accountType === "agency" && (
             <section className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
               <h2 className="text-xl font-bold text-white mb-6">Agency Profile</h2>
               <div className="grid md:grid-cols-2 gap-4">
@@ -600,7 +665,7 @@ export default function AccountSettingsPage() {
             </section>
           )}
 
-          {accountType === "talent" && (
+          {activeTab === "security" && accountType === "talent" && (
           <section id="connections" className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-6">Connections</h2>
             <div className="space-y-4">
@@ -650,7 +715,7 @@ export default function AccountSettingsPage() {
           </section>
           )}
 
-          {accountType !== "agency" && (
+          {activeTab === "profile" && accountType !== "agency" && (
           <section className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-6">{accountType === "business" ? "Company Culture" : "Work Vibe"}</h2>
             <div className="space-y-6">
@@ -705,6 +770,7 @@ export default function AccountSettingsPage() {
           </section>
           )}
 
+          {(activeTab === "account" || activeTab === "profile" || activeTab === "privacy") && (
           <div className="flex justify-end">
             <button
               onClick={() => saveProfile()}
@@ -715,8 +781,9 @@ export default function AccountSettingsPage() {
               Save Settings
             </button>
           </div>
+          )}
 
-          {!isOperator && (
+          {activeTab === "security" && !isOperator && (
           <section className="bg-red-500/5 border border-red-500/20 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-2">Delete Account</h2>
             <p className="text-slate-400 mb-4">

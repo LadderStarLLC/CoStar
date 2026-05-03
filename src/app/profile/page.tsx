@@ -530,10 +530,17 @@ export default function ProfilePage() {
                   </a>
                 ) : "Publish to create URL"}
               </div>
-              <button onClick={hideProfile} disabled={publishing} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 font-semibold text-red-300 disabled:opacity-60">
-                <EyeOff className="h-4 w-4" />
-                Hide public profile
-              </button>
+              {profile?.publicProfileEnabled === false ? (
+                <button onClick={publish} disabled={publishing} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#5DC99B]/30 bg-[#5DC99B]/10 px-4 py-2 font-semibold text-[#5DC99B] disabled:opacity-60">
+                  <Eye className="h-4 w-4" />
+                  Show public profile
+                </button>
+              ) : (
+                <button onClick={hideProfile} disabled={publishing} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 font-semibold text-red-300 disabled:opacity-60">
+                  <EyeOff className="h-4 w-4" />
+                  Hide public profile
+                </button>
+              )}
             </Panel>
           </aside>
         </div>
