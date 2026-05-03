@@ -192,6 +192,14 @@ CAREERJET_API_KEY=
 JOOBLE_API_KEY=
 ```
 
+Stripe billing:
+
+```env
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+NEXT_PUBLIC_APP_URL=
+```
+
 `GEMINI_API_KEY` is the fallback key used when a user has not saved a personal Gemini API key in Settings. In Vercel, `FIREBASE_PRIVATE_KEY` must be configured so escaped `\n` sequences can be converted back to real newlines by the route handler.
 
 ## Firestore Data Model

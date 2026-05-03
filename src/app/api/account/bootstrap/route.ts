@@ -11,6 +11,7 @@ import {
   verifyBearerToken,
 } from '@/lib/firebaseAdmin';
 import type { AccountType } from '@/lib/profile';
+import { resolveEntitlements } from '@/lib/entitlements';
 
 const publicAccountTypes: AccountType[] = ['talent', 'business', 'agency'];
 
@@ -55,13 +56,39 @@ export async function POST(req: NextRequest) {
       moderationStatus: existing.moderationStatus ?? 'active',
       disabled: false,
     };
+    const freeEntitlementData = publicAccountTypes.includes(nextAccountType as AccountType)
+      ? (() => {
+          const entitlements = resolveEntitlements({
+            accountType: nextAccountType as 'talent' | 'business' | 'agency',
+            status: 'free',
+            billingCycle: 'free',
+          });
+          return {
+            billing: existing.billing ?? {
+              provider: null,
+              subscriptionStatus: 'free',
+              accountType: entitlements.accountType,
+              tierId: entitlements.tierId,
+              tierName: entitlements.tierName,
+              billingCycle: 'free',
+              monthlyAllowance: entitlements.monthlyAllowance,
+              updatedAt: now,
+            },
+            entitlements: existing.entitlements ?? {
+              ...entitlements,
+              updatedAt: now,
+            },
+          };
+        })()
+      : {};
 
     if (snap.exists) {
-      await userRef.update({ ...baseData, ...accountData });
+      await userRef.update({ ...baseData, ...accountData, ...freeEntitlementData });
     } else {
       await userRef.set({
         ...baseData,
         ...accountData,
+        ...freeEntitlementData,
         publicProfileEnabled: true,
         socialConnections: [],
         workExperience: [],

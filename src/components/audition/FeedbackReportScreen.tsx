@@ -78,13 +78,16 @@ export function FeedbackReportScreen({ sessionId }: FeedbackReportScreenProps) {
           improvements: session.improvements,
         }),
       });
-      if (!res.ok) throw new Error('Failed');
-      const { ultraFeedback } = await res.json();
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof payload.error === 'string' ? payload.error : 'Could not generate Ultra Feedback.');
+      }
+      const { ultraFeedback } = payload;
       const updated = { ...session, ultraFeedback };
       setSession(updated);
       await saveSession(updated);
-    } catch {
-      setUltraError('Could not generate Ultra Feedback. Check your API key in Settings.');
+    } catch (err) {
+      setUltraError(err instanceof Error ? err.message : 'Could not generate Ultra Feedback.');
     } finally {
       setUltraLoading(false);
     }

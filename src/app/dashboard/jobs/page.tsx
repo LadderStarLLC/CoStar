@@ -23,6 +23,17 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+type BusinessEntitlements = {
+  features?: {
+    activeJobLimit?: number | null;
+    aiScreenings?: boolean;
+    candidateSummaries?: boolean;
+    priorityJobs?: boolean;
+  };
+  tierName?: string;
+  status?: string;
+};
+
 export default function EmployerJobsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -35,6 +46,7 @@ export default function EmployerJobsPage() {
   const [editingJob, setEditingJob] = useState<JobData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCompanySetup, setShowCompanySetup] = useState(false);
+  const [entitlements, setEntitlements] = useState<BusinessEntitlements | null>(null);
   const [companyForm, setCompanyForm] = useState({
     name: '',
     website: '',
@@ -74,6 +86,15 @@ export default function EmployerJobsPage() {
         // Load jobs
         const jobsData = await getJobsByEmployer(user.uid);
         setJobs(jobsData);
+
+        const token = await user.getIdToken();
+        const entRes = await fetch('/api/billing/entitlements', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (entRes.ok) {
+          const data = await entRes.json();
+          setEntitlements(data.entitlements ?? null);
+        }
       } catch (err) {
         setError('Failed to load data');
         console.error('Error loading data:', err);
@@ -124,6 +145,12 @@ export default function EmployerJobsPage() {
 
     setIsSubmitting(true);
     try {
+      const activeJobLimit = entitlements?.features?.activeJobLimit ?? 1;
+      const activeJobs = jobs.filter((job) => job.status === 'active').length;
+      if (jobData.status === 'active' && activeJobLimit !== null && activeJobs >= activeJobLimit) {
+        throw new Error(`Your ${entitlements?.tierName ?? 'Free'} plan supports ${activeJobLimit} active job${activeJobLimit === 1 ? '' : 's'}. Upgrade to publish more roles.`);
+      }
+
       const jobId = await createJob(
         {
           ...jobData,
@@ -143,7 +170,7 @@ export default function EmployerJobsPage() {
         router.push(`/jobs`);
       }
     } catch (err) {
-      setError('Failed to create job');
+      setError(err instanceof Error ? err.message : 'Failed to create job');
       console.error('Error creating job:', err);
     } finally {
       setIsSubmitting(false);
@@ -171,6 +198,11 @@ export default function EmployerJobsPage() {
 
   const handlePublishJob = async (jobId: string) => {
     try {
+      const activeJobLimit = entitlements?.features?.activeJobLimit ?? 1;
+      const activeJobs = jobs.filter((job) => job.status === 'active').length;
+      if (activeJobLimit !== null && activeJobs >= activeJobLimit) {
+        throw new Error(`Your ${entitlements?.tierName ?? 'Free'} plan supports ${activeJobLimit} active job${activeJobLimit === 1 ? '' : 's'}. Upgrade to publish more roles.`);
+      }
       await publishJob(jobId);
       // Refresh jobs
       if (user) {
@@ -178,7 +210,7 @@ export default function EmployerJobsPage() {
         setJobs(jobsData);
       }
     } catch (err) {
-      setError('Failed to publish job');
+      setError(err instanceof Error ? err.message : 'Failed to publish job');
     }
   };
 

@@ -150,7 +150,7 @@ export default function PricingPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-5 lg:grid-cols-3">
+          <div className="mt-6 grid gap-5 lg:grid-cols-3 xl:grid-cols-4">
             {audience.tiers.map((tier) => {
               const isCheckingOut = checkoutTierId === tier.id;
               return (

@@ -19,6 +19,7 @@ export type SocialPlatform = 'github' | 'linkedin' | 'email';
 export type AccountTypeSource = 'signup' | 'legacy' | 'migration' | 'system';
 export type PublicAccountType = 'talent' | 'business' | 'agency';
 export type AppearanceScheme = 'ladderstar' | 'light' | 'midnight' | 'high-contrast';
+export type BillingStatus = 'free' | 'active' | 'past_due' | 'canceled';
 export type AccountStatus = 'active' | 'suspended' | 'disabled';
 export type AdminAuditAction =
   | 'user.status.updated'
@@ -44,6 +45,35 @@ export interface WorkVibe {
   values: string;
 }
 
+export interface BillingProfile {
+  provider?: 'stripe' | null;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  subscriptionStatus?: string | null;
+  accountType?: PublicAccountType | null;
+  tierId?: string | null;
+  tierName?: string | null;
+  billingCycle?: 'monthly' | 'annual' | 'free' | null;
+  monthlyAllowance?: number;
+  currencyLabel?: string;
+  lastCheckoutSessionId?: string | null;
+  currentPeriodStart?: string | null;
+  currentPeriodEnd?: string | null;
+  updatedAt?: any;
+}
+
+export interface EntitlementsProfile {
+  tierId?: string;
+  tierName?: string;
+  status?: BillingStatus;
+  accountType?: PublicAccountType;
+  billingCycle?: 'monthly' | 'annual' | 'free';
+  currency?: 'minutes' | 'screenings';
+  monthlyAllowance?: number;
+  features?: Record<string, unknown>;
+  updatedAt?: any;
+}
+
 export interface UserProfile {
   uid: string;
   email?: string | null;
@@ -60,6 +90,8 @@ export interface UserProfile {
   slug?: string;
   publicProfileEnabled?: boolean;
   appearanceScheme?: AppearanceScheme;
+  billing?: BillingProfile | null;
+  entitlements?: EntitlementsProfile | null;
   workVibe?: WorkVibe | null;
   socialConnections?: SocialConnection[];
   workExperience?: unknown[];
@@ -342,6 +374,8 @@ export function normalizeProfile(uid: string, data: Partial<UserProfile> = {}): 
     slug: data.slug ?? createSlug(data.displayName ?? data.email ?? uid, uid),
     publicProfileEnabled: data.publicProfileEnabled ?? true,
     appearanceScheme: normalizeAppearanceScheme(data.appearanceScheme),
+    billing: data.billing ?? null,
+    entitlements: data.entitlements ?? null,
     workVibe: data.workVibe ?? emptyWorkVibe,
     socialConnections: data.socialConnections ?? [],
     workExperience: data.workExperience ?? [],
@@ -719,7 +753,6 @@ export async function getPublicProfileBySlugOrUid(
       directProfile &&
       directProfile.status === 'published' &&
       directProfile.moderationStatus === 'active' &&
-      directProfile.searchable &&
       (!normalizedType || directProfile.accountType === normalizedType)
     ) {
       return directProfile;
@@ -728,16 +761,12 @@ export async function getPublicProfileBySlugOrUid(
 
   const snapshot = await getDocs(query(
     collection(db, 'publicProfiles'),
-    where('slug', '==', normalizedSlug),
-    where('status', '==', 'published'),
-    where('searchable', '==', true),
-    where('moderationStatus', '==', 'active')
+    where('slug', '==', normalizedSlug)
   ));
   if (!snapshot.empty) {
     const profileSnap = snapshot.docs.find((docSnap) => {
       const data = docSnap.data() as Partial<PublicProfile>;
       return data.status === 'published' &&
-        data.searchable !== false &&
         data.moderationStatus !== 'suspended' &&
         (!normalizedType || normalizeAccountType(data.accountType) === normalizedType);
     });
