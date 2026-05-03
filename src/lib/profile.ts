@@ -746,35 +746,60 @@ export async function getPublicProfileBySlugOrUid(
   const normalizedSlug = slugOrUid.toLowerCase();
   const normalizedType = normalizeAccountType(accountType);
 
-  const directSnap = await getDoc(doc(db, 'publicProfiles', slugOrUid));
-  if (directSnap.exists()) {
-    const directProfile = normalizePublicProfile(directSnap.id, directSnap.data() as Partial<PublicProfile>);
-    if (
-      directProfile &&
-      directProfile.status === 'published' &&
-      directProfile.moderationStatus === 'active' &&
-      (!normalizedType || directProfile.accountType === normalizedType)
-    ) {
-      return directProfile;
+  console.log(`[getPublicProfileBySlugOrUid] Starting lookup for: ${slugOrUid}, type: ${normalizedType}`);
+
+  try {
+    const directSnap = await getDoc(doc(db, 'publicProfiles', slugOrUid));
+    if (directSnap.exists()) {
+      console.log(`[getPublicProfileBySlugOrUid] Found direct hit by UID`);
+      const directProfile = normalizePublicProfile(directSnap.id, directSnap.data() as Partial<PublicProfile>);
+      if (
+        directProfile &&
+        directProfile.status === 'published' &&
+        directProfile.moderationStatus === 'active' &&
+        (!normalizedType || directProfile.accountType === normalizedType)
+      ) {
+        console.log(`[getPublicProfileBySlugOrUid] Direct hit is valid and returned`);
+        return directProfile;
+      } else {
+        console.log(`[getPublicProfileBySlugOrUid] Direct hit invalid. Status: ${directProfile?.status}, Moderation: ${directProfile?.moderationStatus}, Type: ${directProfile?.accountType}`);
+      }
     }
+  } catch (e) {
+    console.error(`[getPublicProfileBySlugOrUid] Direct lookup failed:`, e);
   }
 
-  const snapshot = await getDocs(query(
-    collection(db, 'publicProfiles'),
-    where('slug', '==', normalizedSlug),
-    where('status', '==', 'published'),
-    where('moderationStatus', '==', 'active')
-  ));
-  if (!snapshot.empty) {
-    const profileSnap = snapshot.docs.find((docSnap) => {
-      const data = docSnap.data() as Partial<PublicProfile>;
-      return (!normalizedType || normalizeAccountType(data.accountType) === normalizedType);
-    });
-    if (profileSnap) {
-      return normalizePublicProfile(profileSnap.id, profileSnap.data() as Partial<PublicProfile>);
+  try {
+    console.log(`[getPublicProfileBySlugOrUid] Falling back to slug query...`);
+    const snapshot = await getDocs(query(
+      collection(db, 'publicProfiles'),
+      where('slug', '==', normalizedSlug),
+      where('status', '==', 'published'),
+      where('moderationStatus', '==', 'active')
+    ));
+    
+    console.log(`[getPublicProfileBySlugOrUid] Slug query returned ${snapshot.size} results`);
+    
+    if (!snapshot.empty) {
+      const profileSnap = snapshot.docs.find((docSnap) => {
+        const data = docSnap.data() as Partial<PublicProfile>;
+        const match = (!normalizedType || normalizeAccountType(data.accountType) === normalizedType);
+        if (!match) console.log(`[getPublicProfileBySlugOrUid] Found document but type mismatched. Expected ${normalizedType}, got ${data.accountType}`);
+        return match;
+      });
+      if (profileSnap) {
+        console.log(`[getPublicProfileBySlugOrUid] Returning matched profile from slug query`);
+        return normalizePublicProfile(profileSnap.id, profileSnap.data() as Partial<PublicProfile>);
+      } else {
+        console.log(`[getPublicProfileBySlugOrUid] No documents matched the memory filter criteria.`);
+      }
     }
+  } catch (e) {
+    console.error(`[getPublicProfileBySlugOrUid] Slug query failed:`, e);
+    throw e; // re-throw to surface in UI
   }
 
+  console.log(`[getPublicProfileBySlugOrUid] All lookups exhausted, returning null`);
   return null;
 }
 
@@ -833,6 +858,28 @@ export async function saveUserProfile(uid: string, updates: Partial<UserProfile>
     privateProfileComplete: profileComplete,
     publicProfileComplete,
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function saveUserManagedSettings(
+  uid: string,
+  updates: Pick<Partial<UserProfile>, 'appearanceScheme' | 'publicProfileEnabled'>
+): Promise<void> {
+  if (!db) throw new Error('Firestore not initialized');
+
+  const nextUpdates: Pick<Partial<UserProfile>, 'appearanceScheme' | 'publicProfileEnabled'> = {};
+
+  if ('appearanceScheme' in updates) {
+    nextUpdates.appearanceScheme = normalizeAppearanceScheme(updates.appearanceScheme);
+  }
+
+  if ('publicProfileEnabled' in updates) {
+    nextUpdates.publicProfileEnabled = Boolean(updates.publicProfileEnabled);
+  }
+
+  await updateDoc(doc(db, 'users', uid), {
+    ...nextUpdates,
     updatedAt: serverTimestamp(),
   });
 }

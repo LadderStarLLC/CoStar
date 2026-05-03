@@ -55,9 +55,21 @@ service cloud.firestore {
         !('entitlements' in request.resource.data);
     }
 
-    function billingFieldsAreImmutable() {
-      return request.resource.data.billing == resource.data.billing &&
-        request.resource.data.entitlements == resource.data.entitlements;
+    function serverOwnedFieldsAreImmutable() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'billing',
+        'entitlements',
+        'accountType',
+        'role',
+        'accountTypeLocked',
+        'accountTypeLockedAt',
+        'accountTypeSource',
+        'moderationStatus',
+        'disabled',
+        'lastAdminActionAt',
+        'lastAdminActionBy',
+        'adminNotes'
+      ]);
     }
 
     // Job listings - require authentication
@@ -88,7 +100,7 @@ service cloud.firestore {
         accountTypeIsImmutable() &&
         lockMetadataIsImmutable() &&
         roleMatchesAccountType() &&
-        billingFieldsAreImmutable();
+        serverOwnedFieldsAreImmutable();
       allow delete: if isOwner(userId);
     }
 
