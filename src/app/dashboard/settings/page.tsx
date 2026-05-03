@@ -24,7 +24,7 @@ import {
   publicAccountTypes,
   saveOperatorPreviewProfile,
   saveTypeSpecificProfile,
-  saveUserProfile,
+  saveUserManagedSettings,
   upsertSocialConnection,
   type AccountType,
   type AppearanceScheme,
@@ -224,7 +224,7 @@ export default function AccountSettingsPage() {
 
       if (isOperator) {
         await saveOperatorPreviewProfile(user.uid, accountType as PublicAccountType, profileUpdates);
-        await saveUserProfile(user.uid, { appearanceScheme });
+        await saveUserManagedSettings(user.uid, { appearanceScheme });
       } else {
         await saveTypeSpecificProfile(user.uid, accountType, profileUpdates);
       }
@@ -236,6 +236,32 @@ export default function AccountSettingsPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const saveCurrentTab = async () => {
+    if (!user) return;
+
+    if (activeTab === "account" || activeTab === "privacy") {
+      setIsSaving(true);
+      setError(null);
+      setMessage(null);
+
+      try {
+        await saveUserManagedSettings(
+          user.uid,
+          activeTab === "account" ? { appearanceScheme } : { publicProfileEnabled }
+        );
+        setMessage("Settings saved.");
+      } catch (err) {
+        console.error("Failed to save settings:", err);
+        setError("Could not save settings. Check your connection and try again.");
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    await saveProfile();
   };
 
   const connectGithub = async () => {
@@ -853,7 +879,7 @@ export default function AccountSettingsPage() {
           {(activeTab === "account" || activeTab === "profile" || activeTab === "privacy") && (
           <div className="flex justify-end">
             <button
-              onClick={() => saveProfile()}
+              onClick={saveCurrentTab}
               disabled={isSaving}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 font-bold text-slate-900 transition-opacity hover:opacity-90 disabled:opacity-60"
             >

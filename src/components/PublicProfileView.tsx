@@ -22,6 +22,7 @@ import {
   type PublicProfile,
 } from "@/lib/profile";
 import ProfileCTA from "./ProfileCTA";
+import NavHeader from "./NavHeader";
 
 interface PublicProfileViewProps {
   profile: PublicProfile;
@@ -47,6 +48,7 @@ export default function PublicProfileView({ profile, preview = false }: PublicPr
 
   return (
     <div className="min-h-screen bg-[#1A1D20] text-[#F4F5F7]">
+      {!preview && <NavHeader />}
       <main>
         <section className="border-b border-white/10 bg-[#262A2E]">
           <div className="mx-auto max-w-6xl px-6 py-10">
