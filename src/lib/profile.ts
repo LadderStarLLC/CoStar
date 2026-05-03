@@ -18,6 +18,15 @@ export type AccountType = 'talent' | 'business' | 'agency' | 'admin' | 'owner';
 export type SocialPlatform = 'github' | 'linkedin' | 'email';
 export type AccountTypeSource = 'signup' | 'legacy' | 'migration' | 'system';
 export type PublicAccountType = 'talent' | 'business' | 'agency';
+export type AccountStatus = 'active' | 'suspended' | 'disabled';
+export type AdminAuditAction =
+  | 'user.status.updated'
+  | 'user.public_profile.updated'
+  | 'user.notes.updated'
+  | 'user.role.updated'
+  | 'user.wallet.adjusted'
+  | 'user.lifecycle.disabled'
+  | 'migration.talent.updated';
 
 export interface SocialConnection {
   platform: SocialPlatform;
@@ -65,6 +74,9 @@ export interface UserProfile {
   profileComplete?: number;
   moderationStatus?: 'active' | 'suspended';
   disabled?: boolean;
+  lastAdminActionAt?: any;
+  lastAdminActionBy?: string | null;
+  adminNotes?: string;
   createdAt?: any;
   updatedAt?: any;
 }
@@ -711,8 +723,7 @@ export async function getPublicProfileBySlugOrUid(
     where('slug', '==', normalizedSlug),
     where('status', '==', 'published'),
     where('searchable', '==', true),
-    where('moderationStatus', '==', 'active'),
-    limit(5)
+    where('moderationStatus', '==', 'active')
   ));
   if (!snapshot.empty) {
     const profileSnap = snapshot.docs.find((docSnap) => {
