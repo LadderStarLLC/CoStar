@@ -6,6 +6,7 @@ import BrandLogo from './BrandLogo';
 
 const navLinks = [
   { href: '/jobs', label: 'Job Board' },
+  { href: '/pricing', label: 'Pricing' },
   { href: '/sign-in', label: 'Sign In' },
 ];
 

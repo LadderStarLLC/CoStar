@@ -10,6 +10,12 @@ type WalletAdjustmentInput = {
   actor: DecodedIdToken;
 };
 
+type WalletSetInput = {
+  uid: string;
+  balance: number;
+  reason: string;
+};
+
 export async function getOrCreateWalletSummary(db: Firestore, uid: string): Promise<WalletSummary> {
   const wallet = await db.runTransaction(async (transaction) => {
     const profileRef = db.doc(`users/${uid}`);
@@ -149,6 +155,81 @@ export async function adjustWalletBalance(
       accountType,
       currency,
       balance: nextBalance,
+    };
+  });
+}
+
+export async function setWalletBalance(
+  db: Firestore,
+  { uid, balance, reason }: WalletSetInput
+): Promise<AccountWallet> {
+  if (!uid.trim()) {
+    throw new Response(JSON.stringify({ error: 'User uid is required.' }), { status: 400 });
+  }
+  if (!Number.isInteger(balance) || balance < 0) {
+    throw new Response(JSON.stringify({ error: 'Balance must be a non-negative integer.' }), { status: 400 });
+  }
+
+  const trimmedReason = reason.trim();
+  if (!trimmedReason || trimmedReason.length > 240) {
+    throw new Response(JSON.stringify({ error: 'Reason is required and must be 240 characters or fewer.' }), { status: 400 });
+  }
+
+  return db.runTransaction(async (transaction) => {
+    const profileRef = db.doc(`users/${uid}`);
+    const walletRef = db.doc(`accountWallets/${uid}`);
+    const transactionRef = walletRef.collection('transactions').doc();
+    const [profileSnap, walletSnap] = await Promise.all([
+      transaction.get(profileRef),
+      transaction.get(walletRef),
+    ]);
+
+    if (!profileSnap.exists) {
+      throw new Response(JSON.stringify({ error: 'User profile not found.' }), { status: 404 });
+    }
+
+    const profile = profileSnap.data() ?? {};
+    const accountType = normalizeWalletAccountType(profile.accountType);
+    const currency = currencyForAccountType(accountType);
+    if (!accountType || !currency) {
+      throw new Response(JSON.stringify({ error: 'This account type does not support a wallet.' }), { status: 400 });
+    }
+
+    const previousBalance = walletSnap.exists
+      ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance)
+      : 0;
+
+    const walletPatch = {
+      uid,
+      accountType,
+      currency,
+      balance,
+      updatedAt: FieldValue.serverTimestamp(),
+      ...(walletSnap.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+    };
+
+    const ledgerEntry: Omit<WalletTransaction, 'id'> = {
+      uid,
+      accountType,
+      currency,
+      delta: balance - previousBalance,
+      balanceBefore: previousBalance,
+      balanceAfter: balance,
+      reason: trimmedReason,
+      actorUid: 'stripe',
+      actorEmail: null,
+      type: 'subscription_allowance',
+      createdAt: FieldValue.serverTimestamp(),
+    };
+
+    transaction.set(walletRef, walletPatch, { merge: true });
+    transaction.create(transactionRef, ledgerEntry);
+
+    return {
+      uid,
+      accountType,
+      currency,
+      balance,
     };
   });
 }
