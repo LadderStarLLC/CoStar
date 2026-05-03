@@ -8,13 +8,11 @@ import {
   Briefcase,
   Check,
   Clock3,
-  Sparkles,
   Star,
   Users2,
   WalletCards,
 } from "lucide-react";
 import NavHeader from "@/components/NavHeader";
-import BrandLogo from "@/components/BrandLogo";
 import { useAuth } from "@/context/AuthContext";
 import {
   annualPrice,
@@ -29,12 +27,6 @@ const audienceIcons = {
   business: Briefcase,
   agency: Users2,
 } satisfies Record<PricingAudienceKey, typeof Star>;
-
-const proofPoints = [
-  ["Monthly reset", "Premium minutes and screenings refresh at the start of each billing month."],
-  ["Role-specific value", "Talent and agencies receive interview minutes; employers receive AI screening capacity."],
-  ["Built for momentum", "Every tier keeps discovery, practice, messaging, and profiles in one operating surface."],
-];
 
 function formatPrice(tier: PricingTier, billingCycle: BillingCycle) {
   if (tier.monthlyPrice === 0) return "$0";
@@ -93,46 +85,7 @@ export default function PricingPage() {
       <NavHeader />
 
       <main>
-        <section className="relative overflow-hidden ladderstar-surface border-b border-white/10">
-          <div className="absolute inset-x-0 top-0 h-px ladderstar-emerald-line" />
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-14 md:py-20">
-            <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#E5B536]/35 bg-[#262A2E]/70 px-3 py-1.5 text-sm font-semibold text-[#E5B536]">
-                  <Sparkles className="h-4 w-4" />
-                  Pricing for every path
-                </div>
-                <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight text-balance md:text-6xl">
-                  Plans that match how you climb.
-                </h1>
-                <p className="mt-5 max-w-2xl text-lg leading-8 text-[#F4F5F7]/72">
-                  Choose a monthly or annual plan for talent, employers, or agencies. Each paid tier includes premium currency for your workflow that resets every billing month.
-                </p>
-              </div>
-
-              <div className="rounded-lg border border-[#5DC99B]/25 bg-[#262A2E]/75 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)]">
-                <div className="flex items-center gap-3">
-                  <BrandLogo size="md" />
-                  <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#5DC99B]">Premium currency</p>
-                    <p className="mt-1 text-xl font-bold">Minutes for practice. Screenings for hiring.</p>
-                  </div>
-                </div>
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  {proofPoints.map(([title, copy]) => (
-                    <div key={title} className="rounded-lg border border-white/10 bg-[#1A1D20]/65 p-4">
-                      <BadgeCheck className="h-5 w-5 text-[#5DC99B]" />
-                      <p className="mt-3 font-bold">{title}</p>
-                      <p className="mt-2 text-sm leading-6 text-[#F4F5F7]/62">{copy}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 py-10 md:py-14">
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 md:py-10">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="grid grid-cols-3 rounded-lg border border-white/10 bg-[#262A2E] p-1">
               {pricingAudiences.map((item) => {
@@ -177,14 +130,14 @@ export default function PricingPage() {
             </div>
           </div>
 
-          <div className="mt-8 flex flex-col gap-4 rounded-lg border border-[#5DC99B]/20 bg-[#262A2E]/60 p-5 md:flex-row md:items-center md:justify-between">
+          <div className="mt-6 flex flex-col gap-4 rounded-lg border border-[#5DC99B]/20 bg-[#262A2E]/60 p-5 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ladderstar-gold-gradient">
                 <AudienceIcon className="h-5 w-5 text-[#1A1D20]" />
               </div>
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#E5B536]">{audience.eyebrow}</p>
-                <h2 className="mt-1 text-2xl font-black">{audience.label} plans</h2>
+                <h1 className="mt-1 text-2xl font-black">{audience.label} plans</h1>
                 <p className="mt-2 max-w-3xl leading-7 text-[#F4F5F7]/68">{audience.summary}</p>
               </div>
             </div>
@@ -216,7 +169,7 @@ export default function PricingPage() {
                   )}
 
                   <div className="pr-24">
-                    <h3 className="text-2xl font-black">{tier.name}</h3>
+                    <h2 className="text-2xl font-black">{tier.name}</h2>
                     <p className="mt-3 min-h-20 leading-7 text-[#F4F5F7]/66">{tier.description}</p>
                   </div>
 

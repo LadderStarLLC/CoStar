@@ -18,6 +18,7 @@ export type AccountType = 'talent' | 'business' | 'agency' | 'admin' | 'owner';
 export type SocialPlatform = 'github' | 'linkedin' | 'email';
 export type AccountTypeSource = 'signup' | 'legacy' | 'migration' | 'system';
 export type PublicAccountType = 'talent' | 'business' | 'agency';
+export type AppearanceScheme = 'ladderstar' | 'light' | 'midnight' | 'high-contrast';
 export type AccountStatus = 'active' | 'suspended' | 'disabled';
 export type AdminAuditAction =
   | 'user.status.updated'
@@ -58,6 +59,7 @@ export interface UserProfile {
   location?: string;
   slug?: string;
   publicProfileEnabled?: boolean;
+  appearanceScheme?: AppearanceScheme;
   workVibe?: WorkVibe | null;
   socialConnections?: SocialConnection[];
   workExperience?: unknown[];
@@ -260,6 +262,7 @@ export const accountTypes: AccountType[] = ['talent', 'business', 'agency', 'adm
 export const publicSignupAccountTypes: PublicAccountType[] = ['talent', 'business', 'agency'];
 export const privilegedAccountTypes: AccountType[] = ['admin', 'owner'];
 export const publicAccountTypes: PublicAccountType[] = ['talent', 'business', 'agency'];
+export const appearanceSchemes: AppearanceScheme[] = ['ladderstar', 'light', 'midnight', 'high-contrast'];
 
 export function isAccountType(value: unknown): value is AccountType {
   return typeof value === 'string' && accountTypes.includes(value as AccountType);
@@ -277,6 +280,10 @@ export function isPublicAccountType(value: unknown): value is PublicAccountType 
 export function isPrivilegedAccountType(value: unknown): value is 'admin' | 'owner' {
   const accountType = normalizeAccountType(value);
   return accountType === 'admin' || accountType === 'owner';
+}
+
+export function normalizeAppearanceScheme(value: unknown): AppearanceScheme {
+  return appearanceSchemes.includes(value as AppearanceScheme) ? value as AppearanceScheme : 'ladderstar';
 }
 
 export function normalizeEmail(email?: string | null): string | null {
@@ -334,6 +341,7 @@ export function normalizeProfile(uid: string, data: Partial<UserProfile> = {}): 
     location: data.location ?? '',
     slug: data.slug ?? createSlug(data.displayName ?? data.email ?? uid, uid),
     publicProfileEnabled: data.publicProfileEnabled ?? true,
+    appearanceScheme: normalizeAppearanceScheme(data.appearanceScheme),
     workVibe: data.workVibe ?? emptyWorkVibe,
     socialConnections: data.socialConnections ?? [],
     workExperience: data.workExperience ?? [],
@@ -885,7 +893,6 @@ export async function hidePublicProfile(uid: string): Promise<void> {
   await updateDoc(doc(db, 'users', uid), {
     publicProfileEnabled: false,
     'publicDraft.status': 'hidden',
-    'publicDraft.searchable': false,
     updatedAt: serverTimestamp(),
   });
 }

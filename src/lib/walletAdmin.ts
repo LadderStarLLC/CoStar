@@ -198,6 +198,7 @@ export async function setWalletBalance(
     const previousBalance = walletSnap.exists
       ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance)
       : 0;
+    const delta = balance - previousBalance;
 
     const walletPatch = {
       uid,
@@ -212,7 +213,7 @@ export async function setWalletBalance(
       uid,
       accountType,
       currency,
-      delta: balance - previousBalance,
+      delta,
       balanceBefore: previousBalance,
       balanceAfter: balance,
       reason: trimmedReason,

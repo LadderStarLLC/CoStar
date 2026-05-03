@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GithubAuthProvider, deleteUser, linkWithPopup, updateProfile } from "firebase/auth";
 import { deleteDoc, doc } from "firebase/firestore";
-import { Loader2, Save, Github, Linkedin, CheckCircle2, AlertCircle, Trash2, Camera, UserCog, Eye, Wallet, Lock, Shield } from "lucide-react";
+import { Loader2, Save, Github, Linkedin, CheckCircle2, AlertCircle, Trash2, Camera, Palette, UserCog, Eye, Wallet, Lock, Shield } from "lucide-react";
 import NavHeader from "@/components/NavHeader";
 import { useAuth } from "@/context/AuthContext";
 import { auth, db } from "@/lib/firebase";
@@ -13,6 +13,7 @@ import { fetchWalletSummary } from "@/lib/walletClient";
 import { walletLabel, type WalletSummary } from "@/lib/wallet";
 import {
   accountTypeLabels,
+  appearanceSchemes,
   createSlug,
   generateUniqueSlug,
   emptyWorkVibe,
@@ -23,12 +24,37 @@ import {
   publicAccountTypes,
   saveOperatorPreviewProfile,
   saveTypeSpecificProfile,
+  saveUserProfile,
   upsertSocialConnection,
   type AccountType,
+  type AppearanceScheme,
   type PublicAccountType,
   type SocialConnection,
   type WorkVibe,
 } from "@/lib/profile";
+
+const appearanceLabels: Record<AppearanceScheme, { name: string; description: string; swatches: string[] }> = {
+  ladderstar: {
+    name: "LadderStar",
+    description: "Charcoal surfaces with gold and emerald trim.",
+    swatches: ["#1A1D20", "#262A2E", "#E5B536", "#5DC99B"],
+  },
+  light: {
+    name: "Light",
+    description: "Bright neutral surfaces with the same premium trim.",
+    swatches: ["#F8FAFC", "#E2E8F0", "#D69E2E", "#168A63"],
+  },
+  midnight: {
+    name: "Midnight",
+    description: "Deeper graphite-blue surfaces with warmer contrast.",
+    swatches: ["#0B1220", "#172033", "#F0C44C", "#64D6A3"],
+  },
+  "high-contrast": {
+    name: "High Contrast",
+    description: "Sharper contrast for denser reading and focus.",
+    swatches: ["#050505", "#181818", "#FFD44D", "#00D084"],
+  },
+};
 
 export default function AccountSettingsPage() {
   const router = useRouter();
@@ -64,12 +90,17 @@ export default function AccountSettingsPage() {
   const [agencyDescription, setAgencyDescription] = useState("");
   const [agencySpecialties, setAgencySpecialties] = useState("");
   const [agencyServices, setAgencyServices] = useState("");
+  const [appearanceScheme, setAppearanceScheme] = useState<AppearanceScheme>("ladderstar");
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/sign-in");
     }
   }, [authLoading, user, router]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = appearanceScheme;
+  }, [appearanceScheme]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -80,12 +111,14 @@ export default function AccountSettingsPage() {
         const profile = isOperator
           ? await getOperatorPreviewProfile(user.uid, previewType, user)
           : await getUserProfile(user.uid);
+        const operatorProfile = isOperator ? await getUserProfile(user.uid) : null;
         setAccountType(profile?.accountType ?? null);
         if (!isOperator && profile && !profile.accountType) {
           router.push("/onboarding");
           return;
         }
         setPublicProfileEnabled(profile?.publicProfileEnabled ?? true);
+        setAppearanceScheme(operatorProfile?.appearanceScheme ?? profile?.appearanceScheme ?? "ladderstar");
         setDisplayName(profile?.displayName ?? user.displayName ?? "");
         setHeadline(profile?.headline ?? "");
         setLocation(profile?.location ?? "");
@@ -161,6 +194,7 @@ export default function AccountSettingsPage() {
         displayName: trimmedName || user.displayName,
         photoURL: user.photoURL,
         publicProfileEnabled,
+        appearanceScheme,
         slug,
         headline: headline.trim(),
         location: location.trim(),
@@ -190,6 +224,7 @@ export default function AccountSettingsPage() {
 
       if (isOperator) {
         await saveOperatorPreviewProfile(user.uid, accountType as PublicAccountType, profileUpdates);
+        await saveUserProfile(user.uid, { appearanceScheme });
       } else {
         await saveTypeSpecificProfile(user.uid, accountType, profileUpdates);
       }
@@ -521,6 +556,51 @@ export default function AccountSettingsPage() {
                   className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
                 />
               </div>
+            </div>
+          </section>
+          )}
+
+          {activeTab === "account" && (
+          <section className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+            <div className="mb-6 flex items-center gap-3">
+              <Palette className="h-5 w-5 text-amber-400" />
+              <h2 className="text-xl font-bold text-white">Appearance</h2>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {appearanceSchemes.map((scheme) => {
+                const option = appearanceLabels[scheme];
+                const selected = appearanceScheme === scheme;
+                return (
+                  <button
+                    key={scheme}
+                    type="button"
+                    onClick={() => setAppearanceScheme(scheme)}
+                    className={`min-h-[116px] rounded-xl border p-4 text-left transition-colors ${
+                      selected
+                        ? "border-amber-500/60 bg-amber-500/10"
+                        : "border-white/10 bg-slate-900 hover:border-amber-500/40"
+                    }`}
+                    aria-pressed={selected}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-white">{option.name}</div>
+                        <p className="mt-1 text-sm leading-6 text-slate-400">{option.description}</p>
+                      </div>
+                      <div className={`mt-1 h-4 w-4 rounded-full border ${selected ? "border-amber-400 bg-amber-400" : "border-white/20"}`} />
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      {option.swatches.map((color) => (
+                        <span
+                          key={color}
+                          className="h-6 w-10 rounded-md border border-white/10"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </section>
           )}

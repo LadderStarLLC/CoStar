@@ -6,6 +6,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { MessagingProvider } from "@/context/MessagingContext";
 import LazyChatWidget from "@/components/messaging/LazyChatWidget";
+import ThemeApplier from "@/components/ThemeApplier";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,6 +24,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
+          <ThemeApplier />
           <MessagingProvider>
             {children}
             <LazyChatWidget />
