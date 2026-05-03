@@ -3,11 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bookmark, CheckCircle2, ExternalLink, MessageCircle, Mic, Users, Briefcase } from 'lucide-react';
+import { Bookmark, CheckCircle2, ExternalLink, Mic, Users, Briefcase } from 'lucide-react';
 import { serializeCareerjetJob } from '@/lib/careerjet';
-import { getOrCreateConversation } from '@/lib/messaging';
 import { useAuth } from '@/context/AuthContext';
-import { useMessaging } from '@/context/MessagingContext';
 import { JobData } from '@/lib/jobs';
 
 type JobDetailActionsProps = {
@@ -18,10 +16,8 @@ type JobDetailActionsProps = {
 export default function JobDetailActions({ job, jobId }: JobDetailActionsProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const { openMessaging } = useMessaging();
   const [saved, setSaved] = useState(false);
   const [applied, setApplied] = useState(false);
-  const [isMessaging, setIsMessaging] = useState(false);
 
   const handleApply = () => {
     if (job.application?.url) {
@@ -30,38 +26,6 @@ export default function JobDetailActions({ job, jobId }: JobDetailActionsProps) 
       window.location.href = `mailto:${job.application.email}`;
     } else {
       setApplied(true);
-    }
-  };
-
-  const handleMessageRecruiter = async () => {
-    if (!user) {
-      router.push('/sign-in');
-      return;
-    }
-
-    setIsMessaging(true);
-    try {
-      const recruiterId = job.employerId || `mock_recruiter_${job.companyName?.replace(/\s+/g, '') || 'unknown'}`;
-      const conversationId = await getOrCreateConversation({
-        [user.uid]: {
-          uid: user.uid,
-          name: user.displayName || 'Talent',
-          avatarUrl: user.photoURL || null,
-          role: 'talent',
-        },
-        [recruiterId]: {
-          uid: recruiterId,
-          name: `${job.companyName || 'Company'} Recruiter`,
-          avatarUrl: null,
-          role: 'agency',
-        },
-      });
-      openMessaging(conversationId);
-    } catch (err) {
-      console.error('Failed to start conversation:', err);
-      alert('Failed to start conversation. Please try again.');
-    } finally {
-      setIsMessaging(false);
     }
   };
 
@@ -138,14 +102,6 @@ export default function JobDetailActions({ job, jobId }: JobDetailActionsProps) 
               </button>
             )}
 
-            <button
-              onClick={handleMessageRecruiter}
-              disabled={isMessaging}
-              className="w-full flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-900 px-5 py-2.5 text-sm font-semibold text-slate-200 transition-colors hover:border-amber-500/40 disabled:opacity-60"
-            >
-              <MessageCircle className="w-4 h-4" />
-              {isMessaging ? 'Opening...' : 'Message Recruiter'}
-            </button>
           </>
         )}
 

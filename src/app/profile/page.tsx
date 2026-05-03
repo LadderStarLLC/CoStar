@@ -322,7 +322,6 @@ export default function ProfilePage() {
     setPublishing(true);
     try {
       await hidePublicProfile(user.uid);
-      setSearchable(false);
       setMessage("Public profile hidden.");
     } catch (err) {
       console.error(err);
