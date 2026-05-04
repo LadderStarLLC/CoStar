@@ -295,12 +295,23 @@ export function useGeminiLiveSession({
           if (!isOpened) {
             reject(new Error(`Connection closed before opening. Code: ${event.code}. Reason: ${event.reason} | URL: ${urlSafe} | model: ${model}`));
           } else if (event.code !== 1000 && event.code !== 1005) {
+            const reason = event.reason || 'No reason provided';
+            const keyBlocked =
+              event.code === 1008 &&
+              closeStage === 'before-setup-complete' &&
+              /Requests to this API|method .*BidiGenerateContent|blocked/i.test(reason);
+            if (keyBlocked) {
+              callbacksRef.current.onError(
+                'Gemini Live rejected the LadderStar API key before setup completed. Check the Vercel GEMINI_API_KEY in Google Cloud/AI Studio: the Generative Language API must be enabled for the key, and API/application restrictions must allow the generativelanguage.googleapis.com BidiGenerateContent WebSocket method from this deployment.'
+              );
+              return;
+            }
             if (event.code === 1008 && closeStage === 'after-first-audio') {
               callbacksRef.current.onError(
-                `The Live API rejected the first live input after setup. Code: ${event.code}. Reason: ${event.reason || 'No reason provided'}. Capture and turn-timing details are logged.`
+                `The Live API rejected the first live input after setup. Code: ${event.code}. Reason: ${reason}. Capture and turn-timing details are logged.`
               );
             } else {
-              callbacksRef.current.onError(`Connection lost. Code: ${event.code}. Reason: ${event.reason}. Stage: ${closeStage}`);
+              callbacksRef.current.onError(`Connection lost. Code: ${event.code}. Reason: ${reason}. Stage: ${closeStage}`);
             }
           }
         };

@@ -315,7 +315,6 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
           : buildSystemPrompt(job ?? { title: 'this role', companyName: 'the company' }, config, persona);
 
       await connect(credentials, systemPrompt, config, {
-        liveApiHost: settings.liveApiHost || undefined,
         voiceName: resolvedVoice,
       });
 
