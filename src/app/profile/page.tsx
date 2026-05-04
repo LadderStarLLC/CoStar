@@ -7,10 +7,11 @@ import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Save, Upload, UserRoun
 import NavHeader from "@/components/NavHeader";
 import PublicProfileView from "@/components/PublicProfileView";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 import { uploadProfileImage, uploadResume } from "@/lib/storage";
 import { fetchWalletSummary } from "@/lib/walletClient";
-import { walletLabel, type WalletSummary } from "@/lib/wallet";
+import { walletLabel, type WalletSummary, type AccountWallet } from "@/lib/wallet";
 import {
   accountTypeLabels,
   buildPublicFieldsFromPrivate,
@@ -94,6 +95,9 @@ export default function ProfilePage() {
   }, [authLoading, user, router]);
 
   useEffect(() => {
+    let unsubscribeWallet = () => {};
+    let cancelled = false;
+
     async function load() {
       if (!user) return;
       setLoading(true);
@@ -108,7 +112,20 @@ export default function ProfilePage() {
         
         try {
           const ws = await fetchWalletSummary(user);
-          setWalletSummary(ws);
+          if (!cancelled) setWalletSummary(ws);
+          
+          if (db) {
+            const walletRef = doc(db, 'accountWallets', user.uid);
+            unsubscribeWallet = onSnapshot(walletRef, (snap) => {
+              if (snap.exists() && !cancelled) {
+                const data = snap.data() as AccountWallet;
+                setWalletSummary((prev) => ({
+                  wallet: data,
+                  transactions: prev?.transactions ?? []
+                }));
+              }
+            });
+          }
         } catch (e) {
           console.error("Failed to load wallet", e);
         }
@@ -120,6 +137,11 @@ export default function ProfilePage() {
       }
     }
     if (!authLoading) load();
+
+    return () => {
+      cancelled = true;
+      unsubscribeWallet();
+    };
   }, [authLoading, user, router]);
 
   const accountType = profile?.accountType ?? null;

@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GithubAuthProvider, deleteUser, linkWithPopup, updateProfile } from "firebase/auth";
-import { deleteDoc, doc } from "firebase/firestore";
+import { deleteDoc, doc, onSnapshot } from "firebase/firestore";
 import { Loader2, Save, Github, Linkedin, CheckCircle2, AlertCircle, Trash2, Camera, Palette, UserCog, Eye, Wallet, Lock, Shield, Send } from "lucide-react";
 import NavHeader from "@/components/NavHeader";
 import { useAuth } from "@/context/AuthContext";
 import { auth, db } from "@/lib/firebase";
 import { uploadProfileImage } from "@/lib/storage";
 import { fetchWalletSummary } from "@/lib/walletClient";
-import { walletLabel, type WalletSummary } from "@/lib/wallet";
+import { walletLabel, type WalletSummary, type AccountWallet } from "@/lib/wallet";
 import {
   accountTypeLabels,
   appearanceSchemes,
@@ -106,6 +106,9 @@ export default function AccountSettingsPage() {
   }, [appearanceScheme]);
 
   useEffect(() => {
+    let unsubscribeWallet = () => {};
+    let cancelled = false;
+
     const loadProfile = async () => {
       if (!user) return;
 
@@ -143,7 +146,20 @@ export default function AccountSettingsPage() {
           setWalletSummary(null);
         } else {
           const nextWalletSummary = await fetchWalletSummary(user);
-          setWalletSummary(nextWalletSummary);
+          if (!cancelled) setWalletSummary(nextWalletSummary);
+          
+          if (db) {
+            const walletRef = doc(db, 'accountWallets', user.uid);
+            unsubscribeWallet = onSnapshot(walletRef, (snap) => {
+              if (snap.exists() && !cancelled) {
+                const data = snap.data() as AccountWallet;
+                setWalletSummary((prev) => ({
+                  wallet: data,
+                  transactions: prev?.transactions ?? []
+                }));
+              }
+            });
+          }
         }
       } catch (err) {
         console.error("Failed to load settings:", err);
@@ -156,6 +172,11 @@ export default function AccountSettingsPage() {
     if (!authLoading) {
       loadProfile();
     }
+
+    return () => {
+      cancelled = true;
+      unsubscribeWallet();
+    };
   }, [authLoading, user, isOperator, previewType, router]);
 
   const githubConnection = getSocialConnection({ socialConnections }, "github");

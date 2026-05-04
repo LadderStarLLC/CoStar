@@ -203,7 +203,21 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     latestEntriesRef.current = entries;
   }, [entries]);
 
-  const { isPlaying, enqueueChunk, stop: stopPlayback, close: closePlayback, analyserRef } =
+  const {
+    isPlaying,
+    enqueueChunk,
+    stop: stopPlayback,
+    close: closePlayback,
+    analyserRef,
+    outputDevices,
+    selectedOutputDeviceId,
+    currentOutputLabel,
+    outputLevel,
+    speakerHealth,
+    speakerError,
+    canSelectOutputDevice,
+    selectOutputDevice,
+  } =
     useAudioPlayback();
 
   const onFeedback = useCallback((args: FeedbackArgs) => {
@@ -550,6 +564,24 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
         isMuted={audioCapture.isMuted}
         entries={entries}
         analyserRef={analyserRef}
+        inputDevices={audioCapture.inputDevices}
+        selectedInputDeviceId={audioCapture.selectedInputDeviceId}
+        currentInputLabel={audioCapture.currentInputLabel}
+        inputLevel={audioCapture.inputLevel}
+        micHealth={audioCapture.micHealth}
+        outputDevices={outputDevices}
+        selectedOutputDeviceId={selectedOutputDeviceId}
+        currentOutputLabel={currentOutputLabel}
+        outputLevel={outputLevel}
+        speakerHealth={speakerHealth}
+        speakerError={speakerError}
+        canSelectOutputDevice={canSelectOutputDevice}
+        onSelectInputDevice={(deviceId) => {
+          void audioCapture.selectInputDevice(deviceId);
+        }}
+        onSelectOutputDevice={(deviceId) => {
+          void selectOutputDevice(deviceId);
+        }}
         onToggleMute={audioCapture.toggleMute}
         onEndInterview={handleEndInterview}
         onCancelInterview={handleCancelInterview}

@@ -45,6 +45,25 @@ The official test workflow for real app behavior is:
 Local checks are useful for fast feedback, but they are not the source of truth
 for integration behavior because local secrets are placeholders.
 
+### Incorrect validation paths and common pitfalls
+
+Keep this list updated whenever a workflow mistake causes confusion or wasted
+debugging time.
+
+The following are not valid proof that real app behavior works:
+- Starting or relying on a local dev server for audition, Firebase Auth,
+  Firestore, Gemini, admin, wallet, billing, or messaging integration testing.
+- Treating `npm.cmd run dev`, localhost, or local browser behavior as the
+  acceptance environment for production or PR behavior.
+- Debugging Gemini, Firebase Admin, Stripe, or auth connectivity from committed
+  placeholder `.env.local` values.
+- Assuming a successful local build proves live API, WebSocket, auth-domain,
+  Firestore-rule, billing, or Vercel environment behavior.
+- Skipping the GitHub PR preview because a feature appears to work locally.
+
+If a change touches integration behavior, the required validation path remains
+GitHub PR -> Vercel preview -> preview testing.
+
 ### Local commands
 
 - Build/type/lint sanity check: `npm.cmd run build`
@@ -113,6 +132,17 @@ The first message after `open` must use `setup` as the top-level key:
           "prebuiltVoiceConfig": { "voiceName": "Aoede" }
         }
       }
+    },
+    "realtimeInputConfig": {
+      "automaticActivityDetection": {
+        "disabled": false,
+        "startOfSpeechSensitivity": "START_SENSITIVITY_HIGH",
+        "endOfSpeechSensitivity": "END_SENSITIVITY_HIGH",
+        "prefixPaddingMs": 100,
+        "silenceDurationMs": 700
+      },
+      "activityHandling": "START_OF_ACTIVITY_INTERRUPTS",
+      "turnCoverage": "TURN_INCLUDES_ONLY_ACTIVITY"
     },
     "inputAudioTranscription": {},
     "outputAudioTranscription": {}
@@ -210,6 +240,35 @@ When Gemini Live API sends a `toolCall`, such as `generate_feedback`, halt all
 outgoing audio immediately. Drop outgoing audio chunks until the `toolResponse`
 has been sent. Sending input during tool calls can close the connection with an
 "Input During Tool Calls" error.
+
+### 12. Keep barge-in enabled for Gemini 3.1 Live
+
+`gemini-3.1-flash-live-preview` is a low-latency audio-to-audio model and is
+expected to support live interruption. Do not pause microphone capture merely
+because Gemini audio playback is active. The Audition page must keep streaming
+mic audio during AI speech so the server can detect user speech and emit
+`interrupted` events.
+
+Only stop or pause outgoing audio for explicit user mute, end/cancel flows, or
+while a `toolCall` is unresolved. If the assistant is not responding to voice,
+check the browser console for `[AudioCapture] mic signal` RMS/peak values and
+`serverContent` diagnostics before changing protocol shape.
+
+### 13. In-session text uses `realtimeInput.text`
+
+For Gemini 3.1 Live, do not use `clientContent` for normal in-conversation text
+updates. The End Interview instruction is sent as:
+
+```json
+{
+  "realtimeInput": {
+    "text": "The interview is now over. Please stop speaking and immediately call the generate_feedback tool to evaluate my performance."
+  }
+}
+```
+
+`clientContent` should not be sent immediately after setup and should not be
+used as the normal way to steer an active Live conversation.
 
 ---
 
