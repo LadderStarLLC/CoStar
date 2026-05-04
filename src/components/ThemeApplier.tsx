@@ -10,6 +10,11 @@ export default function ThemeApplier() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = scheme;
+    try {
+      localStorage.setItem("costar-theme", scheme);
+    } catch (e) {
+      // Ignore localStorage errors
+    }
   }, [scheme]);
 
   return null;

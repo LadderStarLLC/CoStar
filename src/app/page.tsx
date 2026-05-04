@@ -8,7 +8,7 @@ import {
   Star,
   TrendingUp,
 } from "lucide-react";
-import HomeHeader from "@/components/HomeHeader";
+import NavHeader from "@/components/NavHeader";
 import FeaturedJobsPreview from "@/components/FeaturedJobsPreview";
 
 const coachingTracks = [
@@ -21,7 +21,7 @@ const coachingTracks = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#1A1D20] text-[#F4F5F7]">
-      <HomeHeader />
+      <NavHeader />
 
       <main>
         <section className="relative overflow-hidden ladderstar-surface">

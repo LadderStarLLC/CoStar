@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { isPrivilegedAccountType } from '@/lib/profile';
-import { LogOut, User, Mic, Shield, ChevronDown, Settings } from 'lucide-react';
+import { LogOut, User, Mic, Shield, ChevronDown, Settings, Coins } from 'lucide-react';
 import SiteSearch from './SiteSearch';
 import BrandLogo from './BrandLogo';
 import { useState, useRef, useEffect } from 'react';
@@ -146,9 +146,16 @@ export default function NavHeader() {
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-[#262A2E] border border-white/10 rounded-lg shadow-lg overflow-hidden py-1 z-50">
                   {menuCurrency && (
-                    <div className="px-4 py-2 border-b border-white/10 mb-1">
-                      <div className="text-xs text-[#F4F5F7]/50 uppercase tracking-wider">{walletLabel(menuCurrency)}</div>
-                      <div className="text-sm font-bold text-[#E5B536]">{typeof menuBalance === 'number' ? menuBalance : '...'}</div>
+                    <div className="px-3 py-2 border-b border-white/10 mb-1">
+                      <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#1A1D20]/50 border border-[#E5B536]/20 ladderstar-surface transition-all hover:border-[#E5B536]/40">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-[#F4F5F7]/50 uppercase tracking-wider font-semibold">{walletLabel(menuCurrency)}</span>
+                          <span className="text-sm font-black text-[#E5B536] drop-shadow-sm">
+                            {typeof menuBalance === 'number' ? menuBalance : '...'}
+                          </span>
+                        </div>
+                        <Coins className="w-5 h-5 text-[#E5B536] drop-shadow-sm" />
+                      </div>
                     </div>
                   )}
                   <Link

@@ -100,7 +100,7 @@ export default function SiteFooter() {
           <nav className="grid grid-cols-2 gap-8 md:grid-cols-4" aria-label="Footer">
             {footerGroups.map((group) => (
               <div key={group.title}>
-                <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-brand-primary">{group.title}</h2>
+                <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-foreground/64">{group.title}</h2>
                 <ul className="mt-4 space-y-3">
                   {group.links.map((link) => (
                     <li key={link.href}>

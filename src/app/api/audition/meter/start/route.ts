@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json().catch(() => ({}))) as Body;
     const reservation = await reserveWalletBalance(db, {
       uid: decoded.uid,
-      amount: 15,
+      amount: 1,
       reason: `Audition minute reservation${body.jobTitle ? `: ${body.jobTitle}` : ''}`,
       metadata: {
         feature: 'audition',

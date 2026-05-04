@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const reservation = await reserveWalletBalance(db, {
       uid: decoded.uid,
       meterId: body.meterId,
-      amount: 15,
+      amount: 1,
       reason: `Audition minute extension${body.jobTitle ? `: ${body.jobTitle}` : ''}`,
       metadata: { feature: 'audition', extension: true },
     });

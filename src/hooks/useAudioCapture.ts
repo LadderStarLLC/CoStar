@@ -12,9 +12,13 @@ interface UseAudioCaptureOptions {
 
 export type MicConnectionStatus = 'unsupported' | 'unknown' | 'prompt' | 'granted' | 'denied' | 'capturing' | 'error';
 
-const SPEECH_RMS_THRESHOLD = 0.018;
-const SILENCE_END_MS = 1100;
-const PRE_SPEECH_SILENCE_MS = 900;
+const AMBIENT_CALIBRATION_MS = 1000;
+const MIN_SPEECH_RMS_THRESHOLD = 0.004;
+const SPEECH_THRESHOLD_MULTIPLIER = 2.5;
+const POSSIBLE_SPEECH_MULTIPLIER = 0.55;
+const SPEECH_START_CHUNKS = 2;
+const SILENCE_END_MS = 1000;
+const FALLBACK_TURN_END_MS = 1800;
 const MAX_SILENCE_KEEPALIVE_MS = 2500;
 
 export function useAudioCapture({ onChunk, onSpeechStart, onSpeechEnd }: UseAudioCaptureOptions) {
@@ -31,8 +35,17 @@ export function useAudioCapture({ onChunk, onSpeechStart, onSpeechEnd }: UseAudi
   const pausedRef = useRef(false);
   const loggedFirstChunkRef = useRef(false);
   const inSpeechRef = useRef(false);
+  const captureStartedAtRef = useRef(0);
+  const ambientRmsSumRef = useRef(0);
+  const ambientSampleCountRef = useRef(0);
+  const speechThresholdRef = useRef(MIN_SPEECH_RMS_THRESHOLD);
+  const thresholdLoggedRef = useRef(false);
+  const consecutiveSpeechChunksRef = useRef(0);
+  const possibleSpeechAtRef = useRef(0);
+  const possibleSpeechSentRef = useRef(false);
   const lastSpeechAtRef = useRef(0);
   const lastSilenceSentAtRef = useRef(0);
+  const maxRmsRef = useRef(0);
   const onChunkRef = useRef(onChunk);
   const onSpeechStartRef = useRef(onSpeechStart);
   const onSpeechEndRef = useRef(onSpeechEnd);
@@ -172,8 +185,17 @@ export function useAudioCapture({ onChunk, onSpeechStart, onSpeechEnd }: UseAudi
     audioContextRef.current = ctx;
     loggedFirstChunkRef.current = false;
     inSpeechRef.current = false;
+    captureStartedAtRef.current = Date.now();
+    ambientRmsSumRef.current = 0;
+    ambientSampleCountRef.current = 0;
+    speechThresholdRef.current = MIN_SPEECH_RMS_THRESHOLD;
+    thresholdLoggedRef.current = false;
+    consecutiveSpeechChunksRef.current = 0;
+    possibleSpeechAtRef.current = 0;
+    possibleSpeechSentRef.current = false;
     lastSpeechAtRef.current = 0;
     lastSilenceSentAtRef.current = 0;
+    maxRmsRef.current = 0;
 
     if (ctx.state === 'suspended') {
       await ctx.resume();
@@ -195,7 +217,30 @@ export function useAudioCapture({ onChunk, onSpeechStart, onSpeechEnd }: UseAudi
       const base64 = int16ToBase64(pcm);
       const rms = calculateRms(input);
       const now = Date.now();
-      const hasSpeech = rms >= SPEECH_RMS_THRESHOLD;
+      maxRmsRef.current = Math.max(maxRmsRef.current, rms);
+      const calibrating = now - captureStartedAtRef.current < AMBIENT_CALIBRATION_MS;
+      if (calibrating) {
+        ambientRmsSumRef.current += rms;
+        ambientSampleCountRef.current += 1;
+      } else if (!thresholdLoggedRef.current) {
+        const ambientRms = ambientSampleCountRef.current > 0
+          ? ambientRmsSumRef.current / ambientSampleCountRef.current
+          : 0;
+        speechThresholdRef.current = Math.max(
+          MIN_SPEECH_RMS_THRESHOLD,
+          ambientRms * SPEECH_THRESHOLD_MULTIPLIER,
+        );
+        thresholdLoggedRef.current = true;
+        console.log('[AudioCapture] speech threshold', {
+          ambientRms: Number(ambientRms.toFixed(5)),
+          threshold: Number(speechThresholdRef.current.toFixed(5)),
+          maxRms: Number(maxRmsRef.current.toFixed(5)),
+        });
+      }
+      const speechThreshold = speechThresholdRef.current;
+      const possibleSpeechThreshold = Math.max(MIN_SPEECH_RMS_THRESHOLD * 0.5, speechThreshold * POSSIBLE_SPEECH_MULTIPLIER);
+      const hasSpeech = !calibrating && rms >= speechThreshold;
+      const hasPossibleSpeech = !calibrating && rms >= possibleSpeechThreshold;
       if (!loggedFirstChunkRef.current) {
         loggedFirstChunkRef.current = true;
         console.log('[AudioCapture] first chunk', {
@@ -210,32 +255,71 @@ export function useAudioCapture({ onChunk, onSpeechStart, onSpeechEnd }: UseAudi
       }
 
       if (hasSpeech) {
-        if (!inSpeechRef.current) {
+        consecutiveSpeechChunksRef.current += 1;
+        if (!possibleSpeechAtRef.current) {
+          possibleSpeechAtRef.current = now;
+        }
+        possibleSpeechSentRef.current = true;
+        onChunkRef.current(base64);
+        if (!inSpeechRef.current && consecutiveSpeechChunksRef.current >= SPEECH_START_CHUNKS) {
           inSpeechRef.current = true;
+          console.log('[AudioCapture] speechStart', {
+            rms: Number(rms.toFixed(5)),
+            threshold: Number(speechThreshold.toFixed(5)),
+            maxRms: Number(maxRmsRef.current.toFixed(5)),
+          });
           onSpeechStartRef.current?.();
         }
         lastSpeechAtRef.current = now;
-        onChunkRef.current(base64);
         return;
       }
+
+      consecutiveSpeechChunksRef.current = 0;
 
       if (inSpeechRef.current) {
         onChunkRef.current(base64);
         if (lastSpeechAtRef.current && now - lastSpeechAtRef.current >= SILENCE_END_MS) {
           inSpeechRef.current = false;
+          possibleSpeechAtRef.current = 0;
+          possibleSpeechSentRef.current = false;
           lastSilenceSentAtRef.current = now;
+          console.log('[AudioCapture] speechEnd', {
+            silenceMs: now - lastSpeechAtRef.current,
+            maxRms: Number(maxRmsRef.current.toFixed(5)),
+          });
           onSpeechEndRef.current?.();
         }
         return;
       }
 
-      if (!lastSilenceSentAtRef.current || now - lastSilenceSentAtRef.current >= MAX_SILENCE_KEEPALIVE_MS) {
-        lastSilenceSentAtRef.current = now;
+      if (hasPossibleSpeech) {
+        if (!possibleSpeechAtRef.current) {
+          possibleSpeechAtRef.current = now;
+        }
+        possibleSpeechSentRef.current = true;
         onChunkRef.current(base64);
         return;
       }
 
-      if (!lastSpeechAtRef.current && now - (lastSilenceSentAtRef.current || now) <= PRE_SPEECH_SILENCE_MS) {
+      if (possibleSpeechAtRef.current && possibleSpeechSentRef.current && now - possibleSpeechAtRef.current >= FALLBACK_TURN_END_MS) {
+        possibleSpeechAtRef.current = 0;
+        possibleSpeechSentRef.current = false;
+        lastSilenceSentAtRef.current = now;
+        console.log('[AudioCapture] speechEndFallback', {
+          threshold: Number(speechThreshold.toFixed(5)),
+          maxRms: Number(maxRmsRef.current.toFixed(5)),
+        });
+        onSpeechEndRef.current?.();
+        return;
+      }
+
+      if (calibrating) {
+        onChunkRef.current(base64);
+        return;
+      }
+
+      if (!lastSilenceSentAtRef.current || now - lastSilenceSentAtRef.current >= MAX_SILENCE_KEEPALIVE_MS) {
+        lastSilenceSentAtRef.current = now;
         onChunkRef.current(base64);
       }
     };
@@ -255,8 +339,17 @@ export function useAudioCapture({ onChunk, onSpeechStart, onSpeechEnd }: UseAudi
     audioContextRef.current = null;
     streamRef.current = null;
     inSpeechRef.current = false;
+    captureStartedAtRef.current = 0;
+    ambientRmsSumRef.current = 0;
+    ambientSampleCountRef.current = 0;
+    speechThresholdRef.current = MIN_SPEECH_RMS_THRESHOLD;
+    thresholdLoggedRef.current = false;
+    consecutiveSpeechChunksRef.current = 0;
+    possibleSpeechAtRef.current = 0;
+    possibleSpeechSentRef.current = false;
     lastSpeechAtRef.current = 0;
     lastSilenceSentAtRef.current = 0;
+    maxRmsRef.current = 0;
     setIsCapturing(false);
   }, []);
 
