@@ -85,6 +85,10 @@ The audition flow depends on a very specific Gemini Live WebSocket protocol. Thi
 - `inputAudioTranscription` must be an empty object.
 - Do not send audio until the server sends `setupComplete`.
 - Do not send synthetic `clientContent` text turns immediately after setup.
+- Keep microphone capture active during Gemini playback so Gemini 3.1 Live can
+  detect speech and interrupt itself naturally.
+- Send in-session text instructions with `realtimeInput.text`, not
+  `clientContent`.
 - When Gemini sends a `toolCall`, halt outgoing audio until the `toolResponse` is sent.
 
 Working WebSocket URL shape:
@@ -108,6 +112,17 @@ Example setup shape:
         }
       }
     },
+    "realtimeInputConfig": {
+      "automaticActivityDetection": {
+        "disabled": false,
+        "startOfSpeechSensitivity": "START_SENSITIVITY_HIGH",
+        "endOfSpeechSensitivity": "END_SENSITIVITY_HIGH",
+        "prefixPaddingMs": 100,
+        "silenceDurationMs": 700
+      },
+      "activityHandling": "START_OF_ACTIVITY_INTERRUPTS",
+      "turnCoverage": "TURN_INCLUDES_ONLY_ACTIVITY"
+    },
     "inputAudioTranscription": {},
     "outputAudioTranscription": {}
   }
@@ -123,6 +138,16 @@ Audio chunks use this shape:
       "mimeType": "audio/pcm;rate=16000",
       "data": "<base64-encoded PCM>"
     }
+  }
+}
+```
+
+End Interview uses realtime text so it stays compatible with Gemini 3.1 Live:
+
+```json
+{
+  "realtimeInput": {
+    "text": "The interview is now over. Please stop speaking and immediately call the generate_feedback tool to evaluate my performance."
   }
 }
 ```
@@ -290,6 +315,13 @@ If Google sign-in fails on a Vercel preview URL, Firebase Auth probably blocked 
 ## Contributor Notes
 
 - Read `AGENTS.md` before changing audition, auth, admin, or messaging behavior.
+- Keep the incorrect validation paths and common pitfalls list in `AGENTS.md`,
+  `CLAUDE.md`, `CODEX.md`, and `GEMINI.md` updated when workflow mistakes are
+  discovered.
+- Do not treat local dev server testing as real validation for audition,
+  Firebase Auth, Firestore, Gemini, admin, wallet, billing, or messaging flows.
+  Real integration behavior must be validated through a GitHub PR preview
+  deployed by Vercel.
 - Do not expose `admin` or `owner` in public sign-up.
 - Admin APIs must verify Firebase ID tokens and check Firestore profiles server-side.
 - Do not store TipTap messages as raw HTML; store serialized JSON.

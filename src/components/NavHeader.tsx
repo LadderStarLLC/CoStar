@@ -9,7 +9,9 @@ import SiteSearch from './SiteSearch';
 import BrandLogo from './BrandLogo';
 import { useState, useRef, useEffect } from 'react';
 import { fetchWalletSummary, getCachedWalletSummary } from "@/lib/walletClient";
-import { currencyForAccountType, walletLabel, type WalletSummary } from "@/lib/wallet";
+import { currencyForAccountType, walletLabel, type WalletSummary, type AccountWallet } from "@/lib/wallet";
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 export default function NavHeader() {
   const { user, logout, loading } = useAuth();
@@ -55,8 +57,27 @@ export default function NavHeader() {
       })
       .catch(console.error);
 
+    let unsubscribe = () => {};
+    if (db) {
+      const walletRef = doc(db, 'accountWallets', user.uid);
+      unsubscribe = onSnapshot(walletRef, (snap) => {
+        if (snap.exists() && !cancelled) {
+          const data = snap.data() as AccountWallet;
+          setWalletSummary((prev) => {
+            return {
+              wallet: data,
+              transactions: prev?.transactions ?? []
+            };
+          });
+        }
+      }, (err) => {
+        console.error('Failed to subscribe to wallet changes:', err);
+      });
+    }
+
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [user]);
 
