@@ -251,15 +251,6 @@ export function useGeminiLiveSession({
               },
               inputAudioTranscription: {},
               outputAudioTranscription: {},
-              realtimeInputConfig: {
-                automaticActivityDetection: {
-                  startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
-                  endOfSpeechSensitivity: "END_SENSITIVITY_HIGH",
-                  silenceDurationMs: 800,
-                  prefixPaddingMs: 120,
-                },
-                turnCoverage: "TURN_INCLUDES_ONLY_ACTIVITY",
-              },
               tools: [{
                 functionDeclarations: [{
                   name: "generate_feedback",
@@ -383,17 +374,6 @@ export function useGeminiLiveSession({
     wsRef.current.send(JSON.stringify(msg));
   }, []);
 
-  const sendAudioStreamEnd = useCallback(() => {
-    if (!setupReadyRef.current) return;
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-    console.log('[GeminiLive] sendAudioStreamEnd');
-    wsRef.current.send(JSON.stringify({
-      realtimeInput: {
-        audioStreamEnd: true,
-      },
-    }));
-  }, []);
-
   const sendClientText = useCallback((text: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     wsRef.current.send(JSON.stringify({
@@ -415,5 +395,5 @@ export function useGeminiLiveSession({
     setAIStatus('idle');
   }, []);
 
-  return { aiStatus, isConnected, connect, sendAudioChunk, sendAudioStreamEnd, sendClientText, disconnect };
+  return { aiStatus, isConnected, connect, sendAudioChunk, sendClientText, disconnect };
 }
