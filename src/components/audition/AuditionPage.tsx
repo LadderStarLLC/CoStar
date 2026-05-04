@@ -215,7 +215,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     feedbackResolveRef.current = null;
   }, []);
 
-  const { aiStatus, isConnected, connect, sendAudioChunk, sendClientText, disconnect } = useGeminiLiveSession({
+  const { aiStatus, isConnected, connect, sendAudioChunk, sendAudioStreamEnd, sendClientText, disconnect } = useGeminiLiveSession({
     onAudioChunk: enqueueChunk,
     onAITranscript: (text, isFinal) => {
       addPartial('ai', text);
@@ -256,6 +256,12 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
       },
       [isConnected, sendAudioChunk],
     ),
+    onSpeechStart: useCallback(() => {
+      if (isConnected) stopPlayback();
+    }, [isConnected, stopPlayback]),
+    onSpeechEnd: useCallback(() => {
+      if (isConnected) sendAudioStreamEnd();
+    }, [isConnected, sendAudioStreamEnd]),
   });
 
   useEffect(() => {

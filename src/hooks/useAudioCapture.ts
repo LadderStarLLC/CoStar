@@ -6,11 +6,18 @@ import { GEMINI_CONFIG } from '@/lib/audition/config';
 
 interface UseAudioCaptureOptions {
   onChunk: (base64PCM: string) => void;
+  onSpeechStart?: () => void;
+  onSpeechEnd?: () => void;
 }
 
 export type MicConnectionStatus = 'unsupported' | 'unknown' | 'prompt' | 'granted' | 'denied' | 'capturing' | 'error';
 
-export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
+const SPEECH_RMS_THRESHOLD = 0.018;
+const SILENCE_END_MS = 1100;
+const PRE_SPEECH_SILENCE_MS = 900;
+const MAX_SILENCE_KEEPALIVE_MS = 2500;
+
+export function useAudioCapture({ onChunk, onSpeechStart, onSpeechEnd }: UseAudioCaptureOptions) {
   const [hasPermission, setHasPermission] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -23,8 +30,15 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const pausedRef = useRef(false);
   const loggedFirstChunkRef = useRef(false);
+  const inSpeechRef = useRef(false);
+  const lastSpeechAtRef = useRef(0);
+  const lastSilenceSentAtRef = useRef(0);
   const onChunkRef = useRef(onChunk);
+  const onSpeechStartRef = useRef(onSpeechStart);
+  const onSpeechEndRef = useRef(onSpeechEnd);
   onChunkRef.current = onChunk;
+  onSpeechStartRef.current = onSpeechStart;
+  onSpeechEndRef.current = onSpeechEnd;
 
   useEffect(() => {
     let permissionStatus: PermissionStatus | null = null;
@@ -157,6 +171,9 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
     const ctx = new AudioContextCtor({ sampleRate: GEMINI_CONFIG.inputSampleRate });
     audioContextRef.current = ctx;
     loggedFirstChunkRef.current = false;
+    inSpeechRef.current = false;
+    lastSpeechAtRef.current = 0;
+    lastSilenceSentAtRef.current = 0;
 
     if (ctx.state === 'suspended') {
       await ctx.resume();
@@ -176,6 +193,9 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
       const resampled = resampleFloat32PCM(input, sourceSampleRate, GEMINI_CONFIG.inputSampleRate);
       const pcm = float32ToInt16(resampled);
       const base64 = int16ToBase64(pcm);
+      const rms = calculateRms(input);
+      const now = Date.now();
+      const hasSpeech = rms >= SPEECH_RMS_THRESHOLD;
       if (!loggedFirstChunkRef.current) {
         loggedFirstChunkRef.current = true;
         console.log('[AudioCapture] first chunk', {
@@ -185,9 +205,39 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
           sourceFrames: input.length,
           resampledFrames: resampled.length,
           base64Length: base64.length,
+          rms: Number(rms.toFixed(4)),
         });
       }
-      onChunkRef.current(base64);
+
+      if (hasSpeech) {
+        if (!inSpeechRef.current) {
+          inSpeechRef.current = true;
+          onSpeechStartRef.current?.();
+        }
+        lastSpeechAtRef.current = now;
+        onChunkRef.current(base64);
+        return;
+      }
+
+      if (inSpeechRef.current) {
+        onChunkRef.current(base64);
+        if (lastSpeechAtRef.current && now - lastSpeechAtRef.current >= SILENCE_END_MS) {
+          inSpeechRef.current = false;
+          lastSilenceSentAtRef.current = now;
+          onSpeechEndRef.current?.();
+        }
+        return;
+      }
+
+      if (!lastSilenceSentAtRef.current || now - lastSilenceSentAtRef.current >= MAX_SILENCE_KEEPALIVE_MS) {
+        lastSilenceSentAtRef.current = now;
+        onChunkRef.current(base64);
+        return;
+      }
+
+      if (!lastSpeechAtRef.current && now - (lastSilenceSentAtRef.current || now) <= PRE_SPEECH_SILENCE_MS) {
+        onChunkRef.current(base64);
+      }
     };
 
     source.connect(processor);
@@ -204,6 +254,9 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
     sourceRef.current = null;
     audioContextRef.current = null;
     streamRef.current = null;
+    inSpeechRef.current = false;
+    lastSpeechAtRef.current = 0;
+    lastSilenceSentAtRef.current = 0;
     setIsCapturing(false);
   }, []);
 
@@ -245,4 +298,14 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
     setPaused,
     toggleMute,
   };
+}
+
+function calculateRms(samples: Float32Array): number {
+  if (samples.length === 0) return 0;
+  let sum = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const value = samples[i];
+    sum += value * value;
+  }
+  return Math.sqrt(sum / samples.length);
 }
