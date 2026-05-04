@@ -38,7 +38,7 @@ export function InterviewScreen({
     idle: 'Connecting...',
     processing: 'Thinking...',
     speaking: `${voiceName} is speaking`,
-    listening: 'Your turn',
+    listening: entries.length === 0 ? 'Please speak to begin' : 'Listening',
   };
 
   const statusColor: Record<AIStatus, string> = {
@@ -46,6 +46,15 @@ export function InterviewScreen({
     processing: 'text-amber-400',
     speaking: 'text-violet-300',
     listening: 'text-emerald-400',
+  };
+
+  const statusDetail: Record<AIStatus, string> = {
+    idle: 'Preparing your live audition session.',
+    processing: 'Reviewing your last response.',
+    speaking: 'The interviewer is asking or following up.',
+    listening: entries.length === 0
+      ? 'Start with a short answer or greeting when you are ready.'
+      : 'Speak naturally, then pause so the interviewer can respond.',
   };
 
   const initial = voiceName.charAt(0).toUpperCase();
@@ -88,6 +97,14 @@ export function InterviewScreen({
           </div>
           <p className="text-slate-400 text-sm font-medium">{voiceName} · AI Interviewer</p>
           <AudioVisualizer analyserRef={analyserRef} aiStatus={aiStatus} />
+          <div className="text-center space-y-1">
+            <div className={`text-sm font-semibold ${isMuted ? 'text-red-300' : statusColor[aiStatus]}`}>
+              {isConnecting ? 'Connecting...' : isMuted ? 'Muted' : statusLabel[aiStatus]}
+            </div>
+            <p className="max-w-xs text-xs leading-relaxed text-slate-500">
+              {isMuted ? 'Unmute when you are ready to answer.' : statusDetail[aiStatus]}
+            </p>
+          </div>
         </div>
 
         {/* Video stub */}

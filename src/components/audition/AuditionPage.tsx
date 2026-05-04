@@ -145,7 +145,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     }
     const data = await res.json() as { meterId: string; reservedMinutes?: number };
     meterIdRef.current = data.meterId;
-    reservedMinutesRef.current += data.reservedMinutes ?? 15;
+    reservedMinutesRef.current += data.reservedMinutes ?? 1;
   }, [user, mode]);
 
   const extendAuditionMeter = useCallback(async (resolvedTitle: string) => {
@@ -160,7 +160,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
       });
       if (!res.ok) return false;
       const data = await res.json() as { addedMinutes?: number };
-      reservedMinutesRef.current += data.addedMinutes ?? 15;
+      reservedMinutesRef.current += data.addedMinutes ?? 1;
       return true;
     } finally {
       isExtendingReservationRef.current = false;
@@ -372,7 +372,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
         pendingEndRef.current = true;
         return;
       }
-      if (elapsedSeconds >= reservedSeconds - 60) {
+      if (elapsedSeconds >= reservedSeconds - 15) {
         extendAuditionMeter(resolvedTitle).then((ok) => {
           if (!ok) {
             setSessionError('You are out of interview minutes. The audition will wrap up now.');
@@ -385,6 +385,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
 
   const handleEndInterview = useCallback(async () => {
     setPhase('ending');
+    if (isConnected) sendAudioStreamEnd();
     audioCapture.stopCapture();
     stopPlayback();
 
@@ -448,7 +449,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     }
 
     setPhase('results');
-  }, [disconnect, audioCapture, stopPlayback, sendClientText, job, mode, config, settings, user, jobId, saveSession, saveSessionToServer, finishAuditionMeter]);
+  }, [disconnect, audioCapture, stopPlayback, sendClientText, sendAudioStreamEnd, isConnected, job, mode, config, settings, user, jobId, saveSession, saveSessionToServer, finishAuditionMeter]);
 
   useEffect(() => {
     if (pendingEndRef.current && !isPlaying) {
