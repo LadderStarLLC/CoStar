@@ -35,7 +35,7 @@ function RichTextContent({ content }: { content: string }) {
     editable: false,
     editorProps: {
       attributes: {
-        class: 'prose prose-invert prose-sm max-w-none focus:outline-none',
+        class: 'prose prose-invert prose-sm max-w-none focus:outline-none text-inherit [&_*]:text-inherit [&_*]:!text-current',
       },
     },
   });

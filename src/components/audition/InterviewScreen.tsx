@@ -24,6 +24,8 @@ interface InterviewScreenProps {
   currentInputLabel: string;
   inputLevel: number;
   micHealth: MicHealthStatus;
+  captureStartedAt: number | null;
+  lastSignalAt: number | null;
   outputDevices: AudioDeviceOption[];
   selectedOutputDeviceId: string;
   currentOutputLabel: string;
@@ -53,6 +55,8 @@ export function InterviewScreen({
   currentInputLabel,
   inputLevel,
   micHealth,
+  captureStartedAt,
+  lastSignalAt,
   outputDevices,
   selectedOutputDeviceId,
   currentOutputLabel,
@@ -90,8 +94,14 @@ export function InterviewScreen({
   };
 
   const initial = voiceName.charAt(0).toUpperCase();
+  const showSilentMicWarning =
+    micHealth === 'silent' &&
+    Boolean(captureStartedAt) &&
+    !lastSignalAt &&
+    Date.now() - Number(captureStartedAt) > 8000 &&
+    inputLevel < 0.01;
   const warnings = [
-    getMicHealthMessage(micHealth),
+    getMicHealthMessage(micHealth, showSilentMicWarning),
     getSpeakerHealthMessage(speakerHealth, speakerError),
   ].filter(Boolean) as string[];
 
@@ -343,9 +353,9 @@ function getSpeakerStatusClass(status: SpeakerHealthStatus) {
   return 'text-slate-400';
 }
 
-function getMicHealthMessage(status: MicHealthStatus) {
+function getMicHealthMessage(status: MicHealthStatus, showSilentWarning: boolean) {
   if (status === 'muted') return 'Your microphone is muted. Unmute before answering.';
-  if (status === 'silent') return 'No voice input is being detected. Check that the correct microphone is selected, the device is unmuted, and browser or Windows microphone access is allowed.';
+  if (status === 'silent' && showSilentWarning) return 'No voice input is being detected. Check that the correct microphone is selected, the device is unmuted, and browser or Windows microphone access is allowed.';
   if (status === 'permission-blocked') return 'Microphone access is blocked. Open browser site settings from the address bar and allow Microphone for LadderStar.';
   if (status === 'no-device') return 'No microphone was found. Connect a microphone, confirm system privacy settings, then refresh device detection.';
   if (status === 'device-error') return 'The microphone is not available. Close other apps using it or select a different microphone.';

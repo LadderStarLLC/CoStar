@@ -29,12 +29,14 @@ export async function POST(req: NextRequest) {
         accountType,
         mode: body.mode ?? null,
         sessionId: body.sessionId ?? null,
+        jobTitle: body.jobTitle ?? null,
       },
     });
 
     return NextResponse.json({
       meterId: reservation.meterId,
       reservedMinutes: reservation.reservedAmount,
+      transactionId: reservation.transactionId,
       wallet: reservation.wallet,
     });
   } catch (err) {

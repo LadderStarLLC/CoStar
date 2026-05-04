@@ -264,20 +264,34 @@ export function useGeminiLiveSession({
               inputAudioTranscription: {},
               outputAudioTranscription: {},
               tools: [{
-                functionDeclarations: [{
-                  name: "generate_feedback",
-                  description: "Call this tool ONLY when the user says the interview is over. It submits the final evaluation.",
-                  parameters: {
-                    type: "OBJECT",
-                    properties: {
-                      score: { type: "INTEGER", description: "Score from 0 to 100" },
-                      feedback: { type: "STRING", description: "General summary paragraph of performance" },
-                      strengths: { type: "ARRAY", items: { type: "STRING" }, description: "List of candidate's strengths" },
-                      improvements: { type: "ARRAY", items: { type: "STRING" }, description: "List of areas to improve" }
-                    },
-                    required: ["score", "feedback", "strengths", "improvements"]
+                functionDeclarations: [
+                  {
+                    name: "generate_feedback",
+                    description: "Call this tool ONLY when the user says the interview is over. It submits the final evaluation.",
+                    parameters: {
+                      type: "OBJECT",
+                      properties: {
+                        score: { type: "INTEGER", description: "Score from 0 to 100" },
+                        feedback: { type: "STRING", description: "General summary paragraph of performance" },
+                        strengths: { type: "ARRAY", items: { type: "STRING" }, description: "List of candidate's strengths" },
+                        improvements: { type: "ARRAY", items: { type: "STRING" }, description: "List of areas to improve" }
+                      },
+                      required: ["score", "feedback", "strengths", "improvements"]
+                    }
+                  },
+                  {
+                    name: "search_website",
+                    description: "Search for users, job listings, or companies on the platform. Returns a list of results.",
+                    parameters: {
+                      type: "OBJECT",
+                      properties: {
+                        query: { type: "STRING", description: "The search term (e.g. 'software engineer', 'Jane Doe')" },
+                        type: { type: "STRING", description: "The type of entity to search for. Must be one of 'all', 'job', or 'user'" }
+                      },
+                      required: ["query", "type"]
+                    }
                   }
-                }]
+                ]
               }]
             },
           };
@@ -407,5 +421,5 @@ export function useGeminiLiveSession({
     setAIStatus('idle');
   }, []);
 
-  return { aiStatus, isConnected, connect, sendAudioChunk, sendClientText, disconnect };
+return { aiStatus, isConnected, connect, sendAudioChunk, sendClientText, disconnect };
 }

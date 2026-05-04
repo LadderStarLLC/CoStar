@@ -3,7 +3,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, List, ListOrdered, Send } from 'lucide-react';
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, useRef } from 'react';
 
 interface RichTextEditorProps {
   onSend: (content: string, previewText: string) => void | Promise<void>;
@@ -13,6 +13,7 @@ interface RichTextEditorProps {
 export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitMessageRef = useRef<() => void>();
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -21,17 +22,26 @@ export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps
     onBlur: () => setIsFocused(false),
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-[80px] px-4 py-3 text-slate-200 placeholder:text-slate-500',
+        class: 'prose prose-invert max-w-none focus:outline-none min-h-[80px] px-4 py-3 text-slate-200 placeholder:text-slate-500 [&_*]:!text-slate-200',
       },
+      handleKeyDown: (view, event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          if (submitMessageRef.current) {
+            submitMessageRef.current();
+          }
+          return true;
+        }
+        return false;
+      }
     },
   });
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submitMessage = async () => {
     if (!editor || editor.isEmpty || disabled || isSubmitting) return;
 
     const content = JSON.stringify(editor.getJSON());
-    const previewText = editor.getText().slice(0, 100); // First 100 chars for preview
+    const previewText = editor.getText().slice(0, 100);
 
     setIsSubmitting(true);
     try {
@@ -40,6 +50,13 @@ export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  submitMessageRef.current = submitMessage;
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    await submitMessage();
   };
 
   if (!editor) {

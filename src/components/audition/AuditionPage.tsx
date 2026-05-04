@@ -78,7 +78,7 @@ type EntitlementResponse = { walletSummary?: WalletSummary };
 export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth() as { user: { uid: string; getIdToken: () => Promise<string> } | null };
+  const { user } = useAuth() as { user: { uid: string; displayName?: string; email?: string; getIdToken: () => Promise<string> } | null };
 
   const [phase, setPhase] = useState<AuditionPhase>('setup');
   const [job, setJob] = useState<JobData | null>(null);
@@ -95,6 +95,8 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
   const interviewStartTimeRef = useRef<number>(0);
   const sessionIdRef = useRef<string>('');
   const meterIdRef = useRef<string>('');
+  const walletTransactionIdRef = useRef<string>('');
+  const walletSettlementTransactionIdRef = useRef<string | null>(null);
   const reservedMinutesRef = useRef(0);
   const isExtendingReservationRef = useRef(false);
   const pendingEndRef = useRef(false);
@@ -143,8 +145,9 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.error || 'Could not reserve audition minutes.');
     }
-    const data = await res.json() as { meterId: string; reservedMinutes?: number };
+    const data = await res.json() as { meterId: string; reservedMinutes?: number; transactionId?: string };
     meterIdRef.current = data.meterId;
+    walletTransactionIdRef.current = data.transactionId ?? '';
     reservedMinutesRef.current += data.reservedMinutes ?? 1;
   }, [user, mode]);
 
@@ -168,7 +171,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
   }, [user]);
 
   const finishAuditionMeter = useCallback(async (durationSeconds: number, status: 'completed' | 'cancelled' | 'failed', resolvedTitle: string) => {
-    if (!user || !meterIdRef.current) return;
+    if (!user || !meterIdRef.current) return null;
     const meterId = meterIdRef.current;
     meterIdRef.current = '';
     reservedMinutesRef.current = 0;
@@ -181,7 +184,11 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       console.error('[Audition] Premium settlement failed:', data.error || res.status);
+      return null;
     }
+    const data = await res.json().catch(() => ({})) as { transactionId?: string | null };
+    walletSettlementTransactionIdRef.current = data.transactionId ?? null;
+    return data.transactionId ?? null;
   }, [user]);
 
   useEffect(() => {
@@ -317,11 +324,13 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
 
       const resolvedVoice = resolveVoice(settings.voiceName);
       const persona = resolvePersona(settings);
+      
+      const userName = user?.displayName || user?.email?.split('@')[0] || 'the candidate';
 
       const systemPrompt =
         mode === 'freeform'
-          ? buildSystemPromptFromText(jobText, config, persona)
-          : buildSystemPrompt(job ?? { title: 'this role', companyName: 'the company' }, config, persona);
+          ? buildSystemPromptFromText(jobText, config, persona, userName)
+          : buildSystemPrompt(job ?? { title: 'this role', companyName: 'the company' }, config, persona, userName);
 
       await connect(credentials, systemPrompt, config, {
         voiceName: resolvedVoice,
@@ -351,6 +360,8 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
         strengths: [],
         improvements: [],
         durationSeconds: 0,
+        walletMeterId: meterIdRef.current,
+        walletTransactionId: walletTransactionIdRef.current,
       });
 
       setPhase('interviewing');
@@ -435,16 +446,25 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
       strengths: feedback.strengths,
       improvements: feedback.improvements,
       durationSeconds,
+      walletMeterId: meterIdRef.current,
+      walletTransactionId: walletTransactionIdRef.current,
     };
 
     // Server-side save first (authoritative)
     await saveSessionToServer(completedSession);
-    await finishAuditionMeter(durationSeconds, 'completed', resolvedTitle);
+    const settlementTransactionId = await finishAuditionMeter(durationSeconds, 'completed', resolvedTitle);
+    const sessionWithWalletSettlement = {
+      ...completedSession,
+      walletSettlementTransactionId: settlementTransactionId,
+    };
+    if (settlementTransactionId) {
+      await saveSessionToServer(sessionWithWalletSettlement);
+    }
 
     // Client-side save as secondary path
     if (user) {
       try {
-        await saveSession(stripUndefinedFields(completedSession));
+        await saveSession(stripUndefinedFields(sessionWithWalletSettlement));
       } catch (err) {
         console.error('[Audition] Client session save failed:', err);
       }
@@ -471,6 +491,8 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
         endedAt: new Date().toISOString(),
         transcript: latestEntriesRef.current.map((e) => ({ ...e, isFinal: true })),
         durationSeconds,
+        walletMeterId: meterIdRef.current,
+        walletTransactionId: walletTransactionIdRef.current,
       });
       finishAuditionMeter(durationSeconds, 'cancelled', resolvedTitle);
     }
@@ -479,6 +501,8 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     stopPlayback();
     resetTranscript();
     sessionIdRef.current = '';
+    walletTransactionIdRef.current = '';
+    walletSettlementTransactionIdRef.current = null;
     setSessionError(null);
     setPhase('setup');
   }, [disconnect, audioCapture, stopPlayback, resetTranscript, user, saveSessionToServer, finishAuditionMeter, mode, job]);
@@ -570,6 +594,8 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
         currentInputLabel={audioCapture.currentInputLabel}
         inputLevel={audioCapture.inputLevel}
         micHealth={audioCapture.micHealth}
+        captureStartedAt={audioCapture.captureStartedAt}
+        lastSignalAt={audioCapture.lastSignalAt}
         outputDevices={outputDevices}
         selectedOutputDeviceId={selectedOutputDeviceId}
         currentOutputLabel={currentOutputLabel}

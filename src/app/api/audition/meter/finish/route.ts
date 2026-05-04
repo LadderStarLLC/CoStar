@@ -21,14 +21,16 @@ export async function POST(req: NextRequest) {
     }
     const seconds = Number.isFinite(body.durationSeconds) ? Math.max(0, Math.floor(Number(body.durationSeconds))) : 0;
     const usedMinutes = seconds > 0 ? Math.max(1, Math.ceil(seconds / 60)) : 0;
-    const wallet = await settleWalletReservation(db, {
+    const settlement = await settleWalletReservation(db, {
       uid: decoded.uid,
       meterId: body.meterId,
       usedAmount: usedMinutes,
       reason: `Audition ${body.status ?? 'finished'} settlement${body.jobTitle ? `: ${body.jobTitle}` : ''}`,
+      status: body.status ?? 'finished',
+      durationSeconds: seconds,
     });
 
-    return NextResponse.json({ ok: true, usedMinutes, wallet });
+    return NextResponse.json({ ok: true, usedMinutes, wallet: settlement.wallet, transactionId: settlement.transactionId });
   } catch (err) {
     return jsonError(err);
   }

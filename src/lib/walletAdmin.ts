@@ -36,6 +36,8 @@ type WalletReservationSettlementInput = {
   meterId: string;
   usedAmount: number;
   reason: string;
+  status?: string;
+  durationSeconds?: number;
 };
 
 type WalletGiftInput = {
@@ -349,7 +351,7 @@ export async function consumeWalletBalance(
 export async function reserveWalletBalance(
   db: Firestore,
   { uid, amount, reason, meterId, metadata }: WalletReservationInput
-): Promise<{ wallet: AccountWallet; meterId: string; reservedAmount: number }> {
+): Promise<{ wallet: AccountWallet; meterId: string; reservedAmount: number; transactionId: string }> {
   const id = meterId?.trim() || db.collection('auditionMetering').doc().id;
   const trimmedReason = reason.trim();
   if (!uid.trim()) {
@@ -362,7 +364,7 @@ export async function reserveWalletBalance(
     throw new Response(JSON.stringify({ error: 'Reason is required and must be 240 characters or fewer.' }), { status: 400 });
   }
 
-  const wallet = await db.runTransaction(async (transaction) => {
+  const result = await db.runTransaction(async (transaction) => {
     const profileRef = db.doc(`users/${uid}`);
     const walletRef = db.doc(`accountWallets/${uid}`);
     const meterRef = db.doc(`auditionMetering/${id}`);
@@ -373,9 +375,9 @@ export async function reserveWalletBalance(
       transaction.get(meterRef),
     ]);
 
+    const existingMeter = meterSnap.exists ? (meterSnap.data() ?? {}) : {};
     if (meterSnap.exists) {
-      const data = meterSnap.data() ?? {};
-      if (data.uid !== uid || data.status !== 'reserved') {
+      if (existingMeter.uid !== uid || existingMeter.status !== 'reserved') {
         throw new Response(JSON.stringify({ error: 'Reservation cannot be extended.' }), { status: 400 });
       }
     }
@@ -400,6 +402,11 @@ export async function reserveWalletBalance(
 
     const nextBalance = previousBalance - amount;
     const now = FieldValue.serverTimestamp();
+    const existingMetadata = isRecord(existingMeter.metadata) ? existingMeter.metadata : {};
+    const nextMetadata = { ...existingMetadata, ...(metadata ?? {}) };
+    const feature = typeof nextMetadata.feature === 'string' ? nextMetadata.feature : null;
+    const sessionId = typeof nextMetadata.sessionId === 'string' ? nextMetadata.sessionId : null;
+    const jobTitle = typeof nextMetadata.jobTitle === 'string' ? nextMetadata.jobTitle : null;
     transaction.set(walletRef, {
       uid,
       accountType,
@@ -419,6 +426,11 @@ export async function reserveWalletBalance(
       actorUid: 'system',
       actorEmail: null,
       type: 'usage_reserve',
+      feature: feature === 'audition' ? 'audition' : null,
+      meterId: id,
+      sessionId,
+      jobTitle,
+      metadata: nextMetadata,
       createdAt: now,
     } satisfies Omit<WalletTransaction, 'id'>);
     transaction.set(meterRef, {
@@ -429,21 +441,24 @@ export async function reserveWalletBalance(
       usedAmount: 0,
       status: 'reserved',
       reason: trimmedReason,
-      metadata: metadata ?? {},
+      metadata: nextMetadata,
       updatedAt: now,
       ...(meterSnap.exists ? {} : { createdAt: now }),
     }, { merge: true });
 
-    return { uid, accountType, currency, balance: nextBalance };
+    return {
+      wallet: { uid, accountType, currency, balance: nextBalance },
+      transactionId: transactionRef.id,
+    };
   });
 
-  return { wallet, meterId: id, reservedAmount: amount };
+  return { wallet: result.wallet, meterId: id, reservedAmount: amount, transactionId: result.transactionId };
 }
 
 export async function settleWalletReservation(
   db: Firestore,
-  { uid, meterId, usedAmount, reason }: WalletReservationSettlementInput
-): Promise<AccountWallet> {
+  { uid, meterId, usedAmount, reason, status, durationSeconds }: WalletReservationSettlementInput
+): Promise<{ wallet: AccountWallet; transactionId: string | null }> {
   const trimmedReason = reason.trim();
   if (!uid.trim() || !meterId.trim()) {
     throw new Response(JSON.stringify({ error: 'Reservation uid and id are required.' }), { status: 400 });
@@ -473,10 +488,13 @@ export async function settleWalletReservation(
     }
     if (meter.status !== 'reserved') {
       return {
-        uid,
-        accountType: meter.accountType,
-        currency: meter.currency,
-        balance: walletSnap.exists ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance) : 0,
+        wallet: {
+          uid,
+          accountType: meter.accountType,
+          currency: meter.currency,
+          balance: walletSnap.exists ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance) : 0,
+        },
+        transactionId: null,
       };
     }
 
@@ -487,6 +505,10 @@ export async function settleWalletReservation(
     const previousBalance = walletSnap.exists ? toSafeBalance(wallet.balance) : 0;
     const nextBalance = previousBalance + refund;
     const now = FieldValue.serverTimestamp();
+    const meterMetadata = isRecord(meter.metadata) ? meter.metadata : {};
+    const feature = typeof meterMetadata.feature === 'string' ? meterMetadata.feature : null;
+    const sessionId = typeof meterMetadata.sessionId === 'string' ? meterMetadata.sessionId : null;
+    const jobTitle = typeof meterMetadata.jobTitle === 'string' ? meterMetadata.jobTitle : null;
 
     if (refund > 0) {
       transaction.set(walletRef, {
@@ -504,6 +526,13 @@ export async function settleWalletReservation(
         actorUid: 'system',
         actorEmail: null,
         type: 'usage_settle_refund',
+        feature: feature === 'audition' ? 'audition' : null,
+        meterId,
+        sessionId,
+        jobTitle,
+        status: status ?? null,
+        durationSeconds: durationSeconds ?? null,
+        metadata: meterMetadata,
         createdAt: now,
       } satisfies Omit<WalletTransaction, 'id'>);
     }
@@ -517,10 +546,13 @@ export async function settleWalletReservation(
     }, { merge: true });
 
     return {
-      uid,
-      accountType: meter.accountType,
-      currency: meter.currency,
-      balance: nextBalance,
+      wallet: {
+        uid,
+        accountType: meter.accountType,
+        currency: meter.currency,
+        balance: nextBalance,
+      },
+      transactionId: refund > 0 ? refundRef.id : null,
     };
   });
 }
@@ -660,6 +692,10 @@ function normalizeWalletAccountType(value: unknown): AccountType | null {
 
 function toSafeBalance(value: unknown): number {
   return Number.isInteger(value) && Number(value) >= 0 ? Number(value) : 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function serializeTimestamp(value: any): string | null {
