@@ -6,12 +6,13 @@ import { Bold, Italic, List, ListOrdered, Send } from 'lucide-react';
 import { useState, FormEvent, useEffect } from 'react';
 
 interface RichTextEditorProps {
-  onSend: (content: string, previewText: string) => void;
+  onSend: (content: string, previewText: string) => void | Promise<void>;
   disabled?: boolean;
 }
 
 export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -25,16 +26,20 @@ export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps
     },
   });
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!editor || editor.isEmpty || disabled) return;
+    if (!editor || editor.isEmpty || disabled || isSubmitting) return;
 
-    // Extract JSON and a plain text preview
     const content = JSON.stringify(editor.getJSON());
     const previewText = editor.getText().slice(0, 100); // First 100 chars for preview
 
-    onSend(content, previewText);
-    editor.commands.clearContent();
+    setIsSubmitting(true);
+    try {
+      await onSend(content, previewText);
+      editor.commands.clearContent();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!editor) {
@@ -47,7 +52,7 @@ export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleBold().run()}
-          disabled={disabled}
+          disabled={disabled || isSubmitting}
           className={`p-1.5 rounded hover:bg-white/10 transition-colors ${editor.isActive('bold') ? 'text-amber-400 bg-white/5' : 'text-slate-400'}`}
           title="Bold"
         >
@@ -56,7 +61,7 @@ export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          disabled={disabled}
+          disabled={disabled || isSubmitting}
           className={`p-1.5 rounded hover:bg-white/10 transition-colors ${editor.isActive('italic') ? 'text-amber-400 bg-white/5' : 'text-slate-400'}`}
           title="Italic"
         >
@@ -66,7 +71,7 @@ export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-          disabled={disabled}
+          disabled={disabled || isSubmitting}
           className={`p-1.5 rounded hover:bg-white/10 transition-colors ${editor.isActive('bulletList') ? 'text-amber-400 bg-white/5' : 'text-slate-400'}`}
           title="Bullet List"
         >
@@ -75,7 +80,7 @@ export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          disabled={disabled}
+          disabled={disabled || isSubmitting}
           className={`p-1.5 rounded hover:bg-white/10 transition-colors ${editor.isActive('orderedList') ? 'text-amber-400 bg-white/5' : 'text-slate-400'}`}
           title="Numbered List"
         >
@@ -93,7 +98,7 @@ export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps
         </div>
         <button
           type="submit"
-          disabled={disabled || editor.isEmpty}
+          disabled={disabled || isSubmitting || editor.isEmpty}
           className="flex items-center gap-2 px-4 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:hover:bg-amber-500 text-slate-900 rounded font-medium transition-colors"
         >
           <span>Send</span>

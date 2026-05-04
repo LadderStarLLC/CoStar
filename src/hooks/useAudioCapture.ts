@@ -32,6 +32,7 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
   const streamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
   const pausedRef = useRef(false);
   const loggedFirstChunkRef = useRef(false);
   const diagnosticChunkCountRef = useRef(0);
@@ -316,10 +317,12 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
   const stopCapture = useCallback(() => {
     processorRef.current?.disconnect();
     sourceRef.current?.disconnect();
+    analyserRef.current?.disconnect();
     audioContextRef.current?.close();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     processorRef.current = null;
     sourceRef.current = null;
+    analyserRef.current = null;
     audioContextRef.current = null;
     streamRef.current = null;
     setIsCapturing(false);
@@ -387,6 +390,7 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
   })();
 
   return {
+    analyserRef,
     hasPermission,
     isMuted,
     isCapturing,

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useMessaging } from "@/context/MessagingContext";
 import { AccountType } from "@/lib/profile";
+import { createConversation } from "@/lib/messaging";
 import {
   getConnection,
   requestConnection,
@@ -18,9 +20,11 @@ interface ProfileCTAProps {
 
 export default function ProfileCTA({ targetId, targetRole }: ProfileCTAProps) {
   const { user } = useAuth();
+  const { openMessaging } = useMessaging();
   const [status, setStatus] = useState<ConnectionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [messageLoading, setMessageLoading] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -66,6 +70,18 @@ export default function ProfileCTA({ targetId, targetRole }: ProfileCTAProps) {
     }
   };
 
+  const handleMessage = async () => {
+    setMessageLoading(true);
+    try {
+      const { conversationId } = await createConversation({ targetUid: targetId, conversationType: "human" });
+      openMessaging(conversationId);
+    } catch (error) {
+      console.error("Failed to open message:", error);
+    } finally {
+      setMessageLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <button disabled className="inline-flex h-10 w-24 items-center justify-center rounded-lg bg-slate-800 px-4 font-medium text-slate-400">
@@ -86,17 +102,27 @@ export default function ProfileCTA({ targetId, targetRole }: ProfileCTAProps) {
   const isConnected = status === "accepted";
 
   return (
-    <button
-      onClick={handleAction}
-      disabled={isConnected || actionLoading}
-      className={`inline-flex h-10 items-center justify-center rounded-lg px-4 font-medium transition-colors ${
-        isConnected
-          ? "border border-amber-500/50 bg-slate-800/50 text-amber-500/70"
-          : "bg-amber-500 text-slate-900 hover:bg-amber-400 disabled:opacity-50"
-      }`}
-    >
-      {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-      {label}
-    </button>
+    <div className="flex flex-wrap gap-2">
+      <button
+        onClick={handleAction}
+        disabled={isConnected || actionLoading}
+        className={`inline-flex h-10 items-center justify-center rounded-lg px-4 font-medium transition-colors ${
+          isConnected
+            ? "border border-amber-500/50 bg-slate-800/50 text-amber-500/70"
+            : "bg-amber-500 text-slate-900 hover:bg-amber-400 disabled:opacity-50"
+        }`}
+      >
+        {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {label}
+      </button>
+      <button
+        onClick={handleMessage}
+        disabled={messageLoading}
+        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-slate-800/80 px-4 font-medium text-slate-100 transition-colors hover:border-amber-500/50 disabled:opacity-50"
+      >
+        {messageLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+        Message
+      </button>
+    </div>
   );
 }

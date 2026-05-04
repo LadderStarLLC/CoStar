@@ -158,21 +158,21 @@ service cloud.firestore {
     // Connections - participants only
     match /connections/{connectionId} {
       allow read: if request.auth != null && (
-        resource.data.uid1 == request.auth.uid ||
-        resource.data.uid2 == request.auth.uid
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.targetId == request.auth.uid
       );
       allow create: if request.auth != null &&
-        request.resource.data.initiatedBy == request.auth.uid && (
-          request.resource.data.uid1 == request.auth.uid ||
-          request.resource.data.uid2 == request.auth.uid
-        );
+        request.resource.data.requesterId == request.auth.uid &&
+        request.resource.data.targetId is string &&
+        request.resource.data.targetId != request.auth.uid &&
+        request.resource.data.status in ['pending', 'accepted'];
       allow update: if request.auth != null && (
-        resource.data.uid1 == request.auth.uid ||
-        resource.data.uid2 == request.auth.uid
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.targetId == request.auth.uid
       );
       allow delete: if request.auth != null && (
-        resource.data.uid1 == request.auth.uid ||
-        resource.data.uid2 == request.auth.uid
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.targetId == request.auth.uid
       );
     }
 
@@ -229,18 +229,21 @@ service cloud.firestore {
 
     // Conversations (Messaging)
     match /conversations/{conversationId} {
-      // Only participants can read the conversation metadata
+      // Participants can read conversation metadata. All mutations go through
+      // authenticated server routes so messages, receipts, AI metadata, and
+      // audit events are validated and tracked consistently.
       allow read: if request.auth != null && request.auth.uid in resource.data.participantIds;
-      
-      // Only participants can start/update a conversation
-      allow create: if request.auth != null && request.auth.uid in request.resource.data.participantIds;
-      allow update: if request.auth != null && request.auth.uid in resource.data.participantIds;
+      allow create, update, delete: if false;
 
       // Messages subcollection
       match /messages/{messageId} {
-        // Must check parent conversation to ensure user is a participant
         allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
-        allow create: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow create, update, delete: if false;
+      }
+
+      // Immutable chat event trail written by server routes.
+      match /events/{eventId} {
+        allow read, create, update, delete: if false;
       }
     }
   }

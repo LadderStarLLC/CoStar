@@ -1,27 +1,34 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
-import { Message, Participant, sendMessage, markConversationRead } from '@/lib/messaging';
+import {
+  Conversation,
+  Message,
+  Participant,
+  markConversationRead,
+  requestCoStarResponse,
+  sendMessage,
+} from '@/lib/messaging';
 import RichTextEditor from './RichTextEditor';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { Bot, Loader2 } from 'lucide-react';
 
 interface ChatWindowProps {
-  conversationId: string;
+  conversation: Conversation;
   messages: Message[];
   currentUserId: string;
   participants: Record<string, Participant>;
 }
 
-// Sub-component for rendering rich text safely
 function RichTextContent({ content }: { content: string }) {
   const editor = useEditor({
     extensions: [StarterKit],
     content: (() => {
       try {
         return JSON.parse(content);
-      } catch (e) {
+      } catch {
         return content;
       }
     })(),
@@ -37,35 +44,54 @@ function RichTextContent({ content }: { content: string }) {
   return <EditorContent editor={editor} />;
 }
 
-export default function ChatWindow({ conversationId, messages, currentUserId, participants }: ChatWindowProps) {
+export default function ChatWindow({ conversation, messages, currentUserId, participants }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [sending, setSending] = useState(false);
+  const [aiThinking, setAiThinking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    markConversationRead(conversationId, currentUserId);
-  }, [messages, conversationId, currentUserId]);
+    markConversationRead(conversation.id, currentUserId).catch((readError) => {
+      console.warn('[Messaging] Mark read failed:', readError.message);
+    });
+  }, [messages, conversation.id, currentUserId]);
 
   const handleSend = async (content: string, previewText: string) => {
-    await sendMessage(conversationId, currentUserId, content, previewText);
+    setError(null);
+    setSending(true);
+    try {
+      await sendMessage(conversation.id, currentUserId, content, previewText);
+      if (conversation.conversationType === 'ai') {
+        setAiThinking(true);
+        await requestCoStarResponse(conversation.id);
+      }
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : 'Message could not be sent.');
+    } finally {
+      setSending(false);
+      setAiThinking(false);
+    }
   };
 
+  const inputDisabled = sending || aiThinking || conversation.status !== 'active';
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+    <div className="flex h-full flex-col">
+      <div className="flex-1 space-y-6 overflow-y-auto p-6">
         {messages.map((msg, idx) => {
           const isMe = msg.senderId === currentUserId;
+          const isAi = msg.senderType === 'assistant';
           const sender = participants[msg.senderId];
-          
-          // Group messages closely if they are from the same person within 5 minutes
           const prevMsg = idx > 0 ? messages[idx - 1] : null;
           const showHeader = !prevMsg || prevMsg.senderId !== msg.senderId || (msg.createdAt?.toDate && prevMsg.createdAt?.toDate && msg.createdAt.toDate().getTime() - prevMsg.createdAt.toDate().getTime() > 5 * 60 * 1000);
 
           return (
             <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
               {showHeader && (
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-sm font-medium text-slate-300">
+                <div className="mb-1 flex items-baseline gap-2">
+                  <span className="flex items-center gap-1.5 text-sm font-medium text-slate-300">
+                    {isAi && <Bot size={13} className="text-amber-400" />}
                     {isMe ? 'You' : sender?.name || 'Unknown User'}
                   </span>
                   {msg.createdAt?.toDate && (
@@ -77,10 +103,12 @@ export default function ChatWindow({ conversationId, messages, currentUserId, pa
               )}
               
               <div 
-                className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                className={`max-w-[82%] rounded-2xl px-4 py-2 ${
                   isMe 
-                    ? 'bg-amber-500/10 border border-amber-500/20 text-slate-200 rounded-tr-sm' 
-                    : 'bg-slate-800 border border-white/10 text-slate-200 rounded-tl-sm'
+                    ? 'rounded-tr-sm border border-amber-500/20 bg-amber-500/10 text-slate-200' 
+                    : isAi
+                      ? 'rounded-tl-sm border border-emerald-400/20 bg-emerald-400/10 text-slate-100'
+                      : 'rounded-tl-sm border border-white/10 bg-slate-800 text-slate-200'
                 }`}
               >
                 <RichTextContent content={msg.content} />
@@ -88,12 +116,18 @@ export default function ChatWindow({ conversationId, messages, currentUserId, pa
             </div>
           );
         })}
+        {aiThinking && (
+          <div className="flex items-center gap-2 text-sm text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
+            Co-Star is writing...
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 border-t border-white/10 bg-slate-900/50">
-        <RichTextEditor onSend={handleSend} />
+      <div className="border-t border-white/10 bg-slate-900/50 p-4">
+        {error && <div className="mb-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">{error}</div>}
+        <RichTextEditor onSend={handleSend} disabled={inputDisabled} />
       </div>
     </div>
   );

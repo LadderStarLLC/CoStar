@@ -564,6 +564,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
         isMuted={audioCapture.isMuted}
         entries={entries}
         analyserRef={analyserRef}
+        userAnalyserRef={audioCapture.analyserRef}
         inputDevices={audioCapture.inputDevices}
         selectedInputDeviceId={audioCapture.selectedInputDeviceId}
         currentInputLabel={audioCapture.currentInputLabel}
