@@ -213,6 +213,7 @@ export function useGeminiLiveSession({
 
         firstAudioSentRef.current = false;
         audioEnabledAtRef.current = 0;
+        toolCallInProgressRef.current = false;
         const host = overrides?.liveApiHost ?? credentials.host;
         const model = overrides?.liveModel ?? credentials.liveModel ?? GEMINI_CONFIG.liveModel;
         const voice = overrides?.voiceName ?? GEMINI_CONFIG.voiceName;
@@ -248,6 +249,17 @@ export function useGeminiLiveSession({
                     },
                   },
                 },
+              },
+              realtimeInputConfig: {
+                automaticActivityDetection: {
+                  disabled: false,
+                  startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+                  endOfSpeechSensitivity: 'END_SENSITIVITY_HIGH',
+                  prefixPaddingMs: 100,
+                  silenceDurationMs: 700,
+                },
+                activityHandling: 'START_OF_ACTIVITY_INTERRUPTS',
+                turnCoverage: 'TURN_INCLUDES_ONLY_ACTIVITY',
               },
               inputAudioTranscription: {},
               outputAudioTranscription: {},
@@ -352,6 +364,9 @@ export function useGeminiLiveSession({
     if (Date.now() < audioEnabledAtRef.current) {
       return; // Briefly avoid racing setup/the initial AI trigger, but never block mic indefinitely.
     }
+    if (toolCallInProgressRef.current) {
+      return;
+    }
     if (!wsRef.current) {
       console.log('[GeminiLive] sendAudioChunk early return: wsRef is null');
       return;
@@ -377,10 +392,7 @@ export function useGeminiLiveSession({
   const sendClientText = useCallback((text: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     wsRef.current.send(JSON.stringify({
-      clientContent: {
-        turns: [{ role: 'user', parts: [{ text }] }],
-        turnComplete: true,
-      },
+      realtimeInput: { text },
     }));
   }, []);
 
