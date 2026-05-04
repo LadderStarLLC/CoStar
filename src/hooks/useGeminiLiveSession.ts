@@ -92,6 +92,11 @@ export function useGeminiLiveSession({
       return;
     }
 
+    if (data.goAway) {
+      console.log('[GeminiLive] goAway', data.goAway);
+      return;
+    }
+
     // Tool calls arrive at the top level, not inside serverContent
     if (data.toolCall) {
       toolCallInProgressRef.current = true;
@@ -126,6 +131,24 @@ export function useGeminiLiveSession({
     const serverContent = data.serverContent as Record<string, unknown> | undefined;
     if (!serverContent) return;
 
+    const diagnostic = {
+      generationComplete: Boolean(serverContent.generationComplete),
+      turnComplete: Boolean(serverContent.turnComplete),
+      interrupted: Boolean(serverContent.interrupted),
+      hasModelTurn: Boolean(serverContent.modelTurn),
+      hasInputTranscription: Boolean(serverContent.inputTranscription),
+      hasOutputTranscription: Boolean(serverContent.outputTranscription),
+    };
+    if (
+      diagnostic.generationComplete ||
+      diagnostic.turnComplete ||
+      diagnostic.interrupted ||
+      diagnostic.hasInputTranscription ||
+      diagnostic.hasOutputTranscription
+    ) {
+      console.log('[GeminiLive] serverContent', diagnostic);
+    }
+
     // Audio chunks from the model turn
     const modelTurn = serverContent.modelTurn as Record<string, unknown> | undefined;
     if (modelTurn) {
@@ -148,6 +171,7 @@ export function useGeminiLiveSession({
       | undefined;
     if (outputTranscription?.text && typeof outputTranscription.text === 'string') {
       const text = outputTranscription.text;
+      console.log('[GeminiLive] outputTranscription', { textLength: text.length });
       callbacksRef.current.onAITranscript(text, false);
       if (text.includes('INTERVIEW_COMPLETE')) {
         callbacksRef.current.onInterviewComplete();
@@ -159,6 +183,7 @@ export function useGeminiLiveSession({
       | Record<string, unknown>
       | undefined;
     if (inputTranscription?.text && typeof inputTranscription.text === 'string') {
+      console.log('[GeminiLive] inputTranscription', { textLength: inputTranscription.text.length });
       callbacksRef.current.onUserTranscript(inputTranscription.text, false);
     }
 
@@ -226,6 +251,15 @@ export function useGeminiLiveSession({
               },
               inputAudioTranscription: {},
               outputAudioTranscription: {},
+              realtimeInputConfig: {
+                automaticActivityDetection: {
+                  startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
+                  endOfSpeechSensitivity: "END_SENSITIVITY_HIGH",
+                  silenceDurationMs: 800,
+                  prefixPaddingMs: 120,
+                },
+                turnCoverage: "TURN_INCLUDES_ONLY_ACTIVITY",
+              },
               tools: [{
                 functionDeclarations: [{
                   name: "generate_feedback",
@@ -349,6 +383,17 @@ export function useGeminiLiveSession({
     wsRef.current.send(JSON.stringify(msg));
   }, []);
 
+  const sendAudioStreamEnd = useCallback(() => {
+    if (!setupReadyRef.current) return;
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    console.log('[GeminiLive] sendAudioStreamEnd');
+    wsRef.current.send(JSON.stringify({
+      realtimeInput: {
+        audioStreamEnd: true,
+      },
+    }));
+  }, []);
+
   const sendClientText = useCallback((text: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     wsRef.current.send(JSON.stringify({
@@ -370,5 +415,5 @@ export function useGeminiLiveSession({
     setAIStatus('idle');
   }, []);
 
-  return { aiStatus, isConnected, connect, sendAudioChunk, sendClientText, disconnect };
+  return { aiStatus, isConnected, connect, sendAudioChunk, sendAudioStreamEnd, sendClientText, disconnect };
 }
