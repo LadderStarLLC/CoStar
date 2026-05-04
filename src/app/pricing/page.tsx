@@ -41,9 +41,14 @@ export default function PricingPage() {
   const [activeAudience, setActiveAudience] = useState<PricingAudienceKey>("talent");
   const [checkoutTierId, setCheckoutTierId] = useState<string | null>(null);
 
+  const isSpecificAudience = Boolean(
+    user && ["talent", "business", "agency"].includes(user.accountType as string)
+  );
+  const audienceKey = isSpecificAudience ? (user!.accountType as PricingAudienceKey) : activeAudience;
+
   const audience = useMemo(
-    () => pricingAudiences.find((item) => item.key === activeAudience) ?? pricingAudiences[0],
-    [activeAudience],
+    () => pricingAudiences.find((item) => item.key === audienceKey) ?? pricingAudiences[0],
+    [audienceKey],
   );
   const AudienceIcon = audienceIcons[audience.key];
 
@@ -86,28 +91,30 @@ export default function PricingPage() {
 
       <main>
         <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 md:py-10">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="grid grid-cols-3 rounded-lg border border-white/10 bg-[#262A2E] p-1">
-              {pricingAudiences.map((item) => {
-                const Icon = audienceIcons[item.key];
-                const isActive = item.key === activeAudience;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setActiveAudience(item.key)}
-                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-bold transition ${
-                      isActive
-                        ? "ladderstar-action text-[#1A1D20]"
-                        : "text-[#F4F5F7]/68 hover:bg-white/5 hover:text-[#5DC99B]"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <div className={`flex flex-col gap-4 md:flex-row md:items-center ${!isSpecificAudience ? "md:justify-between" : "md:justify-end"}`}>
+            {!isSpecificAudience && (
+              <div className="grid grid-cols-3 rounded-lg border border-white/10 bg-[#262A2E] p-1">
+                {pricingAudiences.map((item) => {
+                  const Icon = audienceIcons[item.key];
+                  const isActive = item.key === activeAudience;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setActiveAudience(item.key)}
+                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-bold transition ${
+                        isActive
+                          ? "ladderstar-action text-[#1A1D20]"
+                          : "text-[#F4F5F7]/68 hover:bg-white/5 hover:text-[#5DC99B]"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="inline-grid grid-cols-2 rounded-lg border border-white/10 bg-[#262A2E] p-1 md:self-auto">
               {(["monthly", "annual"] as BillingCycle[]).map((cycle) => {

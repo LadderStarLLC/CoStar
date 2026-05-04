@@ -23,6 +23,7 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const pausedRef = useRef(false);
   const loggedFirstChunkRef = useRef(false);
+  const diagnosticChunkCountRef = useRef(0);
   const onChunkRef = useRef(onChunk);
   onChunkRef.current = onChunk;
 
@@ -157,6 +158,7 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
     const ctx = new AudioContextCtor({ sampleRate: GEMINI_CONFIG.inputSampleRate });
     audioContextRef.current = ctx;
     loggedFirstChunkRef.current = false;
+    diagnosticChunkCountRef.current = 0;
 
     if (ctx.state === 'suspended') {
       await ctx.resume();
@@ -176,6 +178,19 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
       const resampled = resampleFloat32PCM(input, sourceSampleRate, GEMINI_CONFIG.inputSampleRate);
       const pcm = float32ToInt16(resampled);
       const base64 = int16ToBase64(pcm);
+      let rms = 0;
+      let peak = 0;
+      const shouldLogMicDiagnostic = diagnosticChunkCountRef.current < 8;
+      if (shouldLogMicDiagnostic) {
+        let sumSquares = 0;
+        for (let i = 0; i < input.length; i++) {
+          const sample = Math.abs(input[i]);
+          peak = Math.max(peak, sample);
+          sumSquares += input[i] * input[i];
+        }
+        rms = Math.sqrt(sumSquares / Math.max(input.length, 1));
+        diagnosticChunkCountRef.current += 1;
+      }
       if (!loggedFirstChunkRef.current) {
         loggedFirstChunkRef.current = true;
         console.log('[AudioCapture] first chunk', {
@@ -185,6 +200,14 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
           sourceFrames: input.length,
           resampledFrames: resampled.length,
           base64Length: base64.length,
+          rms: Number(rms.toFixed(5)),
+          peak: Number(peak.toFixed(5)),
+        });
+      } else if (shouldLogMicDiagnostic) {
+        console.log('[AudioCapture] mic signal', {
+          chunk: diagnosticChunkCountRef.current,
+          rms: Number(rms.toFixed(5)),
+          peak: Number(peak.toFixed(5)),
         });
       }
       onChunkRef.current(base64);
@@ -207,7 +230,7 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
     setIsCapturing(false);
   }, []);
 
-  // Pause/resume without stopping the stream (used while AI is speaking)
+  // Pause/resume without stopping the stream. Normal AI playback should not pause capture.
   const setPaused = useCallback((paused: boolean) => {
     pausedRef.current = paused;
   }, []);

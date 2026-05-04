@@ -227,7 +227,6 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     },
     onTurnComplete: () => {
       finalizeLast('ai');
-      audioCapture.setPaused(false);
     },
     onInterrupted: stopPlayback,
     onInterviewComplete: () => {
@@ -257,10 +256,6 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
       [isConnected, sendAudioChunk],
     ),
   });
-
-  useEffect(() => {
-    audioCapture.setPaused(isPlaying);
-  }, [isPlaying, audioCapture.setPaused]);
 
   useEffect(() => {
     if (phase === 'setup') {
