@@ -73,7 +73,7 @@ export function useGeminiLiveSession({
     onInterrupted: onInterrupted ?? null,
   };
 
-  const handleMessage = useCallback((data: Record<string, unknown>) => {
+  const handleMessage = useCallback(async (data: Record<string, unknown>) => {
     // Check for API errors sent via WebSocket
     if (data.error) {
       const errMsg = (data.error as any).message || JSON.stringify(data.error);
@@ -102,11 +102,31 @@ export function useGeminiLiveSession({
       toolCallInProgressRef.current = true;
       const calls = (data.toolCall as Record<string, unknown>).functionCalls as Array<{ id: string; name: string; args: unknown }> | undefined;
       if (calls) {
-        // Send toolResponse back to server to satisfy API requirements
-        const functionResponses = calls.map(call => ({
-          id: call.id,
-          name: call.name,
-          response: { result: "success" }
+        const functionResponses = await Promise.all(calls.map(async (call) => {
+          let responseData: any = { result: "success" };
+
+          if (call.name === 'search_website') {
+            try {
+              const args = call.args as { query?: string; type?: string };
+              const q = encodeURIComponent(args.query || '');
+              const type = encodeURIComponent(args.type || 'all');
+              const res = await fetch(`/api/search?q=${q}&type=${type}`);
+              if (res.ok) {
+                const searchResults = await res.json();
+                responseData = { result: searchResults };
+              } else {
+                responseData = { error: `Search failed with status ${res.status}` };
+              }
+            } catch (err) {
+              responseData = { error: err instanceof Error ? err.message : 'Unknown search error' };
+            }
+          }
+
+          return {
+            id: call.id,
+            name: call.name,
+            response: responseData
+          };
         }));
         
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
