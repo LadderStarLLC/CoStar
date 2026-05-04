@@ -150,13 +150,13 @@ export default function PricingPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-5 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-6 flex flex-col lg:flex-row items-stretch gap-5 w-full">
             {audience.tiers.map((tier) => {
               const isCheckingOut = checkoutTierId === tier.id;
               return (
                 <article
                   key={tier.id}
-                  className={`relative flex min-h-[590px] flex-col rounded-lg border p-6 transition ${
+                  className={`relative flex-1 min-w-[280px] min-h-[590px] flex-col rounded-lg border p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl will-change-transform ${
                     tier.featured
                       ? "border-[#E5B536]/55 bg-[#262A2E] shadow-[0_24px_70px_rgba(229,181,54,0.12)]"
                       : "border-white/10 bg-[#262A2E]/72"

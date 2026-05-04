@@ -94,6 +94,9 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
   const sessionStartRef = useRef<number>(0);
   const interviewStartTimeRef = useRef<number>(0);
   const sessionIdRef = useRef<string>('');
+  const meterIdRef = useRef<string>('');
+  const reservedMinutesRef = useRef(0);
+  const isExtendingReservationRef = useRef(false);
   const pendingEndRef = useRef(false);
   const feedbackResolveRef = useRef<((args: FeedbackArgs) => void) | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -128,19 +131,56 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     return res.json();
   }, [user]);
 
-  const consumeAuditionMinutes = useCallback(async (durationSeconds: number, reason: string) => {
-    if (!user) return;
-    if (durationSeconds <= 0) return;
-    const minutes = Math.max(1, Math.ceil(durationSeconds / 60));
+  const startAuditionMeter = useCallback(async (sessionId: string, resolvedTitle: string) => {
+    if (!user) throw new Error('Not authenticated');
     const idToken = await user.getIdToken();
-    const res = await fetch('/api/billing/usage', {
+    const res = await fetch('/api/audition/meter/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-      body: JSON.stringify({ currency: 'minutes', amount: minutes, reason }),
+      body: JSON.stringify({ mode, sessionId, jobTitle: resolvedTitle }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      console.error('[Audition] Premium usage debit failed:', data.error || res.status);
+      throw new Error(data.error || 'Could not reserve audition minutes.');
+    }
+    const data = await res.json() as { meterId: string; reservedMinutes?: number };
+    meterIdRef.current = data.meterId;
+    reservedMinutesRef.current += data.reservedMinutes ?? 15;
+  }, [user, mode]);
+
+  const extendAuditionMeter = useCallback(async (resolvedTitle: string) => {
+    if (!user || !meterIdRef.current || isExtendingReservationRef.current) return false;
+    isExtendingReservationRef.current = true;
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/audition/meter/extend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ meterId: meterIdRef.current, jobTitle: resolvedTitle }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json() as { addedMinutes?: number };
+      reservedMinutesRef.current += data.addedMinutes ?? 15;
+      return true;
+    } finally {
+      isExtendingReservationRef.current = false;
+    }
+  }, [user]);
+
+  const finishAuditionMeter = useCallback(async (durationSeconds: number, status: 'completed' | 'cancelled' | 'failed', resolvedTitle: string) => {
+    if (!user || !meterIdRef.current) return;
+    const meterId = meterIdRef.current;
+    meterIdRef.current = '';
+    reservedMinutesRef.current = 0;
+    const idToken = await user.getIdToken();
+    const res = await fetch('/api/audition/meter/finish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ meterId, durationSeconds, status, jobTitle: resolvedTitle }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      console.error('[Audition] Premium settlement failed:', data.error || res.status);
     }
   }, [user]);
 
@@ -249,6 +289,9 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
         throw new Error('You are out of interview minutes. Upgrade or wait for your monthly allowance to reset.');
       }
       const idToken = await user.getIdToken();
+      const nextSessionId = Date.now().toString();
+      const resolvedTitle = mode === 'freeform' ? 'Custom Role' : (job?.title ?? 'Unknown Role');
+      await startAuditionMeter(nextSessionId, resolvedTitle);
 
       const res = await fetch('/api/audition/token', {
         method: 'POST',
@@ -277,11 +320,10 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
       });
 
       await audioCapture.startCapture();
-      sessionIdRef.current = Date.now().toString();
+      sessionIdRef.current = nextSessionId;
       sessionStartRef.current = Date.now();
       interviewStartTimeRef.current = Date.now();
 
-      const resolvedTitle = mode === 'freeform' ? 'Custom Role' : (job?.title ?? 'Unknown Role');
       const resolvedCompany = mode === 'freeform' ? '' : (job?.companyName ?? 'Unknown Company');
       const startedAt = new Date().toISOString();
       saveSessionToServer({
@@ -305,10 +347,36 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
 
       setPhase('interviewing');
     } catch (err) {
+      if (meterIdRef.current) {
+        await finishAuditionMeter(0, 'failed', mode === 'freeform' ? 'Custom Role' : (job?.title ?? 'Unknown Role'));
+      }
       setSessionError(err instanceof Error ? err.message : 'Failed to start session');
       setPhase('setup');
     }
-  }, [user, job, jobText, mode, config, audioCapture, connect, settings, jobId, saveSessionToServer, loadPremiumState]);
+  }, [user, job, jobText, mode, config, audioCapture, connect, settings, jobId, saveSessionToServer, loadPremiumState, startAuditionMeter, finishAuditionMeter]);
+
+  useEffect(() => {
+    if (phase !== 'interviewing') return;
+    const timer = window.setInterval(() => {
+      const elapsedSeconds = Math.round((Date.now() - interviewStartTimeRef.current) / 1000);
+      const reservedSeconds = reservedMinutesRef.current * 60;
+      if (reservedSeconds <= 0) return;
+      const resolvedTitle = mode === 'freeform' ? 'Custom Role' : (job?.title ?? 'Unknown Role');
+      if (elapsedSeconds >= reservedSeconds) {
+        setSessionError('Your reserved interview minutes have been used.');
+        pendingEndRef.current = true;
+        return;
+      }
+      if (elapsedSeconds >= reservedSeconds - 60) {
+        extendAuditionMeter(resolvedTitle).then((ok) => {
+          if (!ok) {
+            setSessionError('You are out of interview minutes. The audition will wrap up now.');
+          }
+        });
+      }
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, [phase, extendAuditionMeter, mode, job]);
 
   const handleEndInterview = useCallback(async () => {
     setPhase('ending');
@@ -363,7 +431,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
 
     // Server-side save first (authoritative)
     await saveSessionToServer(completedSession);
-    await consumeAuditionMinutes(durationSeconds, `Audition completed: ${resolvedTitle}`);
+    await finishAuditionMeter(durationSeconds, 'completed', resolvedTitle);
 
     // Client-side save as secondary path
     if (user) {
@@ -375,7 +443,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     }
 
     setPhase('results');
-  }, [disconnect, audioCapture, stopPlayback, sendClientText, job, mode, config, settings, user, jobId, saveSession, saveSessionToServer, consumeAuditionMinutes]);
+  }, [disconnect, audioCapture, stopPlayback, sendClientText, job, mode, config, settings, user, jobId, saveSession, saveSessionToServer, finishAuditionMeter]);
 
   useEffect(() => {
     if (pendingEndRef.current && !isPlaying) {
@@ -387,6 +455,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
   const handleCancelInterview = useCallback(() => {
     if (sessionIdRef.current && user) {
       const durationSeconds = Math.round((Date.now() - interviewStartTimeRef.current) / 1000);
+      const resolvedTitle = mode === 'freeform' ? 'Custom Role' : (job?.title ?? 'Unknown Role');
       saveSessionToServer({
         id: sessionIdRef.current,
         userId: user.uid,
@@ -395,7 +464,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
         transcript: latestEntriesRef.current.map((e) => ({ ...e, isFinal: true })),
         durationSeconds,
       });
-      consumeAuditionMinutes(durationSeconds, 'Audition cancelled');
+      finishAuditionMeter(durationSeconds, 'cancelled', resolvedTitle);
     }
     disconnect();
     audioCapture.stopCapture();
@@ -404,7 +473,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     sessionIdRef.current = '';
     setSessionError(null);
     setPhase('setup');
-  }, [disconnect, audioCapture, stopPlayback, resetTranscript, user, saveSessionToServer, consumeAuditionMinutes]);
+  }, [disconnect, audioCapture, stopPlayback, resetTranscript, user, saveSessionToServer, finishAuditionMeter, mode, job]);
 
   const handleTryAgain = useCallback(() => {
     closePlayback();
@@ -453,7 +522,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
           onStart={handleStartAudition}
           isRequestingPermission={phase === 'requesting-permission'}
           micError={sessionError}
-          hasApiKey={!!settings.geminiApiKey}
+          hasApiKey={true}
           onOpenSettings={() => setShowSettings(true)}
           onOpenHistory={() => router.push('/audition/history')}
           presets={settings.presets}

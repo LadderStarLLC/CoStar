@@ -22,7 +22,14 @@ export interface WalletTransaction {
   reason: string;
   actorUid: string;
   actorEmail?: string | null;
-  type: 'admin_adjustment' | 'subscription_allowance' | 'usage_debit';
+  type:
+    | 'admin_adjustment'
+    | 'subscription_allowance'
+    | 'usage_debit'
+    | 'usage_reserve'
+    | 'usage_settle_refund'
+    | 'gift_sent'
+    | 'gift_received';
   createdAt?: unknown;
 }
 

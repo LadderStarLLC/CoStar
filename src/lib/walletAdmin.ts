@@ -23,6 +23,29 @@ type WalletUsageInput = {
   reason: string;
 };
 
+type WalletReservationInput = {
+  uid: string;
+  amount: number;
+  reason: string;
+  meterId?: string;
+  metadata?: Record<string, unknown>;
+};
+
+type WalletReservationSettlementInput = {
+  uid: string;
+  meterId: string;
+  usedAmount: number;
+  reason: string;
+};
+
+type WalletGiftInput = {
+  agencyUid: string;
+  recipientUid?: string;
+  recipientEmail?: string;
+  amount: number;
+  reason: string;
+};
+
 export async function getOrCreateWalletSummary(db: Firestore, uid: string): Promise<WalletSummary> {
   const wallet = await db.runTransaction(async (transaction) => {
     const profileRef = db.doc(`users/${uid}`);
@@ -321,6 +344,296 @@ export async function consumeWalletBalance(
       balance: nextBalance,
     };
   });
+}
+
+export async function reserveWalletBalance(
+  db: Firestore,
+  { uid, amount, reason, meterId, metadata }: WalletReservationInput
+): Promise<{ wallet: AccountWallet; meterId: string; reservedAmount: number }> {
+  const id = meterId?.trim() || db.collection('auditionMetering').doc().id;
+  const trimmedReason = reason.trim();
+  if (!uid.trim()) {
+    throw new Response(JSON.stringify({ error: 'User uid is required.' }), { status: 400 });
+  }
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new Response(JSON.stringify({ error: 'Reservation amount must be a positive integer.' }), { status: 400 });
+  }
+  if (!trimmedReason || trimmedReason.length > 240) {
+    throw new Response(JSON.stringify({ error: 'Reason is required and must be 240 characters or fewer.' }), { status: 400 });
+  }
+
+  const wallet = await db.runTransaction(async (transaction) => {
+    const profileRef = db.doc(`users/${uid}`);
+    const walletRef = db.doc(`accountWallets/${uid}`);
+    const meterRef = db.doc(`auditionMetering/${id}`);
+    const transactionRef = walletRef.collection('transactions').doc();
+    const [profileSnap, walletSnap, meterSnap] = await Promise.all([
+      transaction.get(profileRef),
+      transaction.get(walletRef),
+      transaction.get(meterRef),
+    ]);
+
+    if (meterSnap.exists) {
+      const data = meterSnap.data() ?? {};
+      if (data.uid !== uid || data.status !== 'reserved') {
+        throw new Response(JSON.stringify({ error: 'Reservation cannot be extended.' }), { status: 400 });
+      }
+    }
+
+    if (!profileSnap.exists) {
+      throw new Response(JSON.stringify({ error: 'User profile not found.' }), { status: 404 });
+    }
+
+    const profile = profileSnap.data() ?? {};
+    const accountType = normalizeWalletAccountType(profile.accountType);
+    const currency = currencyForAccountType(accountType);
+    if (!accountType || !currency) {
+      throw new Response(JSON.stringify({ error: 'This account type does not support a wallet.' }), { status: 400 });
+    }
+
+    const previousBalance = walletSnap.exists
+      ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance)
+      : 0;
+    if (previousBalance < amount) {
+      throw new Response(JSON.stringify({ error: `Not enough ${currency} remaining.` }), { status: 402 });
+    }
+
+    const nextBalance = previousBalance - amount;
+    const now = FieldValue.serverTimestamp();
+    transaction.set(walletRef, {
+      uid,
+      accountType,
+      currency,
+      balance: nextBalance,
+      updatedAt: now,
+      ...(walletSnap.exists ? {} : { createdAt: now }),
+    }, { merge: true });
+    transaction.create(transactionRef, {
+      uid,
+      accountType,
+      currency,
+      delta: -amount,
+      balanceBefore: previousBalance,
+      balanceAfter: nextBalance,
+      reason: trimmedReason,
+      actorUid: 'system',
+      actorEmail: null,
+      type: 'usage_reserve',
+      createdAt: now,
+    } satisfies Omit<WalletTransaction, 'id'>);
+    transaction.set(meterRef, {
+      uid,
+      accountType,
+      currency,
+      reservedAmount: FieldValue.increment(amount),
+      usedAmount: 0,
+      status: 'reserved',
+      reason: trimmedReason,
+      metadata: metadata ?? {},
+      updatedAt: now,
+      ...(meterSnap.exists ? {} : { createdAt: now }),
+    }, { merge: true });
+
+    return { uid, accountType, currency, balance: nextBalance };
+  });
+
+  return { wallet, meterId: id, reservedAmount: amount };
+}
+
+export async function settleWalletReservation(
+  db: Firestore,
+  { uid, meterId, usedAmount, reason }: WalletReservationSettlementInput
+): Promise<AccountWallet> {
+  const trimmedReason = reason.trim();
+  if (!uid.trim() || !meterId.trim()) {
+    throw new Response(JSON.stringify({ error: 'Reservation uid and id are required.' }), { status: 400 });
+  }
+  if (!Number.isInteger(usedAmount) || usedAmount < 0) {
+    throw new Response(JSON.stringify({ error: 'Used amount must be a non-negative integer.' }), { status: 400 });
+  }
+  if (!trimmedReason || trimmedReason.length > 240) {
+    throw new Response(JSON.stringify({ error: 'Reason is required and must be 240 characters or fewer.' }), { status: 400 });
+  }
+
+  return db.runTransaction(async (transaction) => {
+    const walletRef = db.doc(`accountWallets/${uid}`);
+    const meterRef = db.doc(`auditionMetering/${meterId}`);
+    const refundRef = walletRef.collection('transactions').doc();
+    const [walletSnap, meterSnap] = await Promise.all([
+      transaction.get(walletRef),
+      transaction.get(meterRef),
+    ]);
+
+    if (!meterSnap.exists) {
+      throw new Response(JSON.stringify({ error: 'Reservation not found.' }), { status: 404 });
+    }
+    const meter = meterSnap.data() ?? {};
+    if (meter.uid !== uid) {
+      throw new Response(JSON.stringify({ error: 'Reservation does not belong to this user.' }), { status: 403 });
+    }
+    if (meter.status !== 'reserved') {
+      return {
+        uid,
+        accountType: meter.accountType,
+        currency: meter.currency,
+        balance: walletSnap.exists ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance) : 0,
+      };
+    }
+
+    const reservedAmount = toSafeBalance(meter.reservedAmount);
+    const settledUsed = Math.min(usedAmount, reservedAmount);
+    const refund = reservedAmount - settledUsed;
+    const wallet = walletSnap.data() as Partial<AccountWallet>;
+    const previousBalance = walletSnap.exists ? toSafeBalance(wallet.balance) : 0;
+    const nextBalance = previousBalance + refund;
+    const now = FieldValue.serverTimestamp();
+
+    if (refund > 0) {
+      transaction.set(walletRef, {
+        balance: nextBalance,
+        updatedAt: now,
+      }, { merge: true });
+      transaction.create(refundRef, {
+        uid,
+        accountType: meter.accountType,
+        currency: meter.currency,
+        delta: refund,
+        balanceBefore: previousBalance,
+        balanceAfter: nextBalance,
+        reason: trimmedReason,
+        actorUid: 'system',
+        actorEmail: null,
+        type: 'usage_settle_refund',
+        createdAt: now,
+      } satisfies Omit<WalletTransaction, 'id'>);
+    }
+
+    transaction.set(meterRef, {
+      usedAmount: settledUsed,
+      refundedAmount: refund,
+      status: 'settled',
+      settledAt: now,
+      updatedAt: now,
+    }, { merge: true });
+
+    return {
+      uid,
+      accountType: meter.accountType,
+      currency: meter.currency,
+      balance: nextBalance,
+    };
+  });
+}
+
+export async function giftAgencyMinutes(
+  db: Firestore,
+  { agencyUid, recipientUid, recipientEmail, amount, reason }: WalletGiftInput
+): Promise<{ agencyWallet: AccountWallet; recipientWallet: AccountWallet; recipientUid: string }> {
+  const trimmedReason = reason.trim();
+  if (!agencyUid.trim()) {
+    throw new Response(JSON.stringify({ error: 'Agency uid is required.' }), { status: 400 });
+  }
+  if (!Number.isInteger(amount) || amount <= 0 || amount % 15 !== 0) {
+    throw new Response(JSON.stringify({ error: 'Gift amount must be a positive 15-minute interval.' }), { status: 400 });
+  }
+  if (!trimmedReason || trimmedReason.length > 240) {
+    throw new Response(JSON.stringify({ error: 'Reason is required and must be 240 characters or fewer.' }), { status: 400 });
+  }
+
+  let resolvedRecipientUid = recipientUid?.trim() ?? '';
+  if (!resolvedRecipientUid && recipientEmail?.trim()) {
+    const snap = await db.collection('users')
+      .where('email', '==', recipientEmail.trim().toLowerCase())
+      .limit(1)
+      .get();
+    resolvedRecipientUid = snap.docs[0]?.id ?? '';
+  }
+  if (!resolvedRecipientUid) {
+    throw new Response(JSON.stringify({ error: 'Talent recipient not found.' }), { status: 404 });
+  }
+
+  const result = await db.runTransaction(async (transaction) => {
+    const agencyProfileRef = db.doc(`users/${agencyUid}`);
+    const recipientProfileRef = db.doc(`users/${resolvedRecipientUid}`);
+    const agencyWalletRef = db.doc(`accountWallets/${agencyUid}`);
+    const recipientWalletRef = db.doc(`accountWallets/${resolvedRecipientUid}`);
+    const agencyTxRef = agencyWalletRef.collection('transactions').doc();
+    const recipientTxRef = recipientWalletRef.collection('transactions').doc();
+    const [agencyProfileSnap, recipientProfileSnap, agencyWalletSnap, recipientWalletSnap] = await Promise.all([
+      transaction.get(agencyProfileRef),
+      transaction.get(recipientProfileRef),
+      transaction.get(agencyWalletRef),
+      transaction.get(recipientWalletRef),
+    ]);
+
+    const agencyType = normalizeWalletAccountType(agencyProfileSnap.data()?.accountType);
+    const recipientType = normalizeWalletAccountType(recipientProfileSnap.data()?.accountType);
+    if (agencyType !== 'agency') {
+      throw new Response(JSON.stringify({ error: 'Only Agency accounts can gift minutes.' }), { status: 403 });
+    }
+    if (recipientType !== 'talent') {
+      throw new Response(JSON.stringify({ error: 'Recipient must be a Talent account.' }), { status: 400 });
+    }
+
+    const agencyBalance = agencyWalletSnap.exists ? toSafeBalance((agencyWalletSnap.data() as Partial<AccountWallet>).balance) : 0;
+    if (agencyBalance < amount) {
+      throw new Response(JSON.stringify({ error: 'Not enough minutes remaining.' }), { status: 402 });
+    }
+    const recipientBalance = recipientWalletSnap.exists ? toSafeBalance((recipientWalletSnap.data() as Partial<AccountWallet>).balance) : 0;
+    const now = FieldValue.serverTimestamp();
+    const agencyNext = agencyBalance - amount;
+    const recipientNext = recipientBalance + amount;
+
+    transaction.set(agencyWalletRef, {
+      uid: agencyUid,
+      accountType: 'agency',
+      currency: 'minutes',
+      balance: agencyNext,
+      updatedAt: now,
+      ...(agencyWalletSnap.exists ? {} : { createdAt: now }),
+    }, { merge: true });
+    transaction.set(recipientWalletRef, {
+      uid: resolvedRecipientUid,
+      accountType: 'talent',
+      currency: 'minutes',
+      balance: recipientNext,
+      updatedAt: now,
+      ...(recipientWalletSnap.exists ? {} : { createdAt: now }),
+    }, { merge: true });
+    transaction.create(agencyTxRef, {
+      uid: agencyUid,
+      accountType: 'agency',
+      currency: 'minutes',
+      delta: -amount,
+      balanceBefore: agencyBalance,
+      balanceAfter: agencyNext,
+      reason: trimmedReason,
+      actorUid: agencyUid,
+      actorEmail: null,
+      type: 'gift_sent',
+      createdAt: now,
+    } satisfies Omit<WalletTransaction, 'id'>);
+    transaction.create(recipientTxRef, {
+      uid: resolvedRecipientUid,
+      accountType: 'talent',
+      currency: 'minutes',
+      delta: amount,
+      balanceBefore: recipientBalance,
+      balanceAfter: recipientNext,
+      reason: trimmedReason,
+      actorUid: agencyUid,
+      actorEmail: null,
+      type: 'gift_received',
+      createdAt: now,
+    } satisfies Omit<WalletTransaction, 'id'>);
+
+    return {
+      agencyWallet: { uid: agencyUid, accountType: 'agency' as const, currency: 'minutes' as const, balance: agencyNext },
+      recipientWallet: { uid: resolvedRecipientUid, accountType: 'talent' as const, currency: 'minutes' as const, balance: recipientNext },
+    };
+  });
+
+  return { ...result, recipientUid: resolvedRecipientUid };
 }
 
 async function getRecentWalletTransactions(db: Firestore, uid: string): Promise<WalletTransaction[]> {

@@ -2,7 +2,6 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
 function getAdminApp() {
@@ -26,21 +25,17 @@ export async function POST(req: NextRequest) {
     const idToken = authHeader.slice(7);
 
     const app = getAdminApp();
-    const { uid } = await getAuth(app).verifyIdToken(idToken);
+    await getAuth(app).verifyIdToken(idToken);
 
-    // Read user's Gemini settings from Firestore; fall back to env var
-    const settingsSnap = await getFirestore(app).doc(`auditionSettings/${uid}`).get();
-    const userSettings = settingsSnap.exists ? (settingsSnap.data() as Record<string, string>) : {};
-
-    const apiKey = userSettings.geminiApiKey || process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'No Gemini API key configured. Open Audition settings to add one.' },
+        { error: 'No Gemini API key configured for LadderStar.' },
         { status: 500 },
       );
     }
 
-    const liveApiHost = userSettings.liveApiHost || 'generativelanguage.googleapis.com';
+    const liveApiHost = 'generativelanguage.googleapis.com';
 
     return NextResponse.json({ key: apiKey, host: liveApiHost });
   } catch (err) {

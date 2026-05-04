@@ -20,6 +20,8 @@ import {
   Pause,
   Play,
   ExternalLink,
+  Clipboard,
+  MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -32,6 +34,16 @@ type BusinessEntitlements = {
   };
   tierName?: string;
   status?: string;
+};
+
+type ScreeningReport = {
+  id: string;
+  jobId?: string;
+  jobTitle?: string;
+  participantName?: string;
+  participantEmail?: string;
+  analysis?: string;
+  createdAt?: string | null;
 };
 
 export default function EmployerJobsPage() {
@@ -47,6 +59,12 @@ export default function EmployerJobsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCompanySetup, setShowCompanySetup] = useState(false);
   const [entitlements, setEntitlements] = useState<BusinessEntitlements | null>(null);
+  const [screeningJob, setScreeningJob] = useState<JobData | null>(null);
+  const [screeningMode, setScreeningMode] = useState<'auto' | 'exact' | 'bank'>('auto');
+  const [screeningQuestions, setScreeningQuestions] = useState('');
+  const [screeningUrl, setScreeningUrl] = useState('');
+  const [isCreatingScreening, setIsCreatingScreening] = useState(false);
+  const [screeningReports, setScreeningReports] = useState<ScreeningReport[]>([]);
   const [companyForm, setCompanyForm] = useState({
     name: '',
     website: '',
@@ -94,6 +112,13 @@ export default function EmployerJobsPage() {
         if (entRes.ok) {
           const data = await entRes.json();
           setEntitlements(data.entitlements ?? null);
+        }
+        const reportsRes = await fetch('/api/business/screening-reports', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (reportsRes.ok) {
+          const data = await reportsRes.json();
+          setScreeningReports(data.reports ?? []);
         }
       } catch (err) {
         setError('Failed to load data');
@@ -240,6 +265,32 @@ export default function EmployerJobsPage() {
       }
     } catch (err) {
       setError('Failed to delete job');
+    }
+  };
+
+  const handleCreateScreeningLink = async () => {
+    if (!user || !screeningJob?.jobId) return;
+    setIsCreatingScreening(true);
+    setError(null);
+    setScreeningUrl('');
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/business/screening-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          jobId: screeningJob.jobId,
+          questionMode: screeningMode,
+          questions: screeningQuestions.split('\n').map((q) => q.trim()).filter(Boolean),
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'Could not create screening link.');
+      setScreeningUrl(payload.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create screening link.');
+    } finally {
+      setIsCreatingScreening(false);
     }
   };
 
@@ -532,6 +583,21 @@ export default function EmployerJobsPage() {
           </div>
         ) : (
           <div className="space-y-4">
+            {screeningReports.length > 0 && (
+              <div className="rounded-xl border border-white/10 bg-slate-800/50 p-4">
+                <h2 className="mb-3 text-lg font-bold text-white">Recent screening reports</h2>
+                <div className="space-y-3">
+                  {screeningReports.slice(0, 3).map((report) => (
+                    <details key={report.id} className="rounded-lg border border-white/10 bg-slate-900 p-3">
+                      <summary className="cursor-pointer text-sm font-semibold text-slate-200">
+                        {report.participantName || report.participantEmail || 'Candidate'} for {report.jobTitle || 'Screening'}
+                      </summary>
+                      <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-300">{report.analysis}</pre>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            )}
             {jobs.map(job => (
               <div
                 key={job.jobId}
@@ -601,6 +667,21 @@ export default function EmployerJobsPage() {
                         </Link>
                       )}
 
+                      {job.status === 'active' && (
+                        <button
+                          onClick={() => {
+                            setScreeningJob(job);
+                            setScreeningMode('auto');
+                            setScreeningQuestions('');
+                            setScreeningUrl('');
+                          }}
+                          className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded-lg"
+                          title="Create screening link"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </button>
+                      )}
+
                       <button
                         onClick={() => setEditingJob(job)}
                         className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg"
@@ -624,6 +705,77 @@ export default function EmployerJobsPage() {
           </div>
         )}
       </div>
+
+      {screeningJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-2xl rounded-xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-white">Create screening link</h2>
+                <p className="mt-1 text-sm text-slate-400">{screeningJob.title}</p>
+              </div>
+              <button
+                onClick={() => setScreeningJob(null)}
+                className="rounded-lg px-3 py-1 text-slate-400 hover:bg-white/10 hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-300">Question mode</label>
+                <select
+                  value={screeningMode}
+                  onChange={(e) => setScreeningMode(e.target.value as 'auto' | 'exact' | 'bank')}
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white focus:border-amber-500 focus:outline-none"
+                >
+                  <option value="auto">Automatically follow job context</option>
+                  <option value="exact">Use exact questions</option>
+                  <option value="bank">Pull from question bank</option>
+                </select>
+              </div>
+
+              {screeningMode !== 'auto' && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">Questions, one per line</label>
+                  <textarea
+                    value={screeningQuestions}
+                    onChange={(e) => setScreeningQuestions(e.target.value)}
+                    rows={7}
+                    className="w-full resize-none rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+              )}
+
+              {screeningUrl && (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                  <label className="mb-2 block text-sm font-medium text-emerald-200">Screening link</label>
+                  <div className="flex gap-2">
+                    <input readOnly value={screeningUrl} className="flex-1 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(screeningUrl)}
+                      className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-3 py-2 text-sm font-bold text-slate-950"
+                    >
+                      <Clipboard className="h-4 w-4" />
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleCreateScreeningLink}
+                disabled={isCreatingScreening || (screeningMode !== 'auto' && !screeningQuestions.trim())}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-6 py-3 font-bold text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isCreatingScreening ? <Loader2 className="h-5 w-5 animate-spin" /> : <MessageSquare className="h-5 w-5" />}
+                Generate 3-hour link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

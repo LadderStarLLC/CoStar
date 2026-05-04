@@ -70,7 +70,7 @@ export default function SiteFooter() {
   if (shouldHideFooter(pathname)) return null;
 
   return (
-    <footer className="border-t border-white/10 bg-[#15181B] text-[#F4F5F7]">
+    <footer className="border-t border-border bg-surface-base text-foreground">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:py-14">
         <div className="grid gap-10 lg:grid-cols-[1.15fr_1.85fr]">
           <div>
@@ -78,19 +78,19 @@ export default function SiteFooter() {
               <BrandLogo size="md" />
               <span className="text-xl font-black tracking-tight">LadderStar</span>
             </Link>
-            <p className="mt-5 max-w-md leading-7 text-[#F4F5F7]/66">
+            <p className="mt-5 max-w-md leading-7 text-foreground/66">
               Premium job discovery, public professional profiles, AI interview practice, and career operating tools for talent, businesses, and agencies.
             </p>
-            <div className="mt-6 grid gap-3 text-sm text-[#F4F5F7]/62">
-              <a href="mailto:support@ladderstar.com" className="inline-flex items-center gap-2 hover:text-[#5DC99B]">
-                <Mail className="h-4 w-4 text-[#5DC99B]" />
+            <div className="mt-6 grid gap-3 text-sm text-foreground/62">
+              <a href="mailto:support@ladderstar.com" className="inline-flex items-center gap-2 hover:text-brand-secondary">
+                <Mail className="h-4 w-4 text-brand-secondary" />
                 support@ladderstar.com
               </a>
               <div className="flex items-start gap-2">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#5DC99B]" />
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-secondary" />
                 <span>Ladder Star LLC, 30 N Gould St, STE R, Sheridan, WY 82801, USA</span>
               </div>
-              <div className="inline-flex items-center gap-2 text-[#E5B536]">
+              <div className="inline-flex items-center gap-2 text-brand-primary">
                 <ShieldCheck className="h-4 w-4" />
                 <span>Security, privacy, and responsible AI guidance for every account path.</span>
               </div>
@@ -100,13 +100,13 @@ export default function SiteFooter() {
           <nav className="grid grid-cols-2 gap-8 md:grid-cols-4" aria-label="Footer">
             {footerGroups.map((group) => (
               <div key={group.title}>
-                <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-[#E5B536]">{group.title}</h2>
+                <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-brand-primary">{group.title}</h2>
                 <ul className="mt-4 space-y-3">
                   {group.links.map((link) => (
                     <li key={link.href}>
                       <Link
                         href={link.href}
-                        className="inline-flex items-center gap-1.5 text-sm text-[#F4F5F7]/64 transition hover:text-[#5DC99B]"
+                        className="inline-flex items-center gap-1.5 text-sm text-foreground/64 transition hover:text-brand-secondary"
                       >
                         {link.label}
                         {link.href === '/sign-up' && <ArrowUpRight className="h-3.5 w-3.5" />}
@@ -119,7 +119,7 @@ export default function SiteFooter() {
           </nav>
         </div>
 
-        <div className="mt-10 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs leading-6 text-[#F4F5F7]/48 md:flex-row md:items-center md:justify-between">
+        <div className="mt-10 flex flex-col gap-4 border-t border-border pt-6 text-xs leading-6 text-foreground/48 md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} Ladder Star LLC. All rights reserved.</p>
           <p>Policies are informational and do not replace legal advice from qualified counsel.</p>
         </div>
