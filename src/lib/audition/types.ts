@@ -60,4 +60,7 @@ export interface AuditionSession {
   improvements: string[];
   durationSeconds: number;
   ultraFeedback?: string;
+  walletMeterId?: string;
+  walletTransactionId?: string;
+  walletSettlementTransactionId?: string | null;
 }

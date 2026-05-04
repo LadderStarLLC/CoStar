@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, CheckCircle, TrendingUp, Star, Sparkles, Loader2 } from 'lucide-react';
+import { ChevronLeft, CheckCircle, TrendingUp, Star, Sparkles, Loader2, Wallet } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAuditionSessions } from '@/hooks/useAuditionSessions';
 import { ScoreRing } from './ScoreRing';
@@ -23,6 +23,14 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}m ${s}s`;
+}
+
+function buildWalletActivityHref(session: AuditionSession): string {
+  const params = new URLSearchParams({ tab: 'wallet' });
+  const transactionId = session.walletSettlementTransactionId || session.walletTransactionId;
+  if (transactionId) params.set('transaction', transactionId);
+  else if (session.walletMeterId) params.set('meter', session.walletMeterId);
+  return `/dashboard/settings?${params.toString()}`;
 }
 
 interface FeedbackReportScreenProps {
@@ -149,6 +157,28 @@ export function FeedbackReportScreen({ sessionId }: FeedbackReportScreenProps) {
           </div>
           <p className="text-slate-300 text-sm text-center leading-relaxed">{session.feedback}</p>
         </div>
+
+        {(session.walletMeterId || session.walletTransactionId || session.walletSettlementTransactionId) && (
+          <div className="rounded-2xl border border-white/10 bg-slate-800/40 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-300">
+                <Wallet className="h-4 w-4 text-emerald-300" /> Wallet Activity
+              </h3>
+              <button
+                onClick={() => router.push(buildWalletActivityHref(session))}
+                className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition-colors hover:bg-amber-500/15"
+              >
+                View transaction
+              </button>
+            </div>
+            <div className="grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
+              {session.walletTransactionId && <div>Reserved transaction: {session.walletTransactionId}</div>}
+              {session.walletSettlementTransactionId && <div>Settlement transaction: {session.walletSettlementTransactionId}</div>}
+              {session.walletMeterId && <div>Meter: {session.walletMeterId}</div>}
+              <div>Duration billed from session length: {formatDuration(session.durationSeconds)}</div>
+            </div>
+          </div>
+        )}
 
         {/* Strengths */}
         {session.strengths.length > 0 && (

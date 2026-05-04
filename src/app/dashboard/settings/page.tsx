@@ -94,6 +94,18 @@ export default function AccountSettingsPage() {
   const [giftRecipient, setGiftRecipient] = useState("");
   const [giftMinutes, setGiftMinutes] = useState(15);
   const [isGiftingMinutes, setIsGiftingMinutes] = useState(false);
+  const [highlightedTransaction, setHighlightedTransaction] = useState<string | null>(null);
+  const [highlightedMeter, setHighlightedMeter] = useState<string | null>(null);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const tab = searchParams.get("tab");
+    if (tab === "account" || tab === "profile" || tab === "privacy" || tab === "wallet" || tab === "security") {
+      setActiveTab(tab);
+    }
+    setHighlightedTransaction(searchParams.get("transaction"));
+    setHighlightedMeter(searchParams.get("meter"));
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -552,17 +564,71 @@ export default function AccountSettingsPage() {
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Recent Activity</h3>
                 {walletSummary.transactions.length > 0 ? (
                   <div className="divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10">
-                    {walletSummary.transactions.map((transaction) => (
-                      <div key={transaction.id} className="flex items-center justify-between gap-4 bg-slate-900 px-4 py-3">
-                        <div>
-                          <div className="font-medium text-white">{transaction.reason}</div>
-                          <div className="text-sm text-slate-500">{formatWalletDate(transaction.createdAt)}</div>
+                    {walletSummary.transactions.map((transaction) => {
+                      const linkedSessionHref = transaction.feature === "audition" && transaction.sessionId
+                        ? `/audition/history/${transaction.sessionId}`
+                        : null;
+                      const isHighlighted =
+                        transaction.id === highlightedTransaction ||
+                        Boolean(transaction.meterId && transaction.meterId === highlightedMeter);
+                      const row = (
+                        <div className={`bg-slate-900 px-4 py-4 transition-colors ${isHighlighted ? "ring-1 ring-amber-400/70 bg-amber-500/10" : linkedSessionHref ? "hover:bg-slate-800/80" : ""}`}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+                                  {formatWalletType(transaction.type)}
+                                </span>
+                                {transaction.feature && (
+                                  <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-300">
+                                    {transaction.feature}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-2 font-medium text-white">{transaction.reason}</div>
+                              <div className="mt-1 text-sm text-slate-400">
+                                {formatWalletDate(transaction.createdAt)}
+                                {transaction.jobTitle ? ` · ${transaction.jobTitle}` : ""}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className={transaction.delta >= 0 ? "font-bold text-emerald-300" : "font-bold text-red-300"}>
+                                {transaction.delta >= 0 ? "+" : ""}{transaction.delta} {walletLabel(transaction.currency).toLowerCase()}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {transaction.balanceBefore} to {transaction.balanceAfter}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-3 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
+                            <div>Source: {formatWalletActor(transaction.actorUid, transaction.actorEmail)}</div>
+                            <div>Transaction: {transaction.id}</div>
+                            {transaction.meterId && <div>Meter: {transaction.meterId}</div>}
+                            {transaction.sessionId && <div>Session: {transaction.sessionId}</div>}
+                            {typeof transaction.durationSeconds === "number" && <div>Duration: {formatDuration(transaction.durationSeconds)}</div>}
+                            {transaction.status && <div>Status: {transaction.status}</div>}
+                          </div>
+                          {linkedSessionHref && (
+                            <div className="mt-3 text-xs font-semibold text-amber-300">
+                              View related session summary
+                            </div>
+                          )}
                         </div>
-                        <div className={transaction.delta >= 0 ? "font-bold text-emerald-300" : "font-bold text-red-300"}>
-                          {transaction.delta >= 0 ? "+" : ""}{transaction.delta}
-                        </div>
-                      </div>
-                    ))}
+                      );
+
+                      return linkedSessionHref ? (
+                        <button
+                          key={transaction.id}
+                          type="button"
+                          onClick={() => router.push(linkedSessionHref)}
+                          className="block w-full text-left"
+                        >
+                          {row}
+                        </button>
+                      ) : (
+                        <div key={transaction.id}>{row}</div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-slate-400">
@@ -1044,7 +1110,34 @@ function formatWalletDate(value: unknown): string {
   if (!value) return "Just now";
   if (typeof value === "string") {
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   }
   return "Just now";
+}
+
+function formatWalletType(type: string): string {
+  return type
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatWalletActor(actorUid: string, actorEmail?: string | null): string {
+  if (actorEmail) return actorEmail;
+  if (actorUid === "system") return "LadderStar system";
+  if (actorUid === "stripe") return "Stripe billing";
+  return actorUid;
+}
+
+function formatDuration(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainder = safeSeconds % 60;
+  return `${minutes}m ${remainder}s`;
 }

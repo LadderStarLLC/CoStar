@@ -27,12 +27,13 @@ export async function POST(req: NextRequest) {
       meterId: body.meterId,
       amount: 1,
       reason: `Audition minute extension${body.jobTitle ? `: ${body.jobTitle}` : ''}`,
-      metadata: { feature: 'audition', extension: true },
+      metadata: { feature: 'audition', extension: true, jobTitle: body.jobTitle ?? null },
     });
 
     return NextResponse.json({
       meterId: reservation.meterId,
       addedMinutes: reservation.reservedAmount,
+      transactionId: reservation.transactionId,
       wallet: reservation.wallet,
     });
   } catch (err) {

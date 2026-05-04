@@ -67,7 +67,7 @@ function conductRules(numQuestions: number): string {
 - When you have asked your last question and received a response, wrap up professionally: thank the candidate, give a brief closing statement, then output the exact word INTERVIEW_COMPLETE on its own line. You will then be asked to evaluate the candidate — you MUST immediately call the generate_feedback tool with your honest assessment.`;
 }
 
-export function buildSystemPrompt(job: JobData, config: AuditionConfig, persona: PersonaConfig): string {
+export function buildSystemPrompt(job: JobData, config: AuditionConfig, persona: PersonaConfig, userName?: string): string {
   const requiredSkills = job.skills?.required?.join(', ') || 'core skills for the role';
   const preferredSkills = job.skills?.preferred?.length
     ? `\n- Preferred skills: ${job.skills.preferred.join(', ')}`
@@ -77,6 +77,7 @@ export function buildSystemPrompt(job: JobData, config: AuditionConfig, persona:
   const workArrangement =
     remotePolicy === 'remote' ? 'a fully remote' : remotePolicy === 'hybrid' ? 'a hybrid' : 'an in-office';
   const questionCount = config.numQuestions || GEMINI_CONFIG.questionCount[config.difficulty];
+  const candidateInfo = userName ? `\nCANDIDATE INFO:\n- Name: ${userName}\nYou MUST greet them by their name in your opening.` : '';
 
   return `You are a professional interviewer named ${persona.name} conducting a ${config.difficulty}-difficulty interview for the role of ${job.title} at ${job.companyName ?? 'the company'}. You MUST introduce yourself as ${persona.name} and stay in this persona throughout.
 
@@ -85,7 +86,7 @@ ROLE CONTEXT:
 - Company: ${job.companyName ?? 'the company'}
 - Work arrangement: ${workArrangement} position
 - Required skills: ${requiredSkills}${preferredSkills}
-${focusBlock(config)}${resumeBlock(config)}
+${candidateInfo}${focusBlock(config)}${resumeBlock(config)}
 INTERVIEW STYLE:
 ${difficultyGuidance(config.difficulty)}
 Tone: ${toneGuidance(persona.tone)}
@@ -99,8 +100,9 @@ Begin immediately by introducing yourself warmly: "Hi, I'm ${persona.name}, and 
 Do not say anything else before starting.`;
 }
 
-export function buildSystemPromptFromText(rawJobText: string, config: AuditionConfig, persona: PersonaConfig): string {
+export function buildSystemPromptFromText(rawJobText: string, config: AuditionConfig, persona: PersonaConfig, userName?: string): string {
   const questionCount = config.numQuestions || GEMINI_CONFIG.questionCount[config.difficulty];
+  const candidateInfo = userName ? `\nCANDIDATE INFO:\n- Name: ${userName}\nYou MUST greet them by their name in your opening.` : '';
 
   return `You are a professional interviewer named ${persona.name} conducting a ${config.difficulty}-difficulty interview based on the following job posting. You MUST introduce yourself as ${persona.name} and stay in this persona throughout. Read the posting carefully and tailor every question to the role, company, and requirements described.
 
@@ -108,7 +110,7 @@ JOB POSTING:
 ---
 ${rawJobText}
 ---
-${focusBlock(config)}${resumeBlock(config)}
+${candidateInfo}${focusBlock(config)}${resumeBlock(config)}
 INTERVIEW STYLE:
 ${difficultyGuidance(config.difficulty)}
 Tone: ${toneGuidance(persona.tone)}

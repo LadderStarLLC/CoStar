@@ -22,6 +22,13 @@ export interface WalletTransaction {
   reason: string;
   actorUid: string;
   actorEmail?: string | null;
+  feature?: 'audition' | 'screening' | 'billing' | 'gift' | 'admin' | null;
+  sessionId?: string | null;
+  meterId?: string | null;
+  jobTitle?: string | null;
+  status?: string | null;
+  durationSeconds?: number | null;
+  metadata?: Record<string, unknown>;
   type:
     | 'admin_adjustment'
     | 'subscription_allowance'

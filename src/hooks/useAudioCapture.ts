@@ -27,6 +27,8 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
   const [currentInputLabel, setCurrentInputLabel] = useState('Default microphone');
   const [inputLevel, setInputLevel] = useState(0);
   const [micHealth, setMicHealth] = useState<MicHealthStatus>('idle');
+  const [captureStartedAt, setCaptureStartedAt] = useState<number | null>(null);
+  const [lastSignalAt, setLastSignalAt] = useState<number | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -246,6 +248,9 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
     loggedFirstChunkRef.current = false;
     diagnosticChunkCountRef.current = 0;
     lastSignalAtRef.current = 0;
+    const startedAt = Date.now();
+    setCaptureStartedAt(startedAt);
+    setLastSignalAt(null);
     setInputLevel(0);
 
     if (ctx.state === 'suspended') {
@@ -254,6 +259,10 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
 
     const source = ctx.createMediaStreamSource(streamRef.current);
     sourceRef.current = source;
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.75;
+    analyserRef.current = analyser;
 
     // ScriptProcessorNode bufferSize 4096 @ 16kHz is about 256ms chunks.
     const processor = ctx.createScriptProcessor(4096, 1, 1);
@@ -275,7 +284,9 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
       }
       const rms = Math.sqrt(sumSquares / Math.max(input.length, 1));
       if (rms > 0.01 || peak > 0.04) {
-        lastSignalAtRef.current = Date.now();
+        const signalAt = Date.now();
+        lastSignalAtRef.current = signalAt;
+        setLastSignalAt(signalAt);
       }
       if (Date.now() - lastLevelUpdateAtRef.current > 100) {
         lastLevelUpdateAtRef.current = Date.now();
@@ -308,6 +319,7 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
       onChunkRef.current(base64);
     };
 
+    source.connect(analyser);
     source.connect(processor);
     processor.connect(ctx.destination);
     setIsCapturing(true);
@@ -327,6 +339,8 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
     streamRef.current = null;
     setIsCapturing(false);
     setInputLevel(0);
+    setCaptureStartedAt(null);
+    setLastSignalAt(null);
   }, []);
 
   const selectInputDevice = useCallback(async (deviceId: string) => {
@@ -337,13 +351,17 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
     if (wasCapturing) {
       processorRef.current?.disconnect();
       sourceRef.current?.disconnect();
+      analyserRef.current?.disconnect();
       audioContextRef.current?.close();
       streamRef.current?.getTracks().forEach((t) => t.stop());
       processorRef.current = null;
       sourceRef.current = null;
+      analyserRef.current = null;
       audioContextRef.current = null;
       streamRef.current = null;
       setIsCapturing(false);
+      setCaptureStartedAt(null);
+      setLastSignalAt(null);
     }
 
     try {
@@ -402,6 +420,8 @@ export function useAudioCapture({ onChunk }: UseAudioCaptureOptions) {
     selectedInputDeviceId,
     currentInputLabel,
     inputLevel,
+    captureStartedAt,
+    lastSignalAt,
     requestPermission,
     preloadPermission,
     diagnoseMic,
