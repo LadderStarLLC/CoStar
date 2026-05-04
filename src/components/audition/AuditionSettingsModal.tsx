@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Eye, EyeOff, Mic, MicOff, Radio, AlertTriangle, ChevronDown } from 'lucide-react';
+import { X, Mic, MicOff, Radio, AlertTriangle } from 'lucide-react';
 import type { AuditionSettings } from '@/hooks/useAuditionSettings';
 import { AUDITION_SETTINGS_DEFAULTS } from '@/hooks/useAuditionSettings';
 import type { MicConnectionStatus } from '@/hooks/useAudioCapture';
@@ -30,16 +30,11 @@ interface AuditionSettingsModalProps {
 
 export function AuditionSettingsModal({ current, onSave, onClose, onRequestMic, onDiagnoseMic, micStatus = 'unknown', micError }: AuditionSettingsModalProps) {
   const [form, setForm] = useState<AuditionSettings>(current);
-  const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [micState, setMicState] = useState<{ status: 'idle' | 'testing' | 'success' | 'error'; msg?: string; lines?: string[] }>({ status: 'idle' });
 
-  const patch = (field: keyof AuditionSettings, value: string) =>
-    setForm((f) => ({ ...f, [field]: value }));
-
   const handleSave = async () => {
-    if (!form.geminiApiKey.trim()) return;
     setSaving(true);
     try {
       await onSave(form);
@@ -132,32 +127,6 @@ export function AuditionSettingsModal({ current, onSave, onClose, onRequestMic, 
           </div>
         )}
 
-        {/* API Key */}
-        <div className="space-y-1.5">
-          <label className="text-slate-300 text-sm font-medium">Gemini API Key</label>
-          <div className="relative">
-            <input
-              type={showKey ? 'text' : 'password'}
-              value={form.geminiApiKey}
-              onChange={(e) => patch('geminiApiKey', e.target.value)}
-              placeholder="AIza..."
-              className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2 pr-10 text-slate-200 text-sm focus:outline-none focus:border-amber-500 placeholder-slate-600"
-            />
-            <button
-              type="button"
-              onClick={() => setShowKey((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-            >
-              {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-          <p className="text-slate-500 text-xs">
-            Required. Get yours at{' '}
-            <span className="text-violet-400">aistudio.google.com</span>
-          </p>
-        </div>
-
-
         {/* Actions */}
         <div className="flex gap-3 pt-1">
           <button
@@ -168,7 +137,7 @@ export function AuditionSettingsModal({ current, onSave, onClose, onRequestMic, 
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || !form.geminiApiKey.trim()}
+            disabled={saving}
             className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 text-sm font-bold transition-all"
           >
             {saved ? 'Saved!' : saving ? 'Saving...' : 'Save'}

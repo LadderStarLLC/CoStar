@@ -94,28 +94,28 @@ export default function NavHeader() {
         </div>
 
         <nav className="flex items-center gap-4 sm:gap-6 flex-wrap">
-          <Link href="/jobs" className="text-[#F4F5F7]/72 hover:text-[#5DC99B] transition-colors text-sm sm:text-base">Jobs</Link>
-          <Link href="/pricing" className="text-[#F4F5F7]/72 hover:text-[#5DC99B] transition-colors text-sm sm:text-base">Pricing</Link>
-          <Link href="/blog" className="text-[#F4F5F7]/72 hover:text-[#5DC99B] transition-colors text-sm sm:text-base">Blog</Link>
-          <Link href="/audition" className="flex items-center gap-1.5 text-[#5DC99B] hover:text-[#F4F5F7] transition-colors font-medium text-sm sm:text-base">
+          <Link href="/jobs" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">Jobs</Link>
+          <Link href="/pricing" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">Pricing</Link>
+          <Link href="/blog" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">Blog</Link>
+          <Link href="/audition" className="flex items-center gap-1.5 text-brand-secondary hover:text-[#F4F5F7] transition-colors font-medium text-sm sm:text-base">
             <Mic className="w-3.5 h-3.5" />
             Audition
           </Link>
           {accountType === 'business' && (
-            <Link href="/dashboard/jobs" className="text-[#F4F5F7]/72 hover:text-[#5DC99B] transition-colors text-sm sm:text-base">
+            <Link href="/dashboard/jobs" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">
               Post a Job
             </Link>
           )}
           {accountType === 'agency' && (
-            <Link href="/profile" className="text-[#F4F5F7]/72 hover:text-[#5DC99B] transition-colors text-sm sm:text-base">
+            <Link href="/profile" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">
               Agency Profile
             </Link>
           )}
           {accountType === 'business' && (
-            <Link href="/profile" className="text-[#F4F5F7]/72 hover:text-[#5DC99B] transition-colors text-sm sm:text-base">Company Profile</Link>
+            <Link href="/profile" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">Company Profile</Link>
           )}
           {(accountType === 'admin' || accountType === 'owner') && (
-            <Link href="/admin" className="flex items-center gap-1.5 text-[#E5B536] hover:text-[#5DC99B] transition-colors font-medium text-sm sm:text-base">
+            <Link href="/admin" className="flex items-center gap-1.5 text-[#E5B536] hover:text-brand-secondary transition-colors font-medium text-sm sm:text-base">
               <Shield className="w-3.5 h-3.5" />
               Admin
             </Link>
@@ -130,7 +130,7 @@ export default function NavHeader() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 text-[#F4F5F7]/72 hover:text-[#5DC99B] transition-colors focus:outline-none"
+                className="flex items-center gap-2 text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors focus:outline-none"
               >
                 {user.photoURL ? (
                   <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full object-cover" />
@@ -153,7 +153,7 @@ export default function NavHeader() {
                   )}
                   <Link
                     href={profileHref}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-[#F4F5F7]/72 hover:text-[#5DC99B] hover:bg-white/5 w-full text-left transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-[#F4F5F7]/72 hover:text-brand-secondary hover:bg-white/5 w-full text-left transition-colors"
                     onClick={() => setDropdownOpen(false)}
                   >
                     <User size={16} />
@@ -161,7 +161,7 @@ export default function NavHeader() {
                   </Link>
                   <Link
                     href="/dashboard/settings"
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-[#F4F5F7]/72 hover:text-[#5DC99B] hover:bg-white/5 w-full text-left transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-[#F4F5F7]/72 hover:text-brand-secondary hover:bg-white/5 w-full text-left transition-colors"
                     onClick={() => setDropdownOpen(false)}
                   >
                     <Settings size={16} />
@@ -172,7 +172,7 @@ export default function NavHeader() {
                       setDropdownOpen(false);
                       handleLogout();
                     }}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-[#F4F5F7]/72 hover:text-[#5DC99B] hover:bg-white/5 w-full text-left transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-[#F4F5F7]/72 hover:text-brand-secondary hover:bg-white/5 w-full text-left transition-colors"
                   >
                     <LogOut size={16} />
                     Sign out

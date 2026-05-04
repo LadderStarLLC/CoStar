@@ -14,7 +14,7 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
         ref={ref}
         className={cn(
           "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-          "transition-colors duration-200",
+          "transition-all duration-200 hover:scale-105 will-change-transform",
           variant === "brand" && "bg-[#E5B536]/15 text-[#E5B536] border border-[#E5B536]/30",
           variant === "ai" && "bg-[#5DC99B]/15 text-[#5DC99B] border border-[#5DC99B]/30",
           variant === "success" && "bg-[#5DC99B]/15 text-[#5DC99B] border border-[#5DC99B]/30",

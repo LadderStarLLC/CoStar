@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GithubAuthProvider, deleteUser, linkWithPopup, updateProfile } from "firebase/auth";
 import { deleteDoc, doc } from "firebase/firestore";
-import { Loader2, Save, Github, Linkedin, CheckCircle2, AlertCircle, Trash2, Camera, Palette, UserCog, Eye, Wallet, Lock, Shield } from "lucide-react";
+import { Loader2, Save, Github, Linkedin, CheckCircle2, AlertCircle, Trash2, Camera, Palette, UserCog, Eye, Wallet, Lock, Shield, Send } from "lucide-react";
 import NavHeader from "@/components/NavHeader";
 import { useAuth } from "@/context/AuthContext";
 import { auth, db } from "@/lib/firebase";
@@ -91,6 +91,9 @@ export default function AccountSettingsPage() {
   const [agencySpecialties, setAgencySpecialties] = useState("");
   const [agencyServices, setAgencyServices] = useState("");
   const [appearanceScheme, setAppearanceScheme] = useState<AppearanceScheme>("ladderstar");
+  const [giftRecipient, setGiftRecipient] = useState("");
+  const [giftMinutes, setGiftMinutes] = useState(15);
+  const [isGiftingMinutes, setIsGiftingMinutes] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -398,6 +401,43 @@ export default function AccountSettingsPage() {
     }
   };
 
+  const giftAgencyMinutes = async () => {
+    if (!user) return;
+    const recipient = giftRecipient.trim();
+    if (!recipient) {
+      setError("Enter a Talent email or uid.");
+      return;
+    }
+    setIsGiftingMinutes(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/agency/gift-minutes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          recipientEmail: recipient.includes("@") ? recipient : undefined,
+          recipientUid: recipient.includes("@") ? undefined : recipient,
+          amount: giftMinutes,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof payload.error === "string" ? payload.error : "Could not gift minutes.");
+      }
+      setGiftRecipient("");
+      setGiftMinutes(15);
+      const nextWalletSummary = await fetchWalletSummary(user);
+      setWalletSummary(nextWalletSummary);
+      setMessage("Audition minutes gifted.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not gift minutes.");
+    } finally {
+      setIsGiftingMinutes(false);
+    }
+  };
+
   if (authLoading || isLoading) {
     return <SettingsLoadingShell />;
   }
@@ -509,6 +549,40 @@ export default function AccountSettingsPage() {
                   </p>
                 )}
               </div>
+
+              {accountType === "agency" && (
+                <div className="mt-6 rounded-xl border border-white/10 bg-slate-900 p-4">
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
+                    <Send className="h-4 w-4 text-emerald-300" />
+                    Gift Talent Minutes
+                  </h3>
+                  <div className="grid gap-3 md:grid-cols-[1fr_160px_auto]">
+                    <input
+                      value={giftRecipient}
+                      onChange={(e) => setGiftRecipient(e.target.value)}
+                      placeholder="Talent email or uid"
+                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+                    />
+                    <select
+                      value={giftMinutes}
+                      onChange={(e) => setGiftMinutes(Number(e.target.value))}
+                      className="rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white focus:border-amber-500 focus:outline-none"
+                    >
+                      {[15, 30, 45, 60, 90, 120].map((minutes) => (
+                        <option key={minutes} value={minutes}>{minutes} minutes</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={giftAgencyMinutes}
+                      disabled={isGiftingMinutes || !giftRecipient.trim()}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 font-bold text-slate-950 transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isGiftingMinutes ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      Gift
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 

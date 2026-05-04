@@ -29,17 +29,10 @@ export async function POST(req: NextRequest) {
         const decoded = await verifyBearerToken(req);
         uid = decoded.uid;
         const db = getAdminDb();
-        const [settingsSnap, userSnap] = await Promise.all([
-          db.doc(`auditionSettings/${uid}`).get(),
-          db.doc(`users/${uid}`).get(),
-        ]);
+        const userSnap = await db.doc(`users/${uid}`).get();
         const entitlements = userSnap.exists ? resolveProfileEntitlements(userSnap.data() ?? {}) : null;
         if (!entitlements?.features.ultraFeedback) {
           return NextResponse.json({ error: 'Ultra Feedback requires a Pro or Network plan.' }, { status: 403 });
-        }
-        if (settingsSnap.exists) {
-          const data = settingsSnap.data() as Record<string, string>;
-          if (data.geminiApiKey) apiKey = data.geminiApiKey;
         }
       } catch {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
