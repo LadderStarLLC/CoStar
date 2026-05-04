@@ -1,6 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
+import { Bot } from 'lucide-react';
 import { Conversation } from '@/lib/messaging';
 
 interface InboxListProps {
@@ -22,24 +23,29 @@ export default function InboxList({ conversations, currentUserId, activeConversa
   return (
     <div className="flex flex-col divide-y divide-white/5">
       {conversations.map((conv) => {
-        // Find the other participant
-        const otherParticipantId = conv.participantIds.find(id => id !== currentUserId) || conv.participantIds[0];
-        const otherParticipant = conv.participants[otherParticipantId];
+        const otherParticipantId = conv.conversationType === 'ai'
+          ? conv.participantIds.find(id => id !== currentUserId)
+          : conv.participantIds.find(id => id !== currentUserId) || conv.participantIds[0];
+        const otherParticipant = otherParticipantId ? conv.participants[otherParticipantId] : null;
         
-        const isUnread = conv.lastMessage && !conv.lastMessage.isRead && conv.lastMessage.senderId !== currentUserId;
+        const isUnread = conv.unreadBy?.includes(currentUserId) ?? false;
         const isActive = conv.id === activeConversationId;
-        
         const timestamp = conv.lastUpdatedAt?.toDate ? conv.lastUpdatedAt.toDate() : new Date();
+        const title = conv.conversationType === 'ai'
+          ? conv.ai?.title || 'Co-Star AI'
+          : otherParticipant?.name || 'Unknown User';
 
         return (
           <button 
             key={conv.id} 
             onClick={() => onSelect && onSelect(conv.id)}
-            className={`w-full text-left p-4 hover:bg-white/5 transition-colors flex items-start gap-4 ${isActive ? 'bg-white/5' : ''}`}
+            className={`flex w-full items-start gap-4 p-4 text-left transition-colors hover:bg-white/5 ${isActive ? 'bg-white/5' : ''}`}
           >
-            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
-              {otherParticipant?.avatarUrl ? (
-                <img src={otherParticipant.avatarUrl} alt={otherParticipant.name} className="w-10 h-10 rounded-full object-cover" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-700">
+              {conv.conversationType === 'ai' ? (
+                <Bot size={18} className="text-amber-400" />
+              ) : otherParticipant?.avatarUrl ? (
+                <img src={otherParticipant.avatarUrl} alt={otherParticipant.name} className="h-10 w-10 rounded-full object-cover" />
               ) : (
                 <span className="text-sm font-medium text-slate-300">
                   {otherParticipant?.name?.charAt(0) || '?'}
@@ -47,28 +53,28 @@ export default function InboxList({ conversations, currentUserId, activeConversa
               )}
             </div>
             
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-2">
                 <h3 className={`truncate font-medium ${isUnread ? 'text-white' : 'text-slate-200'}`}>
-                  {otherParticipant?.name || 'Unknown User'}
+                  {title}
                 </h3>
-                <span className="text-xs text-slate-500 shrink-0">
+                <span className="shrink-0 text-xs text-slate-500">
                   {formatDistanceToNow(timestamp, { addSuffix: true })}
                 </span>
               </div>
               
               {conv.lastMessage ? (
-                <p className={`text-sm truncate mt-1 ${isUnread ? 'text-amber-400 font-medium' : 'text-slate-400'}`}>
+                <p className={`mt-1 truncate text-sm ${isUnread ? 'font-medium text-amber-400' : 'text-slate-400'}`}>
                   {conv.lastMessage.senderId === currentUserId ? 'You: ' : ''}
                   {conv.lastMessage.text}
                 </p>
               ) : (
-                <p className="text-sm text-slate-500 italic mt-1">New conversation</p>
+                <p className="mt-1 text-sm italic text-slate-500">New conversation</p>
               )}
             </div>
             
             {isUnread && (
-              <div className="w-2.5 h-2.5 bg-amber-500 rounded-full shrink-0 mt-1.5" />
+              <div className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
             )}
           </button>
         );

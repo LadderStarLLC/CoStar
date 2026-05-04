@@ -18,6 +18,7 @@ interface InterviewScreenProps {
   isMuted: boolean;
   entries: TranscriptEntry[];
   analyserRef: React.MutableRefObject<AnalyserNode | null>;
+  userAnalyserRef: React.MutableRefObject<AnalyserNode | null>;
   inputDevices: AudioDeviceOption[];
   selectedInputDeviceId: string;
   currentInputLabel: string;
@@ -46,6 +47,7 @@ export function InterviewScreen({
   isMuted,
   entries,
   analyserRef,
+  userAnalyserRef,
   inputDevices,
   selectedInputDeviceId,
   currentInputLabel,
@@ -127,7 +129,7 @@ export function InterviewScreen({
             <span className="text-2xl font-bold text-violet-200">{initial}</span>
           </div>
           <p className="text-slate-400 text-sm font-medium">{voiceName} · AI Interviewer</p>
-          <AudioVisualizer analyserRef={analyserRef} aiStatus={aiStatus} />
+          <AudioVisualizer analyserRef={analyserRef} variant="ai" isActive={aiStatus === 'speaking'} />
           <div className="text-center space-y-1">
             <div className={`text-sm font-semibold ${isMuted ? 'text-red-300' : statusColor[aiStatus]}`}>
               {isConnecting ? 'Connecting...' : isMuted ? 'Muted' : statusLabel[aiStatus]}
@@ -145,7 +147,6 @@ export function InterviewScreen({
             status={getMicStatusLabel(micHealth)}
             statusClass={getMicStatusClass(micHealth)}
             deviceLabel={currentInputLabel}
-            level={isMuted ? 0 : inputLevel}
             devices={inputDevices}
             selectedDeviceId={selectedInputDeviceId}
             selectDisabled={inputDevices.length === 0}
@@ -157,7 +158,6 @@ export function InterviewScreen({
             status={getSpeakerStatusLabel(speakerHealth)}
             statusClass={getSpeakerStatusClass(speakerHealth)}
             deviceLabel={currentOutputLabel}
-            level={outputLevel}
             devices={outputDevices}
             selectedDeviceId={selectedOutputDeviceId}
             selectDisabled={!canSelectOutputDevice || outputDevices.length === 0}
@@ -182,7 +182,10 @@ export function InterviewScreen({
           </div>
         )}
 
-        <VideoPreview />
+        <div className="flex flex-col items-center gap-3">
+          <VideoPreview />
+          <AudioVisualizer analyserRef={userAnalyserRef} variant="user" isActive={!isMuted && (micHealth === 'ok' || micHealth === 'silent')} />
+        </div>
 
         <div className="w-full max-w-2xl flex-1 flex flex-col bg-slate-800/30 rounded-2xl border border-slate-700/40 p-4 min-h-0 max-h-64 overflow-hidden">
           <p className="text-slate-500 text-xs font-medium mb-3 uppercase tracking-wide">
@@ -231,7 +234,6 @@ function AudioDeviceCard({
   status,
   statusClass,
   deviceLabel,
-  level,
   devices,
   selectedDeviceId,
   selectDisabled,
@@ -243,7 +245,6 @@ function AudioDeviceCard({
   status: string;
   statusClass: string;
   deviceLabel: string;
-  level: number;
   devices: AudioDeviceOption[];
   selectedDeviceId: string;
   selectDisabled: boolean;
@@ -264,8 +265,6 @@ function AudioDeviceCard({
         </div>
         <span className={`whitespace-nowrap text-xs font-semibold ${statusClass}`}>{status}</span>
       </div>
-
-      <LevelMeter level={level} />
 
       <select
         value={devices.some((device) => device.deviceId === selectedDeviceId) ? selectedDeviceId : devices[0]?.deviceId ?? 'default'}
