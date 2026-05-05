@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { normalizeAppearanceScheme } from "@/lib/profile";
+import { applyAppearanceScheme, getStoredAppearanceScheme } from "@/lib/theme";
 
 export default function ThemeApplier() {
   const { user, loading } = useAuth();
@@ -19,22 +20,11 @@ export default function ThemeApplier() {
     if (user) {
       // If user is logged in, their profile dictates the theme.
       const scheme = normalizeAppearanceScheme(user.appearanceScheme);
-      document.documentElement.dataset.theme = scheme;
-      try {
-        localStorage.setItem("costar-theme", scheme);
-      } catch (e) {}
+      applyAppearanceScheme(scheme);
     } else {
       // If user is anonymous, respect localStorage if it exists, otherwise default.
-      try {
-        const localTheme = localStorage.getItem("costar-theme");
-        if (localTheme) {
-            document.documentElement.dataset.theme = localTheme;
-        } else {
-            const scheme = normalizeAppearanceScheme(undefined);
-            document.documentElement.dataset.theme = scheme;
-            localStorage.setItem("costar-theme", scheme);
-        }
-      } catch (e) {}
+      const localTheme = getStoredAppearanceScheme();
+      applyAppearanceScheme(localTheme ?? normalizeAppearanceScheme(undefined), !localTheme);
     }
   }, [user, loading, mounted]);
 

@@ -4,7 +4,7 @@ import { getAdminDb } from "./firebaseAdmin";
 import { findPricingTier, type BillingCycle, type PricingAudienceKey } from "./pricing";
 import { resolveEntitlements, statusFromStripe, type EntitlementStatus } from "./entitlements";
 import { getStripe } from "./stripeServer";
-import { setWalletBalance } from "./walletAdmin";
+import { setMonthlyWalletBalance } from "./walletAdmin";
 
 type StripeState = {
   stripeCustomerId?: string | null;
@@ -89,7 +89,7 @@ export async function applyBillingPlan(
     },
   }, { merge: true });
 
-  await setWalletBalance(db, {
+  await setMonthlyWalletBalance(db, {
     uid: input.uid,
     balance: entitlements.monthlyAllowance,
     reason: input.reason,
@@ -135,7 +135,7 @@ export async function revertToFreePlan(
     },
   }, { merge: true });
 
-  await setWalletBalance(db, {
+  await setMonthlyWalletBalance(db, {
     uid: input.uid,
     balance: entitlements.monthlyAllowance,
     reason: input.reason,

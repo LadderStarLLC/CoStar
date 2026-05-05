@@ -29,7 +29,8 @@ export default function RootLayout({
             __html: `
               try {
                 var theme = localStorage.getItem('costar-theme');
-                if (theme) {
+                var validThemes = ['ladderstar', 'light', 'midnight', 'high-contrast'];
+                if (validThemes.indexOf(theme) !== -1) {
                   document.documentElement.dataset.theme = theme;
                 }
               } catch (e) {}

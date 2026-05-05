@@ -51,6 +51,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Prevent duplicate subscription
+    if (
+      profile?.billing?.tierId === plan.tier.id &&
+      profile?.billing?.billingCycle === billingCycle &&
+      profile?.billing?.subscriptionStatus === "active"
+    ) {
+      return NextResponse.json(
+        { error: "You are already on this plan." },
+        { status: 400 },
+      );
+    }
+
     const baseUrl = getBaseUrl(req);
     const amountCents = getTierAmountCents(plan.tier, billingCycle);
     const interval = billingCycle === "monthly" ? "month" : "year";

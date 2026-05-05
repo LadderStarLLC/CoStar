@@ -2,7 +2,7 @@
 
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { Bold, Italic, List, ListOrdered, Send } from 'lucide-react';
+import { Loader2, Send } from 'lucide-react';
 import { useState, FormEvent, useRef } from 'react';
 
 interface RichTextEditorProps {
@@ -22,7 +22,7 @@ export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps
     onBlur: () => setIsFocused(false),
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-[80px] px-4 py-3 text-slate-200 placeholder:text-slate-500 [&_*]:!text-slate-200',
+        class: 'prose prose-invert prose-sm max-w-none focus:outline-none min-h-[28px] max-h-28 overflow-y-auto px-3 py-2 text-sm leading-5 text-slate-100 placeholder:text-slate-500 [&_*]:!my-0 [&_*]:!text-slate-100',
       },
       handleKeyDown: (view, event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
@@ -40,13 +40,16 @@ export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps
   const submitMessage = async () => {
     if (!editor || editor.isEmpty || disabled || isSubmitting) return;
 
-    const content = JSON.stringify(editor.getJSON());
+    const draft = editor.getJSON();
+    const content = JSON.stringify(draft);
     const previewText = editor.getText().slice(0, 100);
 
     setIsSubmitting(true);
+    editor.commands.clearContent();
     try {
       await onSend(content, previewText);
-      editor.commands.clearContent();
+    } catch (error) {
+      editor.commands.setContent(draft);
     } finally {
       setIsSubmitting(false);
     }
@@ -60,68 +63,26 @@ export default function RichTextEditor({ onSend, disabled }: RichTextEditorProps
   };
 
   if (!editor) {
-    return <div className="h-32 bg-slate-800/50 animate-pulse rounded-lg border border-white/10" />;
+    return <div className="h-11 animate-pulse rounded-full border border-white/10 bg-slate-800/50" />;
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`border rounded-lg bg-slate-800/50 overflow-hidden transition-colors ${isFocused ? 'border-amber-500/50' : 'border-white/10'}`}>
-      <div className="flex items-center gap-1 border-b border-white/5 px-2 py-1 bg-slate-800/80">
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          disabled={disabled || isSubmitting}
-          className={`p-1.5 rounded hover:bg-white/10 transition-colors ${editor.isActive('bold') ? 'text-amber-400 bg-white/5' : 'text-slate-400'}`}
-          title="Bold"
-        >
-          <Bold size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          disabled={disabled || isSubmitting}
-          className={`p-1.5 rounded hover:bg-white/10 transition-colors ${editor.isActive('italic') ? 'text-amber-400 bg-white/5' : 'text-slate-400'}`}
-          title="Italic"
-        >
-          <Italic size={16} />
-        </button>
-        <div className="w-px h-4 bg-white/10 mx-1" />
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          disabled={disabled || isSubmitting}
-          className={`p-1.5 rounded hover:bg-white/10 transition-colors ${editor.isActive('bulletList') ? 'text-amber-400 bg-white/5' : 'text-slate-400'}`}
-          title="Bullet List"
-        >
-          <List size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          disabled={disabled || isSubmitting}
-          className={`p-1.5 rounded hover:bg-white/10 transition-colors ${editor.isActive('orderedList') ? 'text-amber-400 bg-white/5' : 'text-slate-400'}`}
-          title="Numbered List"
-        >
-          <ListOrdered size={16} />
-        </button>
-      </div>
-
-      <div className="max-h-60 overflow-y-auto cursor-text" onClick={() => editor.commands.focus()}>
+    <form
+      onSubmit={handleSubmit}
+      className={`flex items-end gap-2 rounded-2xl border bg-slate-800/80 px-2 py-1.5 transition-colors ${isFocused ? 'border-amber-500/50' : 'border-white/10'}`}
+    >
+      <div className="min-w-0 flex-1 cursor-text" onClick={() => editor.commands.focus()}>
         <EditorContent editor={editor} disabled={disabled} />
       </div>
-
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/80 border-t border-white/5">
-        <div className="text-xs text-slate-500">
-          Rich text supported
-        </div>
-        <button
-          type="submit"
-          disabled={disabled || isSubmitting || editor.isEmpty}
-          className="flex items-center gap-2 px-4 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:hover:bg-amber-500 text-slate-900 rounded font-medium transition-colors"
-        >
-          <span>Send</span>
-          <Send size={16} />
-        </button>
-      </div>
+      <button
+        type="submit"
+        disabled={disabled || isSubmitting || editor.isEmpty}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-slate-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+        title="Send"
+        aria-label="Send message"
+      >
+        {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+      </button>
     </form>
   );
 }

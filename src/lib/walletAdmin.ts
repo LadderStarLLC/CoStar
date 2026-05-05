@@ -70,19 +70,35 @@ export async function getOrCreateWalletSummary(db: Firestore, uid: string): Prom
 
     if (walletSnap.exists) {
       const existing = walletSnap.data() as Partial<AccountWallet>;
-      const normalizedWallet = {
+      const rawBalance = toSafeBalance(existing.balance);
+      let monthlyBalance = toSafeBalance(existing.monthlyBalance ?? 0);
+      let foreverBalance = toSafeBalance(existing.foreverBalance ?? 0);
+
+      // Migration: if monthly/forever are both 0 but balance > 0, move balance to monthlyBalance
+      if (monthlyBalance === 0 && foreverBalance === 0 && rawBalance > 0) {
+        monthlyBalance = rawBalance;
+      }
+
+      const balance = monthlyBalance + foreverBalance;
+
+      const normalizedWallet: AccountWallet = {
         uid,
         accountType,
         currency,
-        balance: toSafeBalance(existing.balance),
+        balance,
+        monthlyBalance,
+        foreverBalance,
         createdAt: serializeTimestamp(existing.createdAt),
         updatedAt: serializeTimestamp(existing.updatedAt),
       };
 
-      if (existing.accountType !== accountType || existing.currency !== currency) {
+      if (existing.accountType !== accountType || existing.currency !== currency || existing.monthlyBalance === undefined) {
         transaction.set(walletRef, {
           accountType,
           currency,
+          balance,
+          monthlyBalance,
+          foreverBalance,
           updatedAt: FieldValue.serverTimestamp(),
         }, { merge: true });
       }
@@ -95,6 +111,8 @@ export async function getOrCreateWalletSummary(db: Firestore, uid: string): Prom
       accountType,
       currency,
       balance: startingBalance,
+      monthlyBalance: startingBalance,
+      foreverBalance: 0,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -104,6 +122,8 @@ export async function getOrCreateWalletSummary(db: Firestore, uid: string): Prom
       accountType,
       currency,
       balance: startingBalance,
+      monthlyBalance: startingBalance,
+      foreverBalance: 0,
     };
   });
 
@@ -150,19 +170,25 @@ export async function adjustWalletBalance(
       throw new Response(JSON.stringify({ error: 'This account type does not support a wallet.' }), { status: 400 });
     }
 
-    const previousBalance = walletSnap.exists
-      ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance)
-      : 0;
-    const nextBalance = previousBalance + delta;
-    if (nextBalance < 0) {
-      throw new Response(JSON.stringify({ error: 'Adjustment would make the balance negative.' }), { status: 400 });
+    const existing = walletSnap.exists ? (walletSnap.data() as Partial<AccountWallet>) : {};
+    const previousMonthly = toSafeBalance(existing.monthlyBalance);
+    const previousForever = toSafeBalance(existing.foreverBalance);
+    const previousTotal = previousMonthly + previousForever;
+
+    // Default admin adjustment to foreverBalance
+    const nextForever = previousForever + delta;
+    if (nextForever < 0) {
+      throw new Response(JSON.stringify({ error: 'Adjustment would make the forever balance negative.' }), { status: 400 });
     }
+    const nextTotal = previousMonthly + nextForever;
 
     const walletPatch = {
       uid,
       accountType,
       currency,
-      balance: nextBalance,
+      balance: nextTotal,
+      monthlyBalance: previousMonthly,
+      foreverBalance: nextForever,
       updatedAt: FieldValue.serverTimestamp(),
       ...(walletSnap.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
     };
@@ -172,8 +198,8 @@ export async function adjustWalletBalance(
       accountType,
       currency,
       delta,
-      balanceBefore: previousBalance,
-      balanceAfter: nextBalance,
+      balanceBefore: previousTotal,
+      balanceAfter: nextTotal,
       reason: trimmedReason,
       actorUid: actor.uid,
       actorEmail: actor.email ?? null,
@@ -188,19 +214,21 @@ export async function adjustWalletBalance(
       uid,
       accountType,
       currency,
-      balance: nextBalance,
+      balance: nextTotal,
+      monthlyBalance: previousMonthly,
+      foreverBalance: nextForever,
     };
   });
 }
 
-export async function setWalletBalance(
+export async function setMonthlyWalletBalance(
   db: Firestore,
-  { uid, balance, reason }: WalletSetInput
+  { uid, balance: newMonthly, reason }: WalletSetInput
 ): Promise<AccountWallet> {
   if (!uid.trim()) {
     throw new Response(JSON.stringify({ error: 'User uid is required.' }), { status: 400 });
   }
-  if (!Number.isInteger(balance) || balance < 0) {
+  if (!Number.isInteger(newMonthly) || newMonthly < 0) {
     throw new Response(JSON.stringify({ error: 'Balance must be a non-negative integer.' }), { status: 400 });
   }
 
@@ -229,16 +257,19 @@ export async function setWalletBalance(
       throw new Response(JSON.stringify({ error: 'This account type does not support a wallet.' }), { status: 400 });
     }
 
-    const previousBalance = walletSnap.exists
-      ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance)
-      : 0;
-    const delta = balance - previousBalance;
+    const existing = walletSnap.exists ? (walletSnap.data() as Partial<AccountWallet>) : {};
+    const previousMonthly = toSafeBalance(existing.monthlyBalance);
+    const foreverBalance = toSafeBalance(existing.foreverBalance);
+    const delta = newMonthly - previousMonthly;
+    const nextTotal = newMonthly + foreverBalance;
 
     const walletPatch = {
       uid,
       accountType,
       currency,
-      balance,
+      balance: nextTotal,
+      monthlyBalance: newMonthly,
+      foreverBalance,
       updatedAt: FieldValue.serverTimestamp(),
       ...(walletSnap.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
     };
@@ -248,8 +279,8 @@ export async function setWalletBalance(
       accountType,
       currency,
       delta,
-      balanceBefore: previousBalance,
-      balanceAfter: balance,
+      balanceBefore: previousMonthly + foreverBalance,
+      balanceAfter: nextTotal,
       reason: trimmedReason,
       actorUid: 'stripe',
       actorEmail: null,
@@ -264,7 +295,9 @@ export async function setWalletBalance(
       uid,
       accountType,
       currency,
-      balance,
+      balance: nextTotal,
+      monthlyBalance: newMonthly,
+      foreverBalance,
     };
   });
 }
@@ -305,19 +338,33 @@ export async function consumeWalletBalance(
       throw new Response(JSON.stringify({ error: 'This account type does not support a wallet.' }), { status: 400 });
     }
 
-    const previousBalance = walletSnap.exists
-      ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance)
-      : 0;
-    if (previousBalance < amount) {
+    const existing = walletSnap.exists ? (walletSnap.data() as Partial<AccountWallet>) : {};
+    const monthly = toSafeBalance(existing.monthlyBalance);
+    const forever = toSafeBalance(existing.foreverBalance);
+    const total = monthly + forever;
+
+    if (total < amount) {
       throw new Response(JSON.stringify({ error: `Not enough ${currency} remaining.` }), { status: 402 });
     }
 
-    const nextBalance = previousBalance - amount;
+    let nextMonthly = monthly;
+    let nextForever = forever;
+
+    if (monthly >= amount) {
+      nextMonthly -= amount;
+    } else {
+      nextMonthly = 0;
+      nextForever -= (amount - monthly);
+    }
+
+    const nextTotal = nextMonthly + nextForever;
     const walletPatch = {
       uid,
       accountType,
       currency,
-      balance: nextBalance,
+      balance: nextTotal,
+      monthlyBalance: nextMonthly,
+      foreverBalance: nextForever,
       updatedAt: FieldValue.serverTimestamp(),
       ...(walletSnap.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
     };
@@ -327,8 +374,8 @@ export async function consumeWalletBalance(
       accountType,
       currency,
       delta: -amount,
-      balanceBefore: previousBalance,
-      balanceAfter: nextBalance,
+      balanceBefore: total,
+      balanceAfter: nextTotal,
       reason: trimmedReason,
       actorUid: 'system',
       actorEmail: null,
@@ -343,7 +390,9 @@ export async function consumeWalletBalance(
       uid,
       accountType,
       currency,
-      balance: nextBalance,
+      balance: nextTotal,
+      monthlyBalance: nextMonthly,
+      foreverBalance: nextForever,
     };
   });
 }
@@ -393,35 +442,54 @@ export async function reserveWalletBalance(
       throw new Response(JSON.stringify({ error: 'This account type does not support a wallet.' }), { status: 400 });
     }
 
-    const previousBalance = walletSnap.exists
-      ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance)
-      : 0;
-    if (previousBalance < amount) {
+    const existing = walletSnap.exists ? (walletSnap.data() as Partial<AccountWallet>) : {};
+    const monthly = toSafeBalance(existing.monthlyBalance);
+    const forever = toSafeBalance(existing.foreverBalance);
+    const total = monthly + forever;
+
+    if (total < amount) {
       throw new Response(JSON.stringify({ error: `Not enough ${currency} remaining.` }), { status: 402 });
     }
 
-    const nextBalance = previousBalance - amount;
+    let reservedFromMonthly = 0;
+    let reservedFromForever = 0;
+
+    if (monthly >= amount) {
+      reservedFromMonthly = amount;
+    } else {
+      reservedFromMonthly = monthly;
+      reservedFromForever = amount - monthly;
+    }
+
+    const nextMonthly = monthly - reservedFromMonthly;
+    const nextForever = forever - reservedFromForever;
+    const nextTotal = nextMonthly + nextForever;
+
     const now = FieldValue.serverTimestamp();
     const existingMetadata = isRecord(existingMeter.metadata) ? existingMeter.metadata : {};
     const nextMetadata = { ...existingMetadata, ...(metadata ?? {}) };
     const feature = typeof nextMetadata.feature === 'string' ? nextMetadata.feature : null;
     const sessionId = typeof nextMetadata.sessionId === 'string' ? nextMetadata.sessionId : null;
     const jobTitle = typeof nextMetadata.jobTitle === 'string' ? nextMetadata.jobTitle : null;
+
     transaction.set(walletRef, {
       uid,
       accountType,
       currency,
-      balance: nextBalance,
+      balance: nextTotal,
+      monthlyBalance: nextMonthly,
+      foreverBalance: nextForever,
       updatedAt: now,
       ...(walletSnap.exists ? {} : { createdAt: now }),
     }, { merge: true });
+
     transaction.create(transactionRef, {
       uid,
       accountType,
       currency,
       delta: -amount,
-      balanceBefore: previousBalance,
-      balanceAfter: nextBalance,
+      balanceBefore: total,
+      balanceAfter: nextTotal,
       reason: trimmedReason,
       actorUid: 'system',
       actorEmail: null,
@@ -433,11 +501,14 @@ export async function reserveWalletBalance(
       metadata: nextMetadata,
       createdAt: now,
     } satisfies Omit<WalletTransaction, 'id'>);
+
     transaction.set(meterRef, {
       uid,
       accountType,
       currency,
       reservedAmount: FieldValue.increment(amount),
+      reservedMonthly: FieldValue.increment(reservedFromMonthly),
+      reservedForever: FieldValue.increment(reservedFromForever),
       usedAmount: 0,
       status: 'reserved',
       reason: trimmedReason,
@@ -447,7 +518,7 @@ export async function reserveWalletBalance(
     }, { merge: true });
 
     return {
-      wallet: { uid, accountType, currency, balance: nextBalance },
+      wallet: { uid, accountType, currency, balance: nextTotal, monthlyBalance: nextMonthly, foreverBalance: nextForever },
       transactionId: transactionRef.id,
     };
   });
@@ -487,41 +558,77 @@ export async function settleWalletReservation(
       throw new Response(JSON.stringify({ error: 'Reservation does not belong to this user.' }), { status: 403 });
     }
     if (meter.status !== 'reserved') {
+      const wallet = walletSnap.exists ? (walletSnap.data() as Partial<AccountWallet>) : {};
+      const monthlyBalance = toSafeBalance(wallet.monthlyBalance);
+      const foreverBalance = toSafeBalance(wallet.foreverBalance);
       return {
         wallet: {
           uid,
           accountType: meter.accountType,
           currency: meter.currency,
-          balance: walletSnap.exists ? toSafeBalance((walletSnap.data() as Partial<AccountWallet>).balance) : 0,
+          balance: monthlyBalance + foreverBalance,
+          monthlyBalance,
+          foreverBalance,
         },
         transactionId: null,
       };
     }
 
     const reservedAmount = toSafeBalance(meter.reservedAmount);
+    const reservedMonthly = toSafeBalance(meter.reservedMonthly);
+    const reservedForever = toSafeBalance(meter.reservedForever);
+
     const settledUsed = Math.min(usedAmount, reservedAmount);
-    const refund = reservedAmount - settledUsed;
+    const totalRefund = reservedAmount - settledUsed;
+
+    // Logic to refund:
+    // If we used 10 and reserved 15 (10 monthly, 5 forever)
+    // settledUsed = 10.
+    // We should prioritize using monthly first?
+    // Actually, when we reserved, we already took monthly first.
+    // So when we USE, we should also use monthly first.
+
+    let usedFromMonthly = 0;
+    let usedFromForever = 0;
+    if (reservedMonthly >= settledUsed) {
+      usedFromMonthly = settledUsed;
+    } else {
+      usedFromMonthly = reservedMonthly;
+      usedFromForever = settledUsed - reservedMonthly;
+    }
+
+    const refundMonthly = reservedMonthly - usedFromMonthly;
+    const refundForever = toSafeBalance(meter.reservedForever) - usedFromForever;
+
     const wallet = walletSnap.data() as Partial<AccountWallet>;
-    const previousBalance = walletSnap.exists ? toSafeBalance(wallet.balance) : 0;
-    const nextBalance = previousBalance + refund;
+    const previousMonthly = toSafeBalance(wallet.monthlyBalance);
+    const previousForever = toSafeBalance(wallet.foreverBalance);
+    const previousTotal = previousMonthly + previousForever;
+
+    const nextMonthly = previousMonthly + refundMonthly;
+    const nextForever = previousForever + refundForever;
+    const nextTotal = nextMonthly + nextForever;
+
     const now = FieldValue.serverTimestamp();
     const meterMetadata = isRecord(meter.metadata) ? meter.metadata : {};
     const feature = typeof meterMetadata.feature === 'string' ? meterMetadata.feature : null;
     const sessionId = typeof meterMetadata.sessionId === 'string' ? meterMetadata.sessionId : null;
     const jobTitle = typeof meterMetadata.jobTitle === 'string' ? meterMetadata.jobTitle : null;
 
-    if (refund > 0) {
+    if (totalRefund > 0) {
       transaction.set(walletRef, {
-        balance: nextBalance,
+        balance: nextTotal,
+        monthlyBalance: nextMonthly,
+        foreverBalance: nextForever,
         updatedAt: now,
       }, { merge: true });
       transaction.create(refundRef, {
         uid,
         accountType: meter.accountType,
         currency: meter.currency,
-        delta: refund,
-        balanceBefore: previousBalance,
-        balanceAfter: nextBalance,
+        delta: totalRefund,
+        balanceBefore: previousTotal,
+        balanceAfter: nextTotal,
         reason: trimmedReason,
         actorUid: 'system',
         actorEmail: null,
@@ -539,7 +646,11 @@ export async function settleWalletReservation(
 
     transaction.set(meterRef, {
       usedAmount: settledUsed,
-      refundedAmount: refund,
+      usedMonthly: usedFromMonthly,
+      usedForever: usedFromForever,
+      refundedAmount: totalRefund,
+      refundedMonthly: refundMonthly,
+      refundedForever: refundForever,
       status: 'settled',
       settledAt: now,
       updatedAt: now,
@@ -550,9 +661,11 @@ export async function settleWalletReservation(
         uid,
         accountType: meter.accountType,
         currency: meter.currency,
-        balance: nextBalance,
+        balance: nextTotal,
+        monthlyBalance: nextMonthly,
+        foreverBalance: nextForever,
       },
-      transactionId: refund > 0 ? refundRef.id : null,
+      transactionId: totalRefund > 0 ? refundRef.id : null,
     };
   });
 }
@@ -607,51 +720,81 @@ export async function giftAgencyMinutes(
       throw new Response(JSON.stringify({ error: 'Recipient must be a Talent account.' }), { status: 400 });
     }
 
-    const agencyBalance = agencyWalletSnap.exists ? toSafeBalance((agencyWalletSnap.data() as Partial<AccountWallet>).balance) : 0;
-    if (agencyBalance < amount) {
+    const agencyWallet = agencyWalletSnap.exists ? (agencyWalletSnap.data() as Partial<AccountWallet>) : {};
+    const agencyMonthly = toSafeBalance(agencyWallet.monthlyBalance);
+    const agencyForever = toSafeBalance(agencyWallet.foreverBalance);
+    const agencyTotal = agencyMonthly + agencyForever;
+
+    if (agencyTotal < amount) {
       throw new Response(JSON.stringify({ error: 'Not enough minutes remaining.' }), { status: 402 });
     }
-    const recipientBalance = recipientWalletSnap.exists ? toSafeBalance((recipientWalletSnap.data() as Partial<AccountWallet>).balance) : 0;
+
+    let giftFromMonthly = 0;
+    let giftFromForever = 0;
+    if (agencyMonthly >= amount) {
+      giftFromMonthly = amount;
+    } else {
+      giftFromMonthly = agencyMonthly;
+      giftFromForever = amount - agencyMonthly;
+    }
+
+    const recipientWallet = recipientWalletSnap.exists ? (recipientWalletSnap.data() as Partial<AccountWallet>) : {};
+    const recipientMonthly = toSafeBalance(recipientWallet.monthlyBalance);
+    const recipientForever = toSafeBalance(recipientWallet.foreverBalance);
+    const recipientTotalBefore = recipientMonthly + recipientForever;
+
     const now = FieldValue.serverTimestamp();
-    const agencyNext = agencyBalance - amount;
-    const recipientNext = recipientBalance + amount;
+    const agencyNextMonthly = agencyMonthly - giftFromMonthly;
+    const agencyNextForever = agencyForever - giftFromForever;
+    const agencyNextTotal = agencyNextMonthly + agencyNextForever;
+
+    // Recipients always get gifts as foreverBalance
+    const recipientNextForever = recipientForever + amount;
+    const recipientNextTotal = recipientMonthly + recipientNextForever;
 
     transaction.set(agencyWalletRef, {
       uid: agencyUid,
       accountType: 'agency',
       currency: 'minutes',
-      balance: agencyNext,
+      balance: agencyNextTotal,
+      monthlyBalance: agencyNextMonthly,
+      foreverBalance: agencyNextForever,
       updatedAt: now,
       ...(agencyWalletSnap.exists ? {} : { createdAt: now }),
     }, { merge: true });
+
     transaction.set(recipientWalletRef, {
       uid: resolvedRecipientUid,
       accountType: 'talent',
       currency: 'minutes',
-      balance: recipientNext,
+      balance: recipientNextTotal,
+      monthlyBalance: recipientMonthly,
+      foreverBalance: recipientNextForever,
       updatedAt: now,
       ...(recipientWalletSnap.exists ? {} : { createdAt: now }),
     }, { merge: true });
+
     transaction.create(agencyTxRef, {
       uid: agencyUid,
       accountType: 'agency',
       currency: 'minutes',
       delta: -amount,
-      balanceBefore: agencyBalance,
-      balanceAfter: agencyNext,
+      balanceBefore: agencyTotal,
+      balanceAfter: agencyNextTotal,
       reason: trimmedReason,
       actorUid: agencyUid,
       actorEmail: null,
       type: 'gift_sent',
       createdAt: now,
     } satisfies Omit<WalletTransaction, 'id'>);
+
     transaction.create(recipientTxRef, {
       uid: resolvedRecipientUid,
       accountType: 'talent',
       currency: 'minutes',
       delta: amount,
-      balanceBefore: recipientBalance,
-      balanceAfter: recipientNext,
+      balanceBefore: recipientTotalBefore,
+      balanceAfter: recipientNextTotal,
       reason: trimmedReason,
       actorUid: agencyUid,
       actorEmail: null,
@@ -660,8 +803,22 @@ export async function giftAgencyMinutes(
     } satisfies Omit<WalletTransaction, 'id'>);
 
     return {
-      agencyWallet: { uid: agencyUid, accountType: 'agency' as const, currency: 'minutes' as const, balance: agencyNext },
-      recipientWallet: { uid: resolvedRecipientUid, accountType: 'talent' as const, currency: 'minutes' as const, balance: recipientNext },
+      agencyWallet: {
+        uid: agencyUid,
+        accountType: 'agency' as const,
+        currency: 'minutes' as const,
+        balance: agencyNextTotal,
+        monthlyBalance: agencyNextMonthly,
+        foreverBalance: agencyNextForever,
+      },
+      recipientWallet: {
+        uid: resolvedRecipientUid,
+        accountType: 'talent' as const,
+        currency: 'minutes' as const,
+        balance: recipientNextTotal,
+        monthlyBalance: recipientMonthly,
+        foreverBalance: recipientNextForever,
+      },
     };
   });
 
