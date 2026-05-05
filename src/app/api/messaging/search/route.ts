@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
     conversationsSnap.forEach((doc) => {
       const data = doc.data();
       if (data.status === 'blocked') return;
+      if (Array.isArray(data.archivedBy) && data.archivedBy.includes(decoded.uid)) return;
       const participantIds = Array.isArray(data.participantIds) ? data.participantIds : [];
       const otherId = data.conversationType === 'ai'
         ? COSTAR_AI_UID

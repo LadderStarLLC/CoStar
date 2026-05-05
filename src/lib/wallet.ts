@@ -6,7 +6,9 @@ export interface AccountWallet {
   uid: string;
   accountType: AccountType;
   currency: PremiumCurrency;
-  balance: number;
+  balance: number; // Combined total for simple display
+  monthlyBalance: number; // Resets monthly (from subscription)
+  foreverBalance: number; // Never expires (from top-ups/gifts)
   createdAt?: unknown;
   updatedAt?: unknown;
 }

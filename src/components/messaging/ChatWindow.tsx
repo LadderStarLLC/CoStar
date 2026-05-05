@@ -68,6 +68,7 @@ export default function ChatWindow({ conversation, messages, currentUserId, part
       }
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : 'Message could not be sent.');
+      throw sendError;
     } finally {
       setSending(false);
       setAiThinking(false);

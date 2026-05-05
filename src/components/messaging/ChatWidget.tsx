@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useMessaging } from '@/context/MessagingContext';
 import {
+  archiveConversation,
   Conversation,
   createCoStarConversation,
   createConversation,
@@ -13,7 +14,7 @@ import {
   subscribeToConversations,
   subscribeToMessages,
 } from '@/lib/messaging';
-import { ArrowLeft, Bot, Loader2, Maximize2, MessageCircle, Minimize2, Search, X } from 'lucide-react';
+import { Archive, ArrowLeft, Bot, Loader2, Maximize2, MessageCircle, Minimize2, Search, X } from 'lucide-react';
 import InboxList from './InboxList';
 import ChatWindow from './ChatWindow';
 
@@ -164,6 +165,20 @@ export default function ChatWidget() {
     }
   }
 
+  async function handleArchiveConversation(conversationId: string) {
+    setError(null);
+    try {
+      await archiveConversation(conversationId);
+      setConversations((current) => current.filter((conversation) => conversation.id !== conversationId));
+      if (activeConversationId === conversationId) {
+        setActiveConversationId(null);
+        setMessages([]);
+      }
+    } catch (archiveError) {
+      setError(archiveError instanceof Error ? archiveError.message : 'Could not archive this chat.');
+    }
+  }
+
   return (
     <div className={`fixed bottom-6 right-6 z-50 flex flex-col overflow-hidden rounded-xl border border-white/10 bg-slate-900 shadow-2xl transition-all duration-300 ease-in-out ${isMinimized ? 'h-[56px] w-[320px]' : 'h-[640px] max-h-[84vh] w-[400px] max-w-[calc(100vw-32px)]'}`}>
       <div 
@@ -205,6 +220,16 @@ export default function ChatWidget() {
           )}
         </div>
         <div className="flex items-center gap-1">
+          {activeConversationId && !isMinimized && (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleArchiveConversation(activeConversationId); }}
+              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-amber-300"
+              title="Archive chat"
+              aria-label="Archive chat"
+            >
+              <Archive size={16} />
+            </button>
+          )}
           <button 
             onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }}
             className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
@@ -270,6 +295,7 @@ export default function ChatWidget() {
                     conversations={conversations} 
                     currentUserId={user.uid} 
                     onSelect={(id) => setActiveConversationId(id)}
+                    onArchive={handleArchiveConversation}
                   />
                 )}
               </div>

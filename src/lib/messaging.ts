@@ -44,6 +44,8 @@ export interface Conversation {
   lastMessage?: LastMessage;
   lastUpdatedAt: any;
   unreadBy?: string[];
+  archivedBy?: string[];
+  archivedAtBy?: Record<string, any>;
   status: ConversationStatus;
   ai?: {
     title?: string;
@@ -181,7 +183,10 @@ export function subscribeToConversations(
     (snapshot) => {
       const convs: Conversation[] = [];
       snapshot.forEach(docSnap => {
-        convs.push({ id: docSnap.id, ...docSnap.data() } as Conversation);
+        const conversation = { id: docSnap.id, ...docSnap.data() } as Conversation;
+        if (!conversation.archivedBy?.includes(userId)) {
+          convs.push(conversation);
+        }
       });
       convs.sort((a, b) => {
         const timeA = a.lastUpdatedAt?.toMillis?.() ?? 0;
@@ -248,6 +253,15 @@ export async function requestCoStarResponse(conversationId: string) {
 export async function markConversationRead(conversationId: string, userId: string) {
   void userId;
   const response = await fetch(`/api/messaging/conversations/${conversationId}/read`, {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({}),
+  });
+  return parseJsonResponse<{ ok: true }>(response);
+}
+
+export async function archiveConversation(conversationId: string) {
+  const response = await fetch(`/api/messaging/conversations/${conversationId}/archive`, {
     method: 'POST',
     headers: await authHeaders(),
     body: JSON.stringify({}),

@@ -63,9 +63,31 @@ export default function PricingPage() {
       return;
     }
 
+    const isSubscribed = user?.billing?.subscriptionStatus === "active";
+    const isCurrentPlan = isSubscribed && user?.billing?.tierId === tier.id && user?.billing?.billingCycle === billingCycle;
+
+    if (isCurrentPlan) return;
+
     setCheckoutTierId(tier.id);
     try {
       const token = await user.getIdToken();
+
+      // If already subscribed, use portal for upgrade/downgrade
+      if (isSubscribed) {
+        const response = await fetch("/api/billing/portal", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        if (!response.ok || !data.url) {
+          throw new Error(data.error || "Unable to open billing portal.");
+        }
+        window.location.href = data.url;
+        return;
+      }
+
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: {
@@ -214,7 +236,7 @@ export default function PricingPage() {
 
                   <button
                     type="button"
-                    disabled={Boolean(checkoutTierId)}
+                    disabled={Boolean(checkoutTierId) || (user?.billing?.subscriptionStatus === "active" && user?.billing?.tierId === tier.id && user?.billing?.billingCycle === billingCycle)}
                     onClick={() => handleSelectTier(tier)}
                     className={`mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-lg px-5 py-3 font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                       tier.featured
@@ -222,7 +244,7 @@ export default function PricingPage() {
                         : "border border-[#5DC99B]/35 bg-[#1A1D20]/65 text-[#F4F5F7] hover:border-[#5DC99B] hover:text-[#5DC99B]"
                     }`}
                   >
-                    {isCheckingOut ? "Opening checkout..." : tier.monthlyPrice > 0 && !user ? "Sign up to subscribe" : tier.cta}
+                    {isCheckingOut ? "Opening..." : (user?.billing?.subscriptionStatus === "active" && user?.billing?.tierId === tier.id && user?.billing?.billingCycle === billingCycle) ? "Current Plan" : tier.monthlyPrice > 0 && !user ? "Sign up to subscribe" : (user?.billing?.subscriptionStatus === "active" ? "Upgrade / Downgrade" : tier.cta)}
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </article>

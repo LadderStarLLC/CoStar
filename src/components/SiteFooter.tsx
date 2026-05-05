@@ -70,27 +70,27 @@ export default function SiteFooter() {
   if (shouldHideFooter(pathname)) return null;
 
   return (
-    <footer className="border-t border-border bg-surface-base text-foreground">
+    <footer className="border-t border-[var(--border-default)] bg-[rgb(var(--surface-base))] text-[rgb(var(--foreground)_/_0.60)]">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:py-14">
         <div className="grid gap-10 lg:grid-cols-[1.15fr_1.85fr]">
           <div>
             <Link href="/" className="inline-flex items-center gap-3">
               <BrandLogo size="md" />
-              <span className="text-xl font-black tracking-tight">LadderStar</span>
+              <span className="text-xl font-black tracking-tight text-[rgb(var(--foreground)_/_0.78)]">LadderStar</span>
             </Link>
-            <p className="mt-5 max-w-md leading-7 text-foreground/66">
+            <p className="mt-5 max-w-md leading-7 text-[rgb(var(--foreground)_/_0.60)]">
               Premium job discovery, public professional profiles, AI interview practice, and career operating tools for talent, businesses, and agencies.
             </p>
-            <div className="mt-6 grid gap-3 text-sm text-foreground/62">
-              <a href="mailto:support@ladderstar.com" className="inline-flex items-center gap-2 hover:text-brand-secondary">
-                <Mail className="h-4 w-4 text-brand-secondary" />
+            <div className="mt-6 grid gap-3 text-sm text-[rgb(var(--foreground)_/_0.58)]">
+              <a href="mailto:support@ladderstar.com" className="inline-flex items-center gap-2 transition hover:text-[rgb(var(--brand-secondary))]">
+                <Mail className="h-4 w-4 text-[rgb(var(--brand-secondary)_/_0.72)]" />
                 support@ladderstar.com
               </a>
               <div className="flex items-start gap-2">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-secondary" />
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--brand-secondary)_/_0.72)]" />
                 <span>Ladder Star LLC, 30 N Gould St, STE R, Sheridan, WY 82801, USA</span>
               </div>
-              <div className="inline-flex items-center gap-2 text-brand-primary">
+              <div className="inline-flex items-center gap-2 text-[rgb(var(--foreground)_/_0.52)]">
                 <ShieldCheck className="h-4 w-4" />
                 <span>Security, privacy, and responsible AI guidance for every account path.</span>
               </div>
@@ -100,13 +100,13 @@ export default function SiteFooter() {
           <nav className="grid grid-cols-2 gap-8 md:grid-cols-4" aria-label="Footer">
             {footerGroups.map((group) => (
               <div key={group.title}>
-                <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-foreground/64">{group.title}</h2>
+                <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-[rgb(var(--foreground)_/_0.58)]">{group.title}</h2>
                 <ul className="mt-4 space-y-3">
                   {group.links.map((link) => (
                     <li key={link.href}>
                       <Link
                         href={link.href}
-                        className="inline-flex items-center gap-1.5 text-sm text-foreground/64 transition hover:text-brand-secondary"
+                        className="inline-flex items-center gap-1.5 text-sm text-[rgb(var(--foreground)_/_0.58)] transition hover:text-[rgb(var(--brand-secondary))]"
                       >
                         {link.label}
                         {link.href === '/sign-up' && <ArrowUpRight className="h-3.5 w-3.5" />}
@@ -119,8 +119,8 @@ export default function SiteFooter() {
           </nav>
         </div>
 
-        <div className="mt-10 flex flex-col gap-4 border-t border-border pt-6 text-xs leading-6 text-foreground/48 md:flex-row md:items-center md:justify-between">
-          <p>© {new Date().getFullYear()} Ladder Star LLC. All rights reserved.</p>
+        <div className="mt-10 flex flex-col gap-4 border-t border-[var(--border-default)] pt-6 text-xs leading-6 text-[rgb(var(--foreground)_/_0.44)] md:flex-row md:items-center md:justify-between">
+          <p>&copy; {new Date().getFullYear()} Ladder Star LLC. All rights reserved.</p>
           <p>Policies are informational and do not replace legal advice from qualified counsel.</p>
         </div>
       </div>

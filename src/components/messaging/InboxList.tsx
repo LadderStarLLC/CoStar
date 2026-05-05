@@ -1,7 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { Bot } from 'lucide-react';
+import { Archive, Bot } from 'lucide-react';
 import { Conversation } from '@/lib/messaging';
 
 interface InboxListProps {
@@ -9,9 +9,10 @@ interface InboxListProps {
   currentUserId: string;
   activeConversationId?: string;
   onSelect?: (id: string) => void;
+  onArchive?: (id: string) => void;
 }
 
-export default function InboxList({ conversations, currentUserId, activeConversationId, onSelect }: InboxListProps) {
+export default function InboxList({ conversations, currentUserId, activeConversationId, onSelect, onArchive }: InboxListProps) {
   if (conversations.length === 0) {
     return (
       <div className="p-8 text-center text-slate-400">
@@ -36,12 +37,16 @@ export default function InboxList({ conversations, currentUserId, activeConversa
           : otherParticipant?.name || 'Unknown User';
 
         return (
-          <button 
+          <div
             key={conv.id} 
-            onClick={() => onSelect && onSelect(conv.id)}
-            className={`flex w-full items-start gap-4 p-4 text-left transition-colors hover:bg-white/5 ${isActive ? 'bg-white/5' : ''}`}
+            className={`group flex w-full items-start gap-3 p-4 text-left transition-colors hover:bg-white/5 ${isActive ? 'bg-white/5' : ''}`}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-700">
+            <button
+              type="button"
+              onClick={() => onSelect && onSelect(conv.id)}
+              className="flex min-w-0 flex-1 items-start gap-4 text-left"
+            >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-700">
               {conv.conversationType === 'ai' ? (
                 <Bot size={18} className="text-amber-400" />
               ) : otherParticipant?.avatarUrl ? (
@@ -51,9 +56,9 @@ export default function InboxList({ conversations, currentUserId, activeConversa
                   {otherParticipant?.name?.charAt(0) || '?'}
                 </span>
               )}
-            </div>
+            </span>
             
-            <div className="min-w-0 flex-1">
+            <span className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-2">
                 <h3 className={`truncate font-medium ${isUnread ? 'text-white' : 'text-slate-200'}`}>
                   {title}
@@ -71,12 +76,24 @@ export default function InboxList({ conversations, currentUserId, activeConversa
               ) : (
                 <p className="mt-1 text-sm italic text-slate-500">New conversation</p>
               )}
-            </div>
+            </span>
+            </button>
             
             {isUnread && (
               <div className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
             )}
-          </button>
+            {onArchive && (
+              <button
+                type="button"
+                onClick={() => onArchive(conv.id)}
+                className="mt-0.5 rounded-lg p-1.5 text-slate-500 opacity-0 transition hover:bg-white/10 hover:text-amber-300 focus:opacity-100 group-hover:opacity-100"
+                title="Archive chat"
+                aria-label={`Archive ${title}`}
+              >
+                <Archive size={15} />
+              </button>
+            )}
+          </div>
         );
       })}
     </div>

@@ -9,6 +9,7 @@ import NavHeader from "@/components/NavHeader";
 import { useAuth } from "@/context/AuthContext";
 import { auth, db } from "@/lib/firebase";
 import { uploadProfileImage } from "@/lib/storage";
+import { applyAppearanceScheme } from "@/lib/theme";
 import { fetchWalletSummary } from "@/lib/walletClient";
 import { walletLabel, type WalletSummary, type AccountWallet } from "@/lib/wallet";
 import {
@@ -114,7 +115,7 @@ export default function AccountSettingsPage() {
   }, [authLoading, user, router]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = appearanceScheme;
+    applyAppearanceScheme(appearanceScheme, false);
   }, [appearanceScheme]);
 
   useEffect(() => {
@@ -265,6 +266,7 @@ export default function AccountSettingsPage() {
         await saveTypeSpecificProfile(user.uid, accountType, profileUpdates);
       }
       setSocialConnections(nextConnections);
+      applyAppearanceScheme(appearanceScheme);
       setMessage(isOperator ? "Preview settings saved." : "Settings saved.");
     } catch (err) {
       console.error("Failed to save settings:", err);
@@ -287,6 +289,9 @@ export default function AccountSettingsPage() {
           user.uid,
           activeTab === "account" ? { appearanceScheme } : { publicProfileEnabled }
         );
+        if (activeTab === "account") {
+          applyAppearanceScheme(appearanceScheme);
+        }
         setMessage("Settings saved.");
       } catch (err) {
         console.error("Failed to save settings:", err);
@@ -550,13 +555,21 @@ export default function AccountSettingsPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-white">Premium Balance</h2>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Private to your account and managed by LadderStar.
+                  <p className="mt-1 text-sm text-slate-400 max-w-sm">
+                    Private to your account and managed by LadderStar. Monthly credits reset at the start of each billing cycle.
                   </p>
                 </div>
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-right">
-                  <div className="text-3xl font-bold text-white">{walletSummary.wallet.balance}</div>
-                  <div className="text-sm font-medium text-emerald-300">{walletLabel(walletSummary.wallet.currency)}</div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-right">
+                    <div className="text-2xl font-bold text-white">{walletSummary.wallet.monthlyBalance}</div>
+                    <div className="text-xs font-medium text-slate-300">Monthly {walletLabel(walletSummary.wallet.currency)}</div>
+                    <div className="text-[10px] text-slate-500 mt-1">Resets monthly</div>
+                  </div>
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 text-right">
+                    <div className="text-2xl font-bold text-white">{walletSummary.wallet.foreverBalance}</div>
+                    <div className="text-xs font-medium text-emerald-300">Forever {walletLabel(walletSummary.wallet.currency)}</div>
+                    <div className="text-[10px] text-emerald-500/70 mt-1">Never expires</div>
+                  </div>
                 </div>
               </div>
 
