@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AlertCircle, ArrowLeft, Briefcase, Clock, DollarSign, MapPin } from 'lucide-react';
 import { deserializeCareerjetJob } from '@/lib/careerjet';
 import { getAdminDb } from '@/lib/firebaseAdmin';
+import { formatJobPostedDate, jobSourceLabel } from '@/lib/jobDisplay';
 import { convertScrapedJobToJobData, JobData, ScrapedJobData } from '@/lib/jobs';
 import JobDetailActions from './JobDetailActions';
 
@@ -33,6 +34,9 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
       </div>
     );
   }
+
+  const postedDate = formatJobPostedDate(job.createdAt);
+  const sourceLabel = jobSourceLabel(job);
 
   return (
     <div className="min-h-screen bg-slate-900">
@@ -67,9 +71,9 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
                         {job.category}
                       </span>
                     )}
-                    {job.source && (
+                    {sourceLabel && (
                       <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs">
-                        {job.source}
+                        {sourceLabel}
                       </span>
                     )}
                   </div>
@@ -99,10 +103,10 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
                   </div>
                 )}
 
-                {formatDate(job.createdAt) && (
+                {postedDate && (
                   <div className="flex items-center gap-2 text-slate-300">
                     <Clock className="w-4 h-4 text-slate-500" />
-                    <span>Posted {formatDate(job.createdAt)}</span>
+                    <span>Posted {postedDate}</span>
                   </div>
                 )}
 
@@ -174,10 +178,10 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
             {job.companyName && (
               <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6 min-h-[134px]">
                 <h3 className="text-white font-semibold mb-4">About {job.companyName}</h3>
-                {job.source && (
+                {sourceLabel && (
                   <p className="text-slate-400 text-sm mb-4">
                     <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs">
-                      {job.source}
+                      {sourceLabel}
                     </span>
                   </p>
                 )}
@@ -231,17 +235,6 @@ function formatSalary(job: JobData) {
   const max = job.salary.max ? formatNumber(job.salary.max) : '';
 
   return `${min}${min && max ? ' - ' : ''}${max} /${job.salary.period === 'yearly' ? 'yr' : job.salary.period === 'monthly' ? 'mo' : 'hr'}`;
-}
-
-function formatDate(value: unknown) {
-  if (!value) return '';
-  const date = new Date(value as string);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 function remoteBadgeClass(remotePolicy: string) {

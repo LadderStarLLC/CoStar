@@ -12,10 +12,10 @@ import NavHeader from "@/components/NavHeader";
 import FeaturedJobsPreview from "@/components/FeaturedJobsPreview";
 
 const coachingTracks = [
-  "Interview rehearsal with AI voice practice",
-  "Offer positioning and compensation strategy",
+  "Voice-driven AI interview practice",
+  "Offer conversations and compensation preparation",
   "Resume, portfolio, and profile optimization",
-  "Weekly accountability for targeted career moves",
+  "Role-specific coaching prompts and next steps",
 ];
 
 export default function Home() {
@@ -37,7 +37,7 @@ export default function Home() {
                 </h1>
 
                 <p className="mt-6 max-w-2xl text-lg md:text-xl leading-8 text-[#F4F5F7]/76">
-                  A digital-native job board and career coaching platform built for ambitious professionals ready for their next ascent.
+                  LadderStar brings curated external roles, public professional profiles, and AI interview practice into one focused career workspace.
                 </p>
 
                 <div className="mt-9 flex flex-col sm:flex-row gap-3">
@@ -45,23 +45,23 @@ export default function Home() {
                     href="/jobs"
                     className="inline-flex items-center justify-center gap-2 rounded-lg ladderstar-action px-6 py-3.5 font-bold text-[#1A1D20] transition hover:brightness-110"
                   >
-                    Start Climbing
+                    Browse roles
                     <ArrowRight className="w-5 h-5" />
                   </Link>
                   <Link
-                    href="#coaching"
+                    href="/audition"
                     className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#5DC99B]/35 bg-[#262A2E] px-6 py-3.5 font-semibold text-[#F4F5F7] transition hover:border-[#5DC99B] hover:text-[#5DC99B]"
                   >
-                    Book coaching
+                    Practice an interview
                     <Mic className="w-5 h-5" />
                   </Link>
                 </div>
 
                 <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-xl">
                   {[
-                    ["18k+", "curated listings"],
-                    ["92%", "clear next steps"],
-                    ["24/7", "AI practice"],
+                    ["Search", "curated external roles"],
+                    ["Publish", "a professional profile"],
+                    ["Practice", "AI mock interviews"],
                   ].map(([value, label]) => (
                     <div key={label} className="border-l border-[#5DC99B]/40 pl-4">
                       <div className="text-2xl font-black text-[#E5B536]">{value}</div>
@@ -79,9 +79,9 @@ export default function Home() {
         <section id="outcomes" className="border-y border-white/10 bg-[#262A2E] px-6 py-16">
           <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-5">
             {[
-              ["Curated database", "Search a focused job board with clear salary, remote, and match signals."],
-              ["Actionable guidance", "Convert job discovery into outreach, prep, applications, and follow-through."],
-              ["Premium momentum", "Use coaching and AI interview practice to move faster with higher confidence."],
+              ["Curated discovery", "Search external job listings with filters for salary, location, work style, and seniority."],
+              ["Profile presence", "Create a public talent, company, or agency profile you control from your account settings."],
+              ["Interview practice", "Use LadderStar Audition for voice-based mock interviews and feedback reports."],
             ].map(([title, description]) => (
               <div key={title} className="rounded-lg border border-white/10 bg-[#1A1D20]/65 p-6">
                 <BadgeCheck className="w-6 h-6 text-[#5DC99B]" />
@@ -100,16 +100,16 @@ export default function Home() {
                 Career coaching layer
               </div>
               <h2 className="mt-5 text-4xl md:text-5xl font-black tracking-tight text-balance">
-                Separate from the database. Built for the climb after discovery.
+                Keep the long-term climb, but start with the next conversation.
               </h2>
               <p className="mt-5 text-lg leading-8 text-[#F4F5F7]/70">
-                The job board helps you find openings. Coaching helps you become the obvious candidate, sharpen your narrative, and turn applications into interviews and offers.
+                The job board helps you find roles worth pursuing. Audition practice helps you rehearse the interview, pressure-test your story, and prepare for offer conversations without pretending outcomes are guaranteed.
               </p>
               <Link
-                href="/sign-up?type=talent"
+                href="/audition"
                 className="mt-8 inline-flex items-center gap-2 rounded-lg ladderstar-action px-6 py-3.5 font-bold text-[#1A1D20] transition hover:brightness-110"
               >
-                Book coaching
+                Start a mock interview
                 <Star className="w-5 h-5 fill-[#1A1D20]" />
               </Link>
             </div>

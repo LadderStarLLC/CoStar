@@ -66,6 +66,7 @@ export async function fetchCareerjetJobs(
   if (filters.datePosted) params.set('datePosted', filters.datePosted);
   if (filters.category) params.set('category', filters.category);
   if (filters.tags?.length) params.set('tags', filters.tags.join(','));
+  if (filters.source?.length) params.set('sourceFilter', filters.source.join(','));
   params.set('sort', sortBy);
   params.set('page', String(page));
   params.set('pageSize', String(pageSize));

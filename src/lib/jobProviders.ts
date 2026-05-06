@@ -171,10 +171,16 @@ function parseSalaryString(text?: string) {
   };
 }
 
+function validProviderDate(value?: string) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
 function mapCareerjetJob(job: CareerjetApiJob): JobData {
   const location = parseLocation(job.locations);
   const text = `${job.title || ''} ${job.description || ''} ${job.locations || ''}`;
-  const createdAt = job.date ? new Date(job.date).toISOString() : new Date().toISOString();
+  const createdAt = validProviderDate(job.date);
   const jobId = hashString(`careerjet|${job.url || ''}|${job.title || ''}|${job.company || ''}`);
 
   return {
@@ -205,10 +211,10 @@ function mapCareerjetJob(job: CareerjetApiJob): JobData {
       method: 'external',
       url: job.url,
     },
-    source: job.site ? `Careerjet - ${job.site}` : 'Careerjet',
+    source: 'Curated external listing',
     url: job.url,
     createdAt,
-    category: 'Careerjet',
+    category: 'External role',
     tags: [inferEmploymentTypeFromText(text), inferExperienceLevelFromText(text), inferRemotePolicyFromText(text)].filter(Boolean) as string[],
   };
 }
@@ -217,7 +223,7 @@ function mapJoobleJob(job: JoobleApiJob): JobData {
   const text = `${job.title || ''} ${job.snippet || ''} ${job.location || ''} ${job.type || ''}`;
   const location = parseLocation(job.location);
   const salary = parseSalaryString(job.salary);
-  const createdAt = job.updated ? new Date(job.updated).toISOString() : new Date().toISOString();
+  const createdAt = validProviderDate(job.updated);
   const jobId = hashString(`jooble|${job.link || ''}|${job.title || ''}|${job.company || ''}`);
 
   return {
@@ -240,10 +246,10 @@ function mapJoobleJob(job: JoobleApiJob): JobData {
       method: 'external',
       url: job.link,
     },
-    source: job.source ? `Jooble - ${job.source}` : 'Jooble',
+    source: 'Curated external listing',
     url: job.link,
     createdAt,
-    category: 'Jooble',
+    category: 'External role',
     tags: [inferEmploymentTypeFromText(text), inferExperienceLevelFromText(text), inferRemotePolicyFromText(text)].filter(Boolean) as string[],
   };
 }
@@ -276,10 +282,15 @@ function applyLocalFilters(jobs: JobData[], filters: JobFilters, sort: SortOptio
   if (filters.datePosted && filters.datePosted !== 'any') {
     const maxAgeDays = filters.datePosted === '24h' ? 1 : filters.datePosted === 'week' ? 7 : 30;
     filtered = filtered.filter((job) => {
-      if (!job.createdAt) return true;
+      if (!job.createdAt) return false;
       const createdAt = new Date(job.createdAt as string);
+      if (Number.isNaN(createdAt.getTime())) return false;
       return Date.now() - createdAt.getTime() <= maxAgeDays * 24 * 60 * 60 * 1000;
     });
+  }
+
+  if (filters.source?.length) {
+    filtered = filtered.filter((job) => job.source && filters.source?.includes(job.source));
   }
 
   switch (sort) {
@@ -306,7 +317,13 @@ function dedupeJobs(jobs: JobData[]) {
   const deduped: JobData[] = [];
 
   for (const job of jobs) {
-    const key = `${(job.title || '').toLowerCase()}|${(job.companyName || '').toLowerCase()}|${(job.url || '').toLowerCase()}|${(job.location?.city || '').toLowerCase()}`;
+    const title = (job.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const company = (job.companyName || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const city = (job.location?.city || '').toLowerCase().trim();
+    const country = (job.location?.country || '').toLowerCase().trim();
+    const url = (job.url || job.application?.url || '').toLowerCase().trim();
+    const key = title && company ? `${title}|${company}|${city}|${country}` : url;
+    if (!key) continue;
     if (seen.has(key)) continue;
     seen.add(key);
     deduped.push(job);
@@ -334,6 +351,7 @@ export function buildJobRequestState(
   const datePosted = (searchParams.get('datePosted') as JobFilters['datePosted']) || undefined;
   const tags = searchParams.get('tags')?.split(',').filter(Boolean) || [];
   const tag = searchParams.get('tag');
+  const sourceFilter = searchParams.get('sourceFilter')?.split(',').filter(Boolean) || [];
 
   const filters: JobFilters = {
     search: search || undefined,
@@ -344,6 +362,7 @@ export function buildJobRequestState(
     salaryMax,
     datePosted,
     tags: tags.length ? tags : tag ? [tag] : undefined,
+    source: sourceFilter.length ? sourceFilter : undefined,
   };
 
   const userIp = requestHeaders?.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1';

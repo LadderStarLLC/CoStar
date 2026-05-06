@@ -104,7 +104,7 @@ export default function FeaturedJobsPreview() {
             className="inline-flex items-center justify-center gap-2 rounded-lg ladderstar-action px-5 py-3 font-bold text-[#1A1D20]"
           >
             <SlidersHorizontal className="w-4 h-4" />
-            View live roles
+            View roles
           </Link>
         </div>
       </div>
@@ -113,19 +113,19 @@ export default function FeaturedJobsPreview() {
         {isLoading && (
           <div className="flex items-center justify-center rounded-lg border border-white/10 bg-[#1A1D20]/70 p-10 text-[#F4F5F7]/62">
             <Loader2 className="mr-2 h-5 w-5 animate-spin text-[#E5B536]" />
-            Loading premium roles...
+            Loading curated roles...
           </div>
         )}
 
         {!isLoading && error && (
           <div className="rounded-lg border border-[#E5B536]/30 bg-[#E5B536]/10 p-5 text-sm text-[#E5B536]">
-            Live roles are temporarily unavailable. Browse the job board to retry.
+            Curated roles are temporarily unavailable. Browse the job board to retry.
           </div>
         )}
 
         {!isLoading && !error && jobs.length === 0 && (
           <div className="rounded-lg border border-white/10 bg-[#1A1D20]/70 p-5 text-sm text-[#F4F5F7]/62">
-            No featured roles matched yet. Browse the live job board for the latest listings.
+            No featured roles matched yet. Browse the job board for current listings.
           </div>
         )}
 
@@ -173,7 +173,7 @@ export default function FeaturedJobsPreview() {
                     </span>
                   ))}
                   <span className="inline-flex items-center gap-1 rounded-full border border-[#E5B536]/30 bg-[#E5B536]/10 px-2.5 py-1 text-xs font-semibold text-[#E5B536]">
-                    Live listing
+                    External listing
                     <ExternalLink className="h-3 w-3" />
                   </span>
                 </div>

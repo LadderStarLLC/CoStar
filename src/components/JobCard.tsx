@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { formatJobPostedDate, jobSourceLabel } from '@/lib/jobDisplay';
 
 interface JobCardProps {
   job: JobData;
@@ -34,27 +35,6 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
     const max = job.salary.max ? formatNumber(job.salary.max) : '';
 
     return `${currency} ${min}${min && max ? ' - ' : ''}${max}${job.salary.period === 'yearly' ? '/yr' : job.salary.period === 'monthly' ? '/mo' : '/hr'}`;
-  };
-
-  const formatDate = () => {
-    if (!job.createdAt) return '';
-
-    let date;
-    if (job.createdAt.toDate) {
-      date = job.createdAt.toDate();
-    } else {
-      date = new Date(job.createdAt);
-    }
-
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return `${Math.floor(diffDays / 30)} months ago`;
   };
 
   const getRemoteBadgeClass = () => {
@@ -90,6 +70,8 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
   };
 
   const salary = formatSalary();
+  const postedDate = formatJobPostedDate(job.createdAt);
+  const sourceLabel = jobSourceLabel(job);
 
   // Generate link - use jobId (not slug since slugs aren't persistent)
   const jobLink = job.jobId
@@ -223,19 +205,23 @@ export default function JobCard({ job, showCompany = true, onSave, onApply }: Jo
                   {job.category}
                 </span>
               )}
-              {job.source && (
+              {sourceLabel && (
                 <span className="px-2 py-0.5 bg-[#E5B536]/10 text-[#E5B536] border border-[#E5B536]/30 rounded-full text-xs">
-                  {job.source}
+                  {sourceLabel}
                 </span>
               )}
             </div>
 
             {/* Footer */}
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
-              <div className="flex items-center gap-1 text-[#F4F5F7]/42 text-sm">
-                <Clock className="w-4 h-4" />
-                <span>{formatDate()}</span>
-              </div>
+              {postedDate ? (
+                <div className="flex items-center gap-1 text-[#F4F5F7]/42 text-sm">
+                  <Clock className="w-4 h-4" />
+                  <span>Posted {postedDate}</span>
+                </div>
+              ) : (
+                <div className="h-5" aria-hidden="true" />
+              )}
 
               {/* Apply Button - links to external URL if available, otherwise to detail page */}
               {job.application?.url ? (
