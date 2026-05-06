@@ -12,8 +12,8 @@ import SiteFooter from "@/components/SiteFooter";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "LadderStar - Premium Job Board & Career Coaching",
-  description: "Find top-tier roles, practice interviews, and get actionable career coaching on LadderStar.",
+  title: "LadderStar - Job Discovery & AI Interview Practice",
+  description: "Browse curated external roles, publish a professional profile, and practice interviews with LadderStar.",
 };
 
 export default function RootLayout({

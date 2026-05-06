@@ -29,10 +29,29 @@ const audienceIcons = {
 } satisfies Record<PricingAudienceKey, typeof Star>;
 
 function formatPrice(tier: PricingTier, billingCycle: BillingCycle) {
+  if (tier.earlyAccess) return "Early access";
   if (tier.monthlyPrice === 0) return "$0";
   const price = billingCycle === "monthly" ? tier.monthlyPrice : annualPrice(tier.monthlyPrice);
   return `$${price.toLocaleString("en-US")}`;
 }
+
+const planGuidance: Record<PricingAudienceKey, string[]> = {
+  talent: [
+    "Choose Free if you want to try LadderStar and practice your first mock interview.",
+    "Choose Plus if you are actively applying and want more role-specific practice.",
+    "Choose Pro if you are preparing for offer conversations or need deeper feedback reports.",
+  ],
+  business: [
+    "Choose Employer Launch if you want to create a company presence and test role visibility.",
+    "Choose Employer Growth if you want early access to candidate discovery workflows.",
+    "Choose a partner option when your team wants to shape the roadmap with LadderStar.",
+  ],
+  agency: [
+    "Choose Free if you want an agency profile and a first AI practice workflow for represented talent.",
+    "Choose Studio if your team needs more interview practice and saved feedback for candidates.",
+    "Choose Network if your recruiting team wants higher-capacity preparation and partner input.",
+  ],
+};
 
 export default function PricingPage() {
   const router = useRouter();
@@ -53,6 +72,11 @@ export default function PricingPage() {
   const AudienceIcon = audienceIcons[audience.key];
 
   async function handleSelectTier(tier: PricingTier) {
+    if (tier.earlyAccess) {
+      router.push(tier.contactHref ?? "/contact");
+      return;
+    }
+
     if (tier.monthlyPrice === 0 || !user) {
       router.push(audience.signupHref);
       return;
@@ -205,13 +229,20 @@ export default function PricingPage() {
                   <div className="mt-6">
                     <div className="flex items-end gap-2">
                       <span className="text-5xl font-black tracking-tight">{formatPrice(tier, billingCycle)}</span>
-                      <span className="pb-2 text-sm font-semibold text-[#F4F5F7]/55">
-                        /{billingCycle === "monthly" ? "mo" : "yr"}
-                      </span>
+                      {!tier.earlyAccess && (
+                        <span className="pb-2 text-sm font-semibold text-[#F4F5F7]/55">
+                          /{billingCycle === "monthly" ? "mo" : "yr"}
+                        </span>
+                      )}
                     </div>
-                    {billingCycle === "annual" && tier.monthlyPrice > 0 && (
+                    {billingCycle === "annual" && tier.monthlyPrice > 0 && !tier.earlyAccess && (
                       <p className="mt-2 text-sm font-semibold text-[#5DC99B]">
                         Equal to ${(annualPrice(tier.monthlyPrice) / 12).toFixed(2)}/mo when billed annually
+                      </p>
+                    )}
+                    {tier.earlyAccess && (
+                      <p className="mt-2 text-sm font-semibold text-[#5DC99B]">
+                        Available for early partners.
                       </p>
                     )}
                   </div>
@@ -244,12 +275,25 @@ export default function PricingPage() {
                         : "border border-[#5DC99B]/35 bg-[#1A1D20]/65 text-[#F4F5F7] hover:border-[#5DC99B] hover:text-[#5DC99B]"
                     }`}
                   >
-                    {isCheckingOut ? "Opening..." : (user?.billing?.subscriptionStatus === "active" && user?.billing?.tierId === tier.id && user?.billing?.billingCycle === billingCycle) ? "Current Plan" : tier.monthlyPrice > 0 && !user ? "Sign up to subscribe" : (user?.billing?.subscriptionStatus === "active" ? "Upgrade / Downgrade" : tier.cta)}
+                    {isCheckingOut ? "Opening..." : (user?.billing?.subscriptionStatus === "active" && user?.billing?.tierId === tier.id && user?.billing?.billingCycle === billingCycle) ? "Current Plan" : tier.earlyAccess ? tier.cta : tier.monthlyPrice > 0 && !user ? "Sign up to subscribe" : (user?.billing?.subscriptionStatus === "active" ? "Upgrade / Downgrade" : tier.cta)}
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </article>
               );
             })}
+          </div>
+        </section>
+
+        <section className="px-4 sm:px-6 pb-12">
+          <div className="mx-auto max-w-7xl rounded-lg border border-white/10 bg-[#262A2E]/72 p-6">
+            <h2 className="text-xl font-black">Which plan is right for me?</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {planGuidance[audience.key].map((item) => (
+                <p key={item} className="rounded-lg border border-white/10 bg-[#1A1D20]/65 p-4 text-sm leading-6 text-[#F4F5F7]/70">
+                  {item}
+                </p>
+              ))}
+            </div>
           </div>
         </section>
 
