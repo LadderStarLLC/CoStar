@@ -18,7 +18,7 @@ const accountTypeOptions: Array<{
   {
     type: "talent",
     title: "Talent",
-    description: "Build a public talent profile, practice auditions, and find aligned jobs.",
+    description: "Build a public talent profile, practice interviews, and find aligned jobs.",
     Icon: User,
     accent: "text-[#E5B536] border-[#E5B536]/40 bg-[#E5B536]/10",
   },

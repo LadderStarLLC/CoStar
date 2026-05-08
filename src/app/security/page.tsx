@@ -11,7 +11,7 @@ export default function SecurityPage() {
     <LegalPage
       eyebrow="Company"
       title="Security"
-      description="Security practices for LadderStar accounts, public profiles, admin operations, billing, messaging, and AI audition features."
+      description="Security practices for LadderStar accounts, public profiles, admin operations, billing, messaging, and AI interview features."
       sections={[
         { title: '1. Account protection', body: <p>LadderStar uses Firebase Authentication for supported sign-in paths. Users are responsible for protecting their email, identity provider accounts, devices, and active sessions.</p> },
         { title: '2. Data access controls', body: <p>Firestore rules and server routes separate client-owned data from server-owned operational records. Admin and owner authorization must be verified server-side. Wallet balances, wallet transactions, role changes, status changes, and audit logs are designed to be server-owned.</p> },

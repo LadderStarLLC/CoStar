@@ -70,7 +70,7 @@ export function SetupScreen({
           <div className="flex items-center justify-between">
             <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-600/20 border border-violet-500/30 text-violet-300 text-xs font-semibold ${mode === 'freeform' ? '' : 'mb-3'}`}>
               <Mic className="w-3 h-3" />
-              AI AUDITION
+              AI INTERVIEW
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -83,7 +83,7 @@ export function SetupScreen({
               <button
                 onClick={onOpenSettings}
                 className="p-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800/60 transition-all"
-                title="Audition settings"
+                title="Interview settings"
               >
                 <Settings className="w-4 h-4" />
               </button>
@@ -316,7 +316,7 @@ export function SetupScreen({
           ) : (
             <>
               <Mic className="w-5 h-5" />
-              Start Audition
+              Start Live Interview
               <ChevronRight className="w-4 h-4 ml-auto" />
             </>
           )}

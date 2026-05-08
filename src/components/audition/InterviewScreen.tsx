@@ -85,7 +85,7 @@ export function InterviewScreen({
   };
 
   const statusDetail: Record<AIStatus, string> = {
-    idle: 'Preparing your live audition session.',
+    idle: 'Preparing your live interview session.',
     processing: 'Reviewing your last response.',
     speaking: 'The interviewer is asking or following up.',
     listening: entries.length === 0

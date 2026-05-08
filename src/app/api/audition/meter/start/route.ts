@@ -16,14 +16,14 @@ export async function POST(req: NextRequest) {
     const { decoded, profile, db } = await getCallerProfile(req);
     const accountType = profile?.accountType === 'agency' ? 'agency' : profile?.accountType === 'talent' ? 'talent' : null;
     if (!accountType) {
-      return NextResponse.json({ error: 'Audition minutes are available to Talent and Agency accounts.' }, { status: 403 });
+      return NextResponse.json({ error: 'Interview minutes are available to Talent and Agency accounts.' }, { status: 403 });
     }
 
     const body = (await req.json().catch(() => ({}))) as Body;
     const reservation = await reserveWalletBalance(db, {
       uid: decoded.uid,
       amount: 1,
-      reason: `Audition minute reservation${body.jobTitle ? `: ${body.jobTitle}` : ''}`,
+      reason: `Interview minute reservation${body.jobTitle ? `: ${body.jobTitle}` : ''}`,
       metadata: {
         feature: 'audition',
         accountType,

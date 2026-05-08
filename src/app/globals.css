@@ -126,6 +126,17 @@ body {
   overflow-x: hidden;
 }
 
+@media (min-width: 1024px) {
+  body.has-ladderstar-sidebar {
+    padding-left: 288px;
+    transition: padding-left 300ms ease;
+  }
+
+  body.has-ladderstar-sidebar.ladderstar-sidebar-collapsed {
+    padding-left: 76px;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

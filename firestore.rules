@@ -176,18 +176,18 @@ service cloud.firestore {
       );
     }
 
-    // Audition settings - only owner can read/write
+    // Interview settings - only owner can read/write
     match /auditionSettings/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Audition session history - only owner can read/write
+    // Interview session history - only owner can read/write
     match /auditionSessions/{userId}/sessions/{sessionId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Audition metering reservations are server-owned.
+    // Interview metering reservations are server-owned.
     match /auditionMetering/{meterId} {
       allow read, create, update, delete: if false;
     }

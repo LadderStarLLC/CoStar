@@ -85,20 +85,20 @@ export default function JobDetailActions({ job, jobId }: JobDetailActionsProps) 
                   pathname: `/jobs/${jobId}/audition`,
                   query: { job: serializeCareerjetJob(job) },
                 }}
-                className="w-full flex min-h-12 items-center justify-center gap-2 px-6 py-3 mb-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white rounded-xl font-bold transition-colors border border-violet-500/30"
+                className="w-full flex min-h-12 items-center justify-center gap-2 px-6 py-3 mb-3 ladderstar-action text-[#1A1D20] rounded-xl font-bold transition hover:brightness-110 border border-[#E5B536]/35 shadow-[0_18px_38px_rgba(229,181,54,0.18)]"
               >
                 <Mic className="w-4 h-4" />
-                Practice Audition
-                <span className="ml-auto text-xs font-normal opacity-70">AI Interview</span>
+                Practice This Interview
+                <span className="ml-auto text-xs font-semibold opacity-75">AI Prep</span>
               </Link>
             ) : (
               <button
                 onClick={() => router.push('/sign-in')}
-                className="w-full flex min-h-12 items-center justify-center gap-2 px-6 py-3 mb-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white rounded-xl font-bold transition-colors border border-violet-500/30"
+                className="w-full flex min-h-12 items-center justify-center gap-2 px-6 py-3 mb-3 ladderstar-action text-[#1A1D20] rounded-xl font-bold transition hover:brightness-110 border border-[#E5B536]/35 shadow-[0_18px_38px_rgba(229,181,54,0.18)]"
               >
                 <Mic className="w-4 h-4" />
                 Sign in to practice
-                <span className="ml-auto text-xs font-normal opacity-70">AI Interview</span>
+                <span className="ml-auto text-xs font-semibold opacity-75">AI Prep</span>
               </button>
             )}
 

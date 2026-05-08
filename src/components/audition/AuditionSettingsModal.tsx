@@ -56,7 +56,7 @@ export function AuditionSettingsModal({ current, onSave, onClose, onRequestMic, 
       <div className="w-full max-w-md bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl p-6 space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-white font-bold text-base">Audition Settings</h2>
+          <h2 className="text-white font-bold text-base">Interview Settings</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -154,7 +154,7 @@ function getMicStatusMeta(status: MicConnectionStatus, error?: string | null) {
       return {
         label: 'Connected',
         title: 'Microphone is connected',
-        description: 'Audio capture is active for the current audition.',
+        description: 'Audio capture is active for the current interview.',
         icon: Radio,
         iconClass: 'text-emerald-400',
         badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
@@ -163,7 +163,7 @@ function getMicStatusMeta(status: MicConnectionStatus, error?: string | null) {
       return {
         label: 'Allowed',
         title: 'Microphone access is allowed',
-        description: 'LadderStar can use your microphone when an audition starts.',
+        description: 'LadderStar can use your microphone when an interview starts.',
         icon: Mic,
         iconClass: 'text-emerald-400',
         badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',

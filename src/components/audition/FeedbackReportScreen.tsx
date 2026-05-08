@@ -272,7 +272,7 @@ export function FeedbackReportScreen({ sessionId }: FeedbackReportScreenProps) {
             onClick={() => router.push('/audition')}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-sm font-bold transition-all border border-violet-500/30"
           >
-            New Audition
+            New Interview
           </button>
         </div>
       </div>

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   try {
     const { decoded, profile, db } = await getCallerProfile(req);
     if (profile?.accountType !== 'talent' && profile?.accountType !== 'agency') {
-      return NextResponse.json({ error: 'Audition minutes are available to Talent and Agency accounts.' }, { status: 403 });
+      return NextResponse.json({ error: 'Interview minutes are available to Talent and Agency accounts.' }, { status: 403 });
     }
 
     const body = (await req.json()) as Body;
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       uid: decoded.uid,
       meterId: body.meterId,
       amount: 1,
-      reason: `Audition minute extension${body.jobTitle ? `: ${body.jobTitle}` : ''}`,
+      reason: `Interview minute extension${body.jobTitle ? `: ${body.jobTitle}` : ''}`,
       metadata: { feature: 'audition', extension: true, jobTitle: body.jobTitle ?? null },
     });
 

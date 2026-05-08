@@ -15,7 +15,7 @@ Ladder Star is an AI-powered career platform for practicing interviews, discover
 
 Ladder Star is part career platform, part practice room, part recruiter inbox, and part AI interview coach. The app has a few important wires under the floorboards, mostly around Gemini Live API and Firebase authorization, so this README is the map before you start moving things around.
 
-- **Audition**: real-time AI voice interviews through Google's Gemini Multimodal Live API.
+- **Interview**: real-time AI voice interviews through Google's Gemini Multimodal Live API.
 - **Job Board**: searchable jobs, job detail pages, save/apply actions, and job-specific audition entry points.
 - **Profiles**: public profile pages for talent, businesses, and agencies.
 - **Messaging**: a global floating chat widget with safe rich-text messages.
@@ -255,7 +255,7 @@ Firestore security rules are in `firestore.rules`. The messaging rules are inten
 - `POST /api/admin/users/set-status`: admin/owner only, suspends/reactivates users and toggles public profile visibility.
 - `POST /api/admin/migrate/talent`: admin migration helper.
 
-### Audition
+### Interview
 
 - `POST /api/audition/token`: Firebase-auth-gated, returns `{ key, host }` for the Gemini Live WebSocket. This does not mint ephemeral tokens.
 - `POST /api/audition/sessions`: Firebase-auth-gated, server-side session persistence with `merge: true`.
@@ -282,13 +282,13 @@ src/app/u               Public talent profiles
 src/app/companies       Public business profiles
 src/app/agencies        Public agency profiles
 src/components          Shared UI, public pages, jobs, search, profile components
-src/components/audition Audition screens, settings, history, feedback UI
+src/components/audition Interview screens, settings, history, feedback UI
 src/components/blog     Blog renderer and editor
 src/components/messaging Rich-text editor, inbox, chat window, floating widget
 src/context             Firebase auth and global messaging context
-src/hooks               Audition, audio, transcript, timer, video, and settings hooks
+src/hooks               Interview, audio, transcript, timer, video, and settings hooks
 src/lib                 Firebase, Admin SDK, jobs, profiles, search, messaging, blog helpers
-src/lib/audition        Audition config, prompts, serialization, audio utilities, types
+src/lib/audition        Interview config, prompts, serialization, audio utilities, types
 firestore.rules         Firestore authorization rules
 AGENTS.md               Deep implementation notes for AI coding agents
 ```
