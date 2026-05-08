@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -15,9 +15,10 @@ import {
 import NavHeader from "@/components/NavHeader";
 import { useAuth } from "@/context/AuthContext";
 import {
-  getAnnualPrice,
+  getEffectiveTierAmountCents,
   pricingAudiences,
   type BillingCycle,
+  type PricingCatalog,
   type PricingAudienceKey,
   type PricingTier,
 } from "@/lib/pricing";
@@ -31,8 +32,13 @@ const audienceIcons = {
 function formatPrice(tier: PricingTier, billingCycle: BillingCycle) {
   if (tier.earlyAccess) return "Early access";
   if (tier.monthlyPrice === 0) return "$0";
-  const price = billingCycle === "monthly" ? tier.monthlyPrice : getAnnualPrice(tier);
-  return `$${price.toLocaleString("en-US")}`;
+  const { effectiveAmountCents } = getEffectiveTierAmountCents(tier, billingCycle);
+  return formatCents(effectiveAmountCents);
+}
+
+function formatCents(cents: number) {
+  const amount = cents / 100;
+  return `$${amount.toLocaleString("en-US", { maximumFractionDigits: amount % 1 ? 2 : 0 })}`;
 }
 
 const planGuidance: Record<PricingAudienceKey, string[]> = {
@@ -59,6 +65,20 @@ export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [activeAudience, setActiveAudience] = useState<PricingAudienceKey>("talent");
   const [checkoutTierId, setCheckoutTierId] = useState<string | null>(null);
+  const [catalog, setCatalog] = useState<PricingCatalog>({ audiences: pricingAudiences });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/pricing", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (!cancelled && data?.catalog?.audiences) setCatalog(data.catalog);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const isSpecificAudience = Boolean(
     user && ["talent", "business", "agency"].includes(user.accountType as string)
@@ -66,8 +86,8 @@ export default function PricingPage() {
   const audienceKey = isSpecificAudience ? (user!.accountType as PricingAudienceKey) : activeAudience;
 
   const audience = useMemo(
-    () => pricingAudiences.find((item) => item.key === audienceKey) ?? pricingAudiences[0],
-    [audienceKey],
+    () => catalog.audiences.find((item) => item.key === audienceKey) ?? catalog.audiences[0] ?? pricingAudiences[0],
+    [audienceKey, catalog.audiences],
   );
   const AudienceIcon = audienceIcons[audience.key];
 
@@ -140,7 +160,7 @@ export default function PricingPage() {
           <div className={`flex flex-col gap-4 md:flex-row md:items-center ${!isSpecificAudience ? "md:justify-between" : "md:justify-end"}`}>
             {!isSpecificAudience && (
               <div className="grid grid-cols-3 rounded-lg border border-white/10 bg-[#262A2E] p-1">
-                {pricingAudiences.map((item) => {
+                {catalog.audiences.map((item) => {
                   const Icon = audienceIcons[item.key];
                   const isActive = item.key === activeAudience;
                   return (
@@ -237,7 +257,12 @@ export default function PricingPage() {
                     </div>
                     {billingCycle === "annual" && tier.monthlyPrice > 0 && !tier.earlyAccess && (
                       <p className="mt-2 text-sm font-semibold text-[#5DC99B]">
-                        Equal to ${(getAnnualPrice(tier) / 12).toFixed(2).replace(/\.00$/, '')}/mo when billed annually
+                        Equal to {formatCents(getEffectiveTierAmountCents(tier, "annual").effectiveAmountCents / 12)}/mo when billed annually
+                      </p>
+                    )}
+                    {tier.sale?.enabled && tier.sale.percentOff > 0 && tier.monthlyPrice > 0 && !tier.earlyAccess && (
+                      <p className="mt-2 text-sm font-semibold text-[#E5B536]">
+                        {tier.sale.label || "Limited sale"}: {tier.sale.percentOff}% off {formatCents(getEffectiveTierAmountCents(tier, billingCycle).baseAmountCents)}
                       </p>
                     )}
                     {tier.earlyAccess && (

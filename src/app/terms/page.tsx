@@ -64,7 +64,8 @@ export default function TermsPage() {
           title: '6. Billing, subscriptions, and wallet balances',
           body: (
             <>
-              <p>Paid plans may be processed through Stripe. Prices, plan limits, features, and billing cycles are shown at checkout or in the pricing experience. You authorize recurring charges for subscriptions until canceled.</p>
+              <p>Paid plans may be processed through Stripe. Prices, plan limits, features, discounts, sales, and billing cycles are shown at checkout or in the pricing experience. You authorize recurring charges for subscriptions until canceled.</p>
+              <p>LadderStar may change published prices, plan packaging, discounts, or promotional sales from time to time. Unless we state otherwise or a separate migration is applied, published price changes apply to new checkout sessions and do not automatically reprice an existing active Stripe subscription.</p>
               <p>Premium wallet balances such as minutes or screenings are service credits, not cash, stored value, gift cards, or legal tender. They may be limited by account type, plan, feature availability, expiration, and anti-abuse rules. Unused credits may not roll over unless the plan expressly states otherwise.</p>
               <p>Refund and cancellation terms are described in the <Link className="text-[#5DC99B] hover:text-[#E5B536]" href="/refund-policy">Refund Policy</Link>.</p>
             </>

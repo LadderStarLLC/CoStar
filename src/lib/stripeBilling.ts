@@ -1,8 +1,9 @@
 import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import type Stripe from "stripe";
 import { getAdminDb } from "./firebaseAdmin";
-import { findPricingTier, type BillingCycle, type PricingAudienceKey } from "./pricing";
-import { resolveEntitlements, statusFromStripe, type EntitlementStatus } from "./entitlements";
+import { findPricingTierInCatalog, type BillingCycle, type PricingAudienceKey } from "./pricing";
+import { resolveEntitlementsInCatalog, statusFromStripe, type EntitlementStatus } from "./entitlements";
+import { getPublishedPricingCatalog } from "./pricingCatalogServer";
 import { getStripe } from "./stripeServer";
 import { setMonthlyWalletBalance } from "./walletAdmin";
 
@@ -54,12 +55,13 @@ export async function applyBillingPlan(
     reason: string;
   },
 ) {
-  const plan = findPricingTier(input.tierId);
+  const catalog = await getPublishedPricingCatalog(db);
+  const plan = findPricingTierInCatalog(catalog, input.tierId);
   if (!plan || plan.audience.key !== input.accountType) {
     throw new Error("Billing tier does not match account type.");
   }
 
-  const entitlements = resolveEntitlements({
+  const entitlements = resolveEntitlementsInCatalog(catalog, {
     accountType: input.accountType,
     tierId: input.tierId,
     status: input.status,
@@ -108,7 +110,8 @@ export async function revertToFreePlan(
     reason: string;
   },
 ) {
-  const entitlements = resolveEntitlements({
+  const catalog = await getPublishedPricingCatalog(db);
+  const entitlements = resolveEntitlementsInCatalog(catalog, {
     accountType: input.accountType,
     status: input.status,
     billingCycle: "free",

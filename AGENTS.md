@@ -437,6 +437,32 @@ operator reason.
 
 ---
 
+## Owner Pricing Console and Stripe Checkout
+
+The live pricing catalog is owner-managed from `/admin` and stored in the
+server-owned Firestore document `platformConfig/pricing`. Client reads and
+writes to that document are forbidden by Firestore rules; public pricing and
+admin edits must go through API routes.
+
+Owner-only pricing routes:
+- `GET /api/admin/pricing`
+- `POST /api/admin/pricing/draft`
+- `POST /api/admin/pricing/publish`
+
+Public pricing is read from `GET /api/pricing`, with the code-defined pricing
+catalog in `src/lib/pricing.ts` as the fallback/bootstrap source.
+
+Stripe checkout uses the published pricing catalog at request time and creates
+Stripe Checkout sessions with inline `price_data`. Price and percentage-sale
+changes apply immediately to the public pricing page and to new checkout
+sessions. Existing active Stripe subscriptions are not automatically repriced
+when owners publish catalog changes.
+
+Keep tier IDs stable unless entitlement logic and billing metadata handling are
+updated deliberately.
+
+---
+
 ## Audition Settings and Session History
 
 Per-user audition settings are stored at `auditionSettings/{uid}`:

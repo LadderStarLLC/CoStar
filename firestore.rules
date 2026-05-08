@@ -109,6 +109,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Platform configuration, including live pricing, is server-owned and
+    // exposed only through validated API routes.
+    match /platformConfig/{configId} {
+      allow read, write: if false;
+    }
+
     // Published public profile projections. These contain only opted-in fields.
     match /publicProfiles/{userId} {
       allow read: if resource.data.status == 'published' &&

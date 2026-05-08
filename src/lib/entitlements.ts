@@ -1,8 +1,11 @@
 import { currencyForAccountType, type PremiumCurrency } from "./wallet";
 import {
   findPricingTier,
+  findPricingTierInCatalog,
   getFreeTierForAccountType,
+  getFreeTierForAccountTypeInCatalog,
   type BillingCycle,
+  type PricingCatalog,
   type PricingAudienceKey,
   type PricingTierId,
 } from "./pricing";
@@ -119,10 +122,22 @@ export function resolveEntitlements(input: {
   status?: EntitlementStatus;
   billingCycle?: BillingCycle | "free" | null;
 }): ResolvedEntitlements {
-  const paidPlan = input.tierId ? findPricingTier(input.tierId) : null;
+  return resolveEntitlementsInCatalog(undefined, input);
+}
+
+export function resolveEntitlementsInCatalog(
+  catalog: PricingCatalog | undefined,
+  input: {
+    accountType: PricingAudienceKey;
+    tierId?: string | null;
+    status?: EntitlementStatus;
+    billingCycle?: BillingCycle | "free" | null;
+  },
+): ResolvedEntitlements {
+  const paidPlan = input.tierId ? catalog ? findPricingTierInCatalog(catalog, input.tierId) : findPricingTier(input.tierId) : null;
   const isActive = input.status === "active" && paidPlan?.audience.key === input.accountType;
   const plan = isActive ? paidPlan : null;
-  const tier = plan?.tier ?? getFreeTierForAccountType(input.accountType);
+  const tier = plan?.tier ?? (catalog ? getFreeTierForAccountTypeInCatalog(catalog, input.accountType) : getFreeTierForAccountType(input.accountType));
   if (!tier) {
     throw new Error(`No free tier configured for account type ${input.accountType}.`);
   }

@@ -143,12 +143,12 @@ export default function FeaturedJobsPreview() {
               <Link
                 key={job.jobId || `${job.title}-${job.companyName}`}
                 href={jobHref}
-                className={`block rounded-lg border p-4 transition hover:border-[#5DC99B]/55 ${
+                className={`block rounded-lg border p-4 transition hover:border-[#5DC99B]/55 min-w-0 max-w-full overflow-hidden ${
                   index === 0 ? 'border-[#E5B536]/45 ladderstar-ascent-gradient' : 'border-white/10 bg-[#1A1D20]/70'
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h2 className="truncate font-bold text-[#F4F5F7]">{job.title || 'Featured role'}</h2>
                     <p className="mt-1 truncate text-sm text-[#F4F5F7]/65">{job.companyName || 'Hiring company'}</p>
                   </div>

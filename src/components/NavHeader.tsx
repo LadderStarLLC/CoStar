@@ -225,12 +225,20 @@ export default function NavHeader() {
               )}
             </div>
           ) : (
-            <Link
-              href="/sign-in"
-              className="inline-flex px-4 py-2 ladderstar-action text-[#1A1D20] rounded-lg font-semibold hover:brightness-110 transition text-sm sm:text-base"
-            >
-              Sign In
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/sign-in"
+                className="hidden sm:inline-flex px-4 py-2 border border-white/10 bg-[#262A2E] text-[#F4F5F7] rounded-lg font-semibold hover:bg-[#32373C] transition text-sm sm:text-base"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/sign-up"
+                className="inline-flex px-4 py-2 ladderstar-action text-[#1A1D20] rounded-lg font-semibold hover:brightness-110 transition text-sm sm:text-base whitespace-nowrap"
+              >
+                Create Free Account
+              </Link>
+            </div>
           )}
         </div>
       </div>
