@@ -63,7 +63,7 @@ export default function AboutPage() {
                 Public profile projections are designed to contain opted-in public fields, while private account, wallet, audit, support, and administrative data remain outside public profiles.
               </p>
               <p>
-                AI audition tools are designed for practice and coaching. They can help users prepare, but they do not guarantee hiring outcomes, replace professional judgment, or make employment decisions for employers.
+                AI interview tools are designed for practice and coaching. They can help users prepare, but they do not guarantee hiring outcomes, replace professional judgment, or make employment decisions for employers.
               </p>
               <p>
                 LadderStar is operated by Ladder Star LLC, 30 N Gould St, STE R, Sheridan, WY 82801, USA.

@@ -118,7 +118,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
       }
       return true;
     } catch (err) {
-      console.error('[Audition] Server session save failed:', err);
+      console.error('[Interview] Server session save failed:', err);
       return false;
     }
   }, [user]);
@@ -143,7 +143,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Could not reserve audition minutes.');
+      throw new Error(data.error || 'Could not reserve interview minutes.');
     }
     const data = await res.json() as { meterId: string; reservedMinutes?: number; transactionId?: string };
     meterIdRef.current = data.meterId;
@@ -183,7 +183,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      console.error('[Audition] Premium settlement failed:', data.error || res.status);
+      console.error('[Interview] Premium settlement failed:', data.error || res.status);
       return null;
     }
     const data = await res.json().catch(() => ({})) as { transactionId?: string | null };
@@ -389,7 +389,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
       if (elapsedSeconds >= reservedSeconds - 15) {
         extendAuditionMeter(resolvedTitle).then((ok) => {
           if (!ok) {
-            setSessionError('You are out of interview minutes. The audition will wrap up now.');
+            setSessionError('You are out of interview minutes. The interview will wrap up now.');
           }
         });
       }
@@ -466,7 +466,7 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
       try {
         await saveSession(stripUndefinedFields(sessionWithWalletSettlement));
       } catch (err) {
-        console.error('[Audition] Client session save failed:', err);
+        console.error('[Interview] Client session save failed:', err);
       }
     }
 

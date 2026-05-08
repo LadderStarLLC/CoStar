@@ -8,6 +8,7 @@ import { MessagingProvider } from "@/context/MessagingContext";
 import LazyChatWidget from "@/components/messaging/LazyChatWidget";
 import ThemeApplier from "@/components/ThemeApplier";
 import SiteFooter from "@/components/SiteFooter";
+import AppChrome from "@/components/AppChrome";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -42,8 +43,10 @@ export default function RootLayout({
         <AuthProvider>
           <ThemeApplier />
           <MessagingProvider>
-            {children}
-            <SiteFooter />
+            <AppChrome>
+              {children}
+              <SiteFooter />
+            </AppChrome>
             <LazyChatWidget />
             <div className="fixed bottom-1 right-2 text-[10px] text-gray-500/50 pointer-events-none z-50 font-mono">
               v{process.env.NEXT_PUBLIC_BUILD_TIME ? new Date(process.env.NEXT_PUBLIC_BUILD_TIME).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'dev'}

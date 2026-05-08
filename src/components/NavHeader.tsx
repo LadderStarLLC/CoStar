@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { isPrivilegedAccountType } from '@/lib/profile';
-import { LogOut, User, Mic, Shield, ChevronDown, Settings, Coins } from 'lucide-react';
+import { LogOut, User, Mic, Shield, ChevronDown, Settings, Coins, Menu } from 'lucide-react';
 import SiteSearch from './SiteSearch';
 import BrandLogo from './BrandLogo';
+import { useAppChrome } from './AppChrome';
+import { getProfileHref } from './navigation';
 import { useState, useRef, useEffect } from 'react';
 import { fetchWalletSummary, getCachedWalletSummary } from "@/lib/walletClient";
 import { currencyForAccountType, walletLabel, type WalletSummary, type AccountWallet } from "@/lib/wallet";
@@ -15,15 +16,10 @@ import { doc, onSnapshot } from 'firebase/firestore';
 
 export default function NavHeader() {
   const { user, logout, loading } = useAuth();
+  const { openMobileNav, sidebarVisible } = useAppChrome();
   const router = useRouter();
   const accountType = user?.accountType ?? null;
-  const profileHref = user
-    ? isPrivilegedAccountType(accountType)
-      ? '/account'
-      : accountType
-      ? '/profile'
-      : '/onboarding'
-    : '/sign-in';
+  const profileHref = getProfileHref(user);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -94,6 +90,16 @@ export default function NavHeader() {
       <header className="border-b border-white/10 bg-[#262A2E]/75 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto min-h-[73px] px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
+            {sidebarVisible && (
+              <button
+                type="button"
+                onClick={openMobileNav}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-[#1A1D20]/70 text-[#F4F5F7]/72 transition hover:border-[#5DC99B]/35 hover:text-[#5DC99B] lg:hidden"
+                aria-label="Open navigation"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            )}
             <BrandLogo size="sm" priority />
             <span className="text-[#F4F5F7] font-bold tracking-tight">LadderStar</span>
           </div>
@@ -108,6 +114,16 @@ export default function NavHeader() {
     <header className="border-b border-white/10 bg-[#262A2E]/75 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto min-h-[73px] px-4 sm:px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
+          {sidebarVisible && (
+            <button
+              type="button"
+              onClick={openMobileNav}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-[#1A1D20]/70 text-[#F4F5F7]/72 transition hover:border-[#5DC99B]/35 hover:text-[#5DC99B] lg:hidden"
+              aria-label="Open navigation"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
           <Link href="/" className="flex items-center gap-2">
             <BrandLogo size="sm" priority />
             <span className="text-[#F4F5F7] font-bold tracking-tight">LadderStar</span>
@@ -120,7 +136,7 @@ export default function NavHeader() {
           <Link href="/blog" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">Blog</Link>
           <Link href="/audition" className="flex items-center gap-1.5 text-brand-secondary hover:text-[#F4F5F7] transition-colors font-medium text-sm sm:text-base">
             <Mic className="w-3.5 h-3.5" />
-            Audition
+            Interview
           </Link>
           {accountType === 'business' && (
             <Link href="/dashboard/jobs" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">

@@ -3,7 +3,7 @@ import { ContactBlock, LegalPage } from '@/components/legal/LegalPage';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy - LadderStar',
-  description: 'Read the LadderStar Privacy Policy for account, profile, audition, messaging, billing, analytics, and international privacy practices.',
+  description: 'Read the LadderStar Privacy Policy for account, profile, interview, messaging, billing, analytics, and international privacy practices.',
 };
 
 export default function PrivacyPage() {
@@ -17,7 +17,7 @@ export default function PrivacyPage() {
           title: '1. Who we are',
           body: (
             <>
-              <p>LadderStar is operated by Ladder Star LLC. The service includes job discovery, public professional profiles, account management, messaging, premium wallet features, employer and agency tools, and AI-powered audition practice.</p>
+              <p>LadderStar is operated by Ladder Star LLC. The service includes job discovery, public professional profiles, account management, messaging, premium wallet features, employer and agency tools, and AI-powered interview practice.</p>
               <ContactBlock />
             </>
           ),
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
               <p>We collect account information such as name, email address, authentication provider, profile photo, account type, role, status, and settings. Firebase Authentication may process sign-in data for Google, GitHub, email, and related authentication paths.</p>
               <p>We collect profile information you provide, including talent, business, and agency profile fields. Private profile data is stored separately from published public profile projections. Public profile documents are intended to contain only fields you choose to publish or that are appropriate for public display.</p>
               <p>We collect job-board and business workflow data, including job postings, applications or apply links where available, search and filter activity, employer or agency context, and operational metadata needed to provide the service.</p>
-              <p>We collect audition data when you use AI interview practice, including settings, microphone audio sent during a session, transcripts, generated feedback, scores, strengths, improvements, session timestamps, and session status.</p>
+              <p>We collect interview data when you use AI interview practice, including settings, microphone audio sent during a session, transcripts, generated feedback, scores, strengths, improvements, session timestamps, and session status.</p>
               <p>We collect messaging data for the global chat widget, including conversation metadata, participant IDs, message content, TipTap rich-text JSON, timestamps, and related delivery state.</p>
               <p>We collect billing and wallet data, including Stripe checkout and subscription references, entitlements, wallet balances, wallet transaction history, billing contact details where provided, and admin adjustment reasons.</p>
               <p>We collect device, log, analytics, and security data such as IP address, browser type, device identifiers, pages viewed, performance information, crash or error context, approximate location inferred from network data, and anti-abuse signals.</p>
@@ -40,8 +40,8 @@ export default function PrivacyPage() {
           title: '3. How we use information',
           body: (
             <>
-              <p>We use information to operate accounts, authenticate users, provide job search and profile features, publish selected public profile data, enable messaging, run AI audition practice, process billing, manage premium wallet balances, provide support, prevent abuse, and secure the service.</p>
-              <p>We use profile and job data to make LadderStar useful for discovery, matching, search, professional presentation, and employer or agency workflows. We use audition content to generate practice feedback and maintain session history.</p>
+              <p>We use information to operate accounts, authenticate users, provide job search and profile features, publish selected public profile data, enable messaging, run AI interview practice, process billing, manage premium wallet balances, provide support, prevent abuse, and secure the service.</p>
+              <p>We use profile and job data to make LadderStar useful for discovery, matching, search, professional presentation, and employer or agency workflows. We use interview content to generate practice feedback and maintain session history.</p>
               <p>We use analytics and performance data to understand reliability, improve product flows, diagnose errors, and protect the service. We may use aggregated or de-identified information for product analytics and reporting.</p>
             </>
           ),
@@ -56,11 +56,11 @@ export default function PrivacyPage() {
           ),
         },
         {
-          title: '5. AI audition data',
+          title: '5. AI interview data',
           body: (
             <>
-              <p>AI audition practice may send audio, transcripts, prompts, and session context to Google Gemini or related AI infrastructure so the service can conduct a live practice interview and generate feedback. Generated feedback can be inaccurate, incomplete, or inappropriate for your exact situation.</p>
-              <p>Do not submit sensitive personal information, confidential employer information, trade secrets, government identifiers, health information, or information you do not have the right to share during audition practice.</p>
+              <p>AI interview practice may send audio, transcripts, prompts, and session context to Google Gemini or related AI infrastructure so the service can conduct a live practice interview and generate feedback. Generated feedback can be inaccurate, incomplete, or inappropriate for your exact situation.</p>
+              <p>Do not submit sensitive personal information, confidential employer information, trade secrets, government identifiers, health information, or information you do not have the right to share during interview practice.</p>
             </>
           ),
         },

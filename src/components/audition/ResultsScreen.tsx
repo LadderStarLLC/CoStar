@@ -40,7 +40,7 @@ export function ResultsScreen({
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div>
-          <p className="text-white font-semibold text-sm">Audition Complete</p>
+          <p className="text-white font-semibold text-sm">Interview Complete</p>
           <p className="text-slate-500 text-xs">{jobTitle} · {companyName}</p>
         </div>
       </div>

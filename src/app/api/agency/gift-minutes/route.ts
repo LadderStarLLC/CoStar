@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       recipientUid: body.recipientUid,
       recipientEmail: body.recipientEmail,
       amount: Number(body.amount),
-      reason: 'Agency gifted audition minutes',
+      reason: 'Agency gifted interview minutes',
     });
 
     return NextResponse.json({ ok: true, ...result });
