@@ -13,12 +13,14 @@ export async function POST(req: NextRequest) {
     const uid = String(body.uid ?? '');
     const delta = Number(body.delta);
     const reason = String(body.reason ?? '');
+    const pool = body.pool === 'monthly' ? 'monthly' : 'forever';
 
     const wallet = await adjustWalletBalance(db, {
       uid,
       delta,
       reason,
       actor: decoded,
+      pool,
     });
     const targetSnap = await db.doc(`users/${uid}`).get();
     const target = targetSnap.exists ? targetSnap.data() ?? {} : {};
@@ -29,8 +31,8 @@ export async function POST(req: NextRequest) {
       targetUid: uid,
       targetEmail: target.email ?? null,
       action: 'user.wallet.adjusted',
-      before: { balance: wallet.balance - delta, currency: wallet.currency },
-      after: { balance: wallet.balance, currency: wallet.currency, delta },
+      before: { balance: wallet.balance - delta, currency: wallet.currency, pool },
+      after: { balance: wallet.balance, currency: wallet.currency, delta, pool },
       reason,
     });
 

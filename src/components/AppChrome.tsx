@@ -24,7 +24,7 @@ export function useAppChrome() {
   return useContext(AppChromeContext);
 }
 
-function shouldHideSidebar(pathname: string) {
+function shouldStartCollapsed(pathname: string) {
   if (pathname === '/audition' || pathname.startsWith('/audition/')) return true;
   if (pathname.startsWith('/screening/')) return true;
   if (pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')) return true;
@@ -36,10 +36,11 @@ function shouldHideSidebar(pathname: string) {
 export default function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => shouldStartCollapsed(pathname));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
-  const sidebarVisible = !shouldHideSidebar(pathname);
+  const compactByDefault = shouldStartCollapsed(pathname);
+  const sidebarVisible = true;
 
   useEffect(() => {
     if (!user) {
@@ -88,12 +89,12 @@ export default function AppChrome({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   useEffect(() => {
-    if (!sidebarVisible) setMobileOpen(false);
-  }, [sidebarVisible]);
+    if (compactByDefault) setCollapsed(true);
+  }, [compactByDefault, pathname]);
 
   const openMobileNav = useCallback(() => {
-    if (sidebarVisible) setMobileOpen(true);
-  }, [sidebarVisible]);
+    setMobileOpen(true);
+  }, []);
 
   const contextValue = useMemo(
     () => ({
@@ -106,16 +107,14 @@ export default function AppChrome({ children }: { children: ReactNode }) {
   return (
     <AppChromeContext.Provider value={contextValue}>
       <div className="min-h-screen">
-        {sidebarVisible && (
-          <AppSidebar
-            user={user}
-            walletSummary={walletSummary}
-            collapsed={collapsed}
-            mobileOpen={mobileOpen}
-            onCloseMobile={() => setMobileOpen(false)}
-            onToggleCollapsed={() => setCollapsed((current) => !current)}
-          />
-        )}
+        <AppSidebar
+          user={user}
+          walletSummary={walletSummary}
+          collapsed={collapsed}
+          mobileOpen={mobileOpen}
+          onCloseMobile={() => setMobileOpen(false)}
+          onToggleCollapsed={() => setCollapsed((current) => !current)}
+        />
         <div
           className={cn(
             'min-h-screen transition-[padding-left] duration-300',
