@@ -63,14 +63,15 @@ export async function savePricingDraft(db: Firestore, catalog: PricingCatalog, u
   if (errors.length > 0) {
     throw new Response(JSON.stringify({ error: errors.join(" ") }), { status: 400 });
   }
+  const draftCatalog = stripUndefined(normalized);
 
   await db.doc(PRICING_CONFIG_PATH).set({
-    draftCatalog: normalized,
+    draftCatalog,
     updatedAt: FieldValue.serverTimestamp(),
     updatedBy: uid,
   }, { merge: true });
 
-  return normalized;
+  return draftCatalog;
 }
 
 export async function publishPricingCatalog(db: Firestore, catalog: PricingCatalog, uid: string, reason: string) {
@@ -85,10 +86,10 @@ export async function publishPricingCatalog(db: Firestore, catalog: PricingCatal
     const snap = await transaction.get(ref);
     const current = snap.exists ? snap.data() as PricingConfigDocument : {};
     const nextVersion = (current.version ?? 0) + 1;
-    const publishedCatalog = {
+    const publishedCatalog = stripUndefined({
       ...normalized,
       version: nextVersion,
-    };
+    });
 
     transaction.set(ref, {
       publishedCatalog,
@@ -119,4 +120,17 @@ function serializeTimestamp(value: unknown): string | null {
     return value.toDate().toISOString();
   }
   return null;
+}
+
+function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefined(item)) as T;
+  }
+  if (value && typeof value === "object" && !(value instanceof Date)) {
+    return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((next, [key, entry]) => {
+      if (entry !== undefined) next[key] = stripUndefined(entry);
+      return next;
+    }, {}) as T;
+  }
+  return value;
 }

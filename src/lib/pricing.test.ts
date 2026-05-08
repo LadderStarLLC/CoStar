@@ -48,4 +48,36 @@ describe("pricing catalog helpers", () => {
     expect(validatePricingCatalog(catalog)).toContain("talent-plus monthly price must be 0 or greater.");
     expect(validatePricingCatalog(catalog)).toContain("talent-plus sale percent must be between 1 and 100.");
   });
+
+  it("omits absent optional fields instead of keeping nested undefined values", () => {
+    const catalog = normalizePricingCatalog(defaultPricingCatalog);
+    expect(hasNestedUndefined(catalog)).toBe(false);
+    expect("annualPrice" in catalog.audiences[0].tiers[0]).toBe(false);
+  });
+
+  it("treats an omitted annual price as the annual fallback", () => {
+    const catalog = normalizePricingCatalog({
+      audiences: [{
+        key: "talent",
+        tiers: [{
+          id: "talent-plus",
+          monthlyPrice: 20,
+          annualPrice: undefined,
+        }],
+      }],
+    });
+    const tier = catalog.audiences[0].tiers.find((item) => item.id === "talent-plus");
+    expect(tier).toBeTruthy();
+    expect("annualPrice" in tier!).toBe(false);
+    expect(getEffectiveTierAmountCents(tier!, "annual").baseAmountCents).toBe(20000);
+  });
 });
+
+function hasNestedUndefined(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (Array.isArray(value)) return value.some((item) => hasNestedUndefined(item));
+  if (value && typeof value === "object") {
+    return Object.values(value).some((item) => hasNestedUndefined(item));
+  }
+  return false;
+}

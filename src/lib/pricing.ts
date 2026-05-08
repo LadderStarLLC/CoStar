@@ -331,11 +331,10 @@ export function normalizePricingCatalog(input: unknown): PricingCatalog {
     };
   });
 
-  return {
-    audiences,
-    version: typeof raw?.version === "number" && Number.isFinite(raw.version) ? raw.version : undefined,
-    publishedAt: typeof raw?.publishedAt === "string" ? raw.publishedAt : raw?.publishedAt === null ? null : undefined,
-  };
+  const catalog: PricingCatalog = { audiences };
+  if (typeof raw?.version === "number" && Number.isFinite(raw.version)) catalog.version = raw.version;
+  if (typeof raw?.publishedAt === "string" || raw?.publishedAt === null) catalog.publishedAt = raw.publishedAt;
+  return catalog;
 }
 
 export function validatePricingCatalog(catalog: PricingCatalog) {
@@ -368,11 +367,10 @@ function normalizeTier(defaultTier: PricingTier, input?: Partial<PricingTier>): 
       : normalizeMoney(input.annualPrice, getAnnualPrice(defaultTier))
     : defaultTier.annualPrice;
 
-  return {
+  const tier: PricingTier = {
     ...defaultTier,
     ...pickStringFields(input, ["name", "description", "allowance", "allowanceDetail", "contactHref", "cta"]),
     monthlyPrice,
-    annualPrice,
     monthlyAllowance: normalizeInteger(input?.monthlyAllowance, defaultTier.monthlyAllowance),
     featured: typeof input?.featured === "boolean" ? input.featured : defaultTier.featured,
     earlyAccess: typeof input?.earlyAccess === "boolean" ? input.earlyAccess : defaultTier.earlyAccess,
@@ -381,6 +379,13 @@ function normalizeTier(defaultTier: PricingTier, input?: Partial<PricingTier>): 
       ? input.features.map((item) => String(item).trim()).filter(Boolean).slice(0, 20)
       : defaultTier.features,
   };
+
+  if (annualPrice !== undefined) tier.annualPrice = annualPrice;
+  else delete tier.annualPrice;
+  if (!tier.contactHref) delete tier.contactHref;
+  if (tier.featured === undefined) delete tier.featured;
+  if (tier.earlyAccess === undefined) delete tier.earlyAccess;
+  return tier;
 }
 
 function normalizeSale(input?: Partial<PricingSale> | null): PricingSale {
