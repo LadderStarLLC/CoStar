@@ -15,7 +15,7 @@ import {
 import NavHeader from "@/components/NavHeader";
 import { useAuth } from "@/context/AuthContext";
 import {
-  annualPrice,
+  getAnnualPrice,
   pricingAudiences,
   type BillingCycle,
   type PricingAudienceKey,
@@ -31,7 +31,7 @@ const audienceIcons = {
 function formatPrice(tier: PricingTier, billingCycle: BillingCycle) {
   if (tier.earlyAccess) return "Early access";
   if (tier.monthlyPrice === 0) return "$0";
-  const price = billingCycle === "monthly" ? tier.monthlyPrice : annualPrice(tier.monthlyPrice);
+  const price = billingCycle === "monthly" ? tier.monthlyPrice : getAnnualPrice(tier);
   return `$${price.toLocaleString("en-US")}`;
 }
 
@@ -237,7 +237,7 @@ export default function PricingPage() {
                     </div>
                     {billingCycle === "annual" && tier.monthlyPrice > 0 && !tier.earlyAccess && (
                       <p className="mt-2 text-sm font-semibold text-[#5DC99B]">
-                        Equal to ${(annualPrice(tier.monthlyPrice) / 12).toFixed(2)}/mo when billed annually
+                        Equal to ${(getAnnualPrice(tier) / 12).toFixed(2).replace(/\.00$/, '')}/mo when billed annually
                       </p>
                     )}
                     {tier.earlyAccess && (

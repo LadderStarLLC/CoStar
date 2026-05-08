@@ -532,6 +532,12 @@ such as "Message Recruiter" to open the chat panel contextually.
 Firestore rules require the caller to be listed in `participantIds` to read or
 write conversation data.
 
+Co-Star AI chat uses `gemini-3.1-flash-lite-preview` through
+`/api/messaging/ai/respond` and AI conversation metadata. Do not replace,
+downgrade, or "stabilize" this model to another Gemini text model unless the
+user explicitly requests that change. This is separate from the Gemini Live
+audition model.
+
 Rich text uses TipTap. Store the TipTap document as serialized JSON, not raw
 HTML. Render editor/read-only content with Tailwind Typography classes such as
 `prose prose-invert`; `@tailwindcss/typography` must remain enabled in

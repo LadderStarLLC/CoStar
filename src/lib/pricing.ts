@@ -20,6 +20,7 @@ export interface PricingTier {
   name: string;
   description: string;
   monthlyPrice: number;
+  annualPrice?: number;
   monthlyAllowance: number;
   allowance: string;
   allowanceDetail: string;
@@ -40,7 +41,7 @@ export interface PricingAudience {
   tiers: PricingTier[];
 }
 
-export const annualPrice = (monthlyPrice: number) => monthlyPrice * 10;
+export const getAnnualPrice = (tier: PricingTier) => tier.annualPrice ?? tier.monthlyPrice * 10;
 
 export const pricingAudiences: PricingAudience[] = [
   {
@@ -71,7 +72,8 @@ export const pricingAudiences: PricingAudience[] = [
         id: "talent-plus",
         name: "Plus",
         description: "More interview reps, better feedback, and faster preparation for active searches.",
-        monthlyPrice: 14.99,
+        monthlyPrice: 14,
+        annualPrice: 129,
         monthlyAllowance: 200,
         allowance: "200 minutes",
         allowanceDetail: "Monthly AI interview allowance",
@@ -90,6 +92,7 @@ export const pricingAudiences: PricingAudience[] = [
         name: "Pro",
         description: "Offer-stage preparation with deeper feedback and negotiation support.",
         monthlyPrice: 49,
+        annualPrice: 399,
         monthlyAllowance: 1000,
         allowance: "1,000 minutes",
         allowanceDetail: "Monthly AI interview allowance",
@@ -266,6 +269,6 @@ export function getFreeTierForAccountType(accountType: PricingAudienceKey) {
 }
 
 export function getTierAmountCents(tier: PricingTier, billingCycle: BillingCycle) {
-  const amount = billingCycle === "annual" ? annualPrice(tier.monthlyPrice) : tier.monthlyPrice;
+  const amount = billingCycle === "annual" ? getAnnualPrice(tier) : tier.monthlyPrice;
   return amount * 100;
 }

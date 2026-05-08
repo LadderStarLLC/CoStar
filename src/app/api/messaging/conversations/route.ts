@@ -5,6 +5,7 @@ import {
   aiConversationTitle,
   appendMessage,
   coStarConversationParticipants,
+  COSTAR_MODEL,
   getCallerParticipant,
   getPublicProfileParticipant,
   humanConversationId,
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
         status: 'active',
         ai: {
           title,
-          model: 'gemini-3.1-flash-lite-preview',
+          model: COSTAR_MODEL,
           summary: '',
         },
       });
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
         previewText: 'Hi, I am Co-Star AI. Ask me about LadderStar, career search, hiring, profile strategy, interview prep, or small work tasks.',
         readBy: [COSTAR_AI_UID],
         deliveredTo: [decoded.uid],
-        ai: { model: 'gemini-3.1-flash-lite-preview', error: null },
+        ai: { model: COSTAR_MODEL, error: null },
       });
       await conversationRef.update({
         lastMessage: {

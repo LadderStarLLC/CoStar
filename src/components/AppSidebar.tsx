@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Coins, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Coins, Search, X } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import BrandLogo from './BrandLogo';
 import { getNavigationItems, type NavigationUser } from './navigation';
@@ -66,16 +66,26 @@ export default function AppSidebar({
             </div>
           )}
         </Link>
-        {!compact && (
-          <button
-            type="button"
-            onClick={onCloseMobile}
-            className="rounded-lg p-2 text-[#F4F5F7]/55 transition hover:bg-white/5 hover:text-[#F4F5F7] lg:hidden"
-            aria-label="Close navigation"
+        <div className="flex items-center gap-1">
+          <Link
+            href="/search"
+            className="rounded-lg p-2 text-[#F4F5F7]/55 transition hover:bg-white/5 hover:text-[#5DC99B]"
+            aria-label="Search"
+            title={compact ? "Search" : undefined}
           >
-            <X className="h-5 w-5" />
-          </button>
-        )}
+            <Search className="h-5 w-5" />
+          </Link>
+          {!compact && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="rounded-lg p-2 text-[#F4F5F7]/55 transition hover:bg-white/5 hover:text-[#F4F5F7] lg:hidden"
+              aria-label="Close navigation"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4" aria-label="Sidebar navigation">
