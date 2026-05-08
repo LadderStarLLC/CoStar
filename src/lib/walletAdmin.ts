@@ -9,6 +9,7 @@ type WalletAdjustmentInput = {
   delta: number;
   reason: string;
   actor: DecodedIdToken;
+  pool?: 'monthly' | 'forever';
 };
 
 type WalletSetInput = {
@@ -136,7 +137,7 @@ export async function getOrCreateWalletSummary(db: Firestore, uid: string): Prom
 
 export async function adjustWalletBalance(
   db: Firestore,
-  { uid, delta, reason, actor }: WalletAdjustmentInput
+  { uid, delta, reason, actor, pool = 'forever' }: WalletAdjustmentInput
 ): Promise<AccountWallet> {
   if (!uid.trim()) {
     throw new Response(JSON.stringify({ error: 'User uid is required.' }), { status: 400 });
@@ -148,6 +149,9 @@ export async function adjustWalletBalance(
   const trimmedReason = reason.trim();
   if (!trimmedReason || trimmedReason.length > 240) {
     throw new Response(JSON.stringify({ error: 'Reason is required and must be 240 characters or fewer.' }), { status: 400 });
+  }
+  if (pool !== 'monthly' && pool !== 'forever') {
+    throw new Response(JSON.stringify({ error: 'Adjustment pool must be monthly or forever.' }), { status: 400 });
   }
 
   return db.runTransaction(async (transaction) => {
@@ -175,19 +179,22 @@ export async function adjustWalletBalance(
     const previousForever = toSafeBalance(existing.foreverBalance);
     const previousTotal = previousMonthly + previousForever;
 
-    // Default admin adjustment to foreverBalance
-    const nextForever = previousForever + delta;
+    const nextMonthly = pool === 'monthly' ? previousMonthly + delta : previousMonthly;
+    const nextForever = pool === 'forever' ? previousForever + delta : previousForever;
+    if (nextMonthly < 0) {
+      throw new Response(JSON.stringify({ error: 'Adjustment would make the monthly balance negative.' }), { status: 400 });
+    }
     if (nextForever < 0) {
       throw new Response(JSON.stringify({ error: 'Adjustment would make the forever balance negative.' }), { status: 400 });
     }
-    const nextTotal = previousMonthly + nextForever;
+    const nextTotal = nextMonthly + nextForever;
 
     const walletPatch = {
       uid,
       accountType,
       currency,
       balance: nextTotal,
-      monthlyBalance: previousMonthly,
+      monthlyBalance: nextMonthly,
       foreverBalance: nextForever,
       updatedAt: FieldValue.serverTimestamp(),
       ...(walletSnap.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
@@ -203,6 +210,7 @@ export async function adjustWalletBalance(
       reason: trimmedReason,
       actorUid: actor.uid,
       actorEmail: actor.email ?? null,
+      metadata: { pool },
       type: 'admin_adjustment',
       createdAt: FieldValue.serverTimestamp(),
     };
@@ -215,7 +223,7 @@ export async function adjustWalletBalance(
       accountType,
       currency,
       balance: nextTotal,
-      monthlyBalance: previousMonthly,
+      monthlyBalance: nextMonthly,
       foreverBalance: nextForever,
     };
   });

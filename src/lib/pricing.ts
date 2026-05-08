@@ -71,7 +71,7 @@ export const pricingAudiences: PricingAudience[] = [
         id: "talent-plus",
         name: "Plus",
         description: "More interview reps, better feedback, and faster preparation for active searches.",
-        monthlyPrice: 24,
+        monthlyPrice: 14.99,
         monthlyAllowance: 200,
         allowance: "200 minutes",
         allowanceDetail: "Monthly AI interview allowance",

@@ -9,7 +9,7 @@ import NavHeader from "@/components/NavHeader";
 import { useAuth } from "@/context/AuthContext";
 import { auth, db } from "@/lib/firebase";
 import { uploadProfileImage } from "@/lib/storage";
-import { applyAppearanceScheme } from "@/lib/theme";
+import { applyAppearanceScheme, getStoredAppearanceScheme } from "@/lib/theme";
 import { fetchWalletSummary } from "@/lib/walletClient";
 import { walletLabel, type WalletSummary, type AccountWallet } from "@/lib/wallet";
 import {
@@ -91,7 +91,7 @@ export default function AccountSettingsPage() {
   const [agencyDescription, setAgencyDescription] = useState("");
   const [agencySpecialties, setAgencySpecialties] = useState("");
   const [agencyServices, setAgencyServices] = useState("");
-  const [appearanceScheme, setAppearanceScheme] = useState<AppearanceScheme>("ladderstar");
+  const [appearanceScheme, setAppearanceScheme] = useState<AppearanceScheme | null>(null);
   const [giftRecipient, setGiftRecipient] = useState("");
   const [giftMinutes, setGiftMinutes] = useState(15);
   const [isGiftingMinutes, setIsGiftingMinutes] = useState(false);
@@ -115,7 +115,12 @@ export default function AccountSettingsPage() {
   }, [authLoading, user, router]);
 
   useEffect(() => {
-    applyAppearanceScheme(appearanceScheme, false);
+    const storedScheme = getStoredAppearanceScheme();
+    if (storedScheme) setAppearanceScheme(storedScheme);
+  }, []);
+
+  useEffect(() => {
+    if (appearanceScheme) applyAppearanceScheme(appearanceScheme, false);
   }, [appearanceScheme]);
 
   useEffect(() => {
@@ -137,7 +142,7 @@ export default function AccountSettingsPage() {
           return;
         }
         setPublicProfileEnabled(profile?.publicProfileEnabled ?? true);
-        setAppearanceScheme(operatorProfile?.appearanceScheme ?? profile?.appearanceScheme ?? "ladderstar");
+        setAppearanceScheme(operatorProfile?.appearanceScheme ?? profile?.appearanceScheme ?? getStoredAppearanceScheme() ?? "ladderstar");
         setDisplayName(profile?.displayName ?? user.displayName ?? "");
         setHeadline(profile?.headline ?? "");
         setLocation(profile?.location ?? "");
@@ -231,7 +236,7 @@ export default function AccountSettingsPage() {
         displayName: trimmedName || user.displayName,
         photoURL: user.photoURL,
         publicProfileEnabled,
-        appearanceScheme,
+        appearanceScheme: appearanceScheme ?? "ladderstar",
         slug,
         headline: headline.trim(),
         location: location.trim(),
@@ -260,13 +265,13 @@ export default function AccountSettingsPage() {
       };
 
       if (isOperator) {
-        await saveOperatorPreviewProfile(user.uid, accountType as PublicAccountType, profileUpdates);
-        await saveUserManagedSettings(user.uid, { appearanceScheme });
+        await saveOperatorPreviewProfile(user.uid, previewType, profileUpdates);
+        await saveUserManagedSettings(user.uid, { appearanceScheme: appearanceScheme ?? "ladderstar" });
       } else {
         await saveTypeSpecificProfile(user.uid, accountType, profileUpdates);
       }
       setSocialConnections(nextConnections);
-      applyAppearanceScheme(appearanceScheme);
+      applyAppearanceScheme(appearanceScheme ?? "ladderstar");
       setMessage(isOperator ? "Preview settings saved." : "Settings saved.");
     } catch (err) {
       console.error("Failed to save settings:", err);
@@ -287,10 +292,10 @@ export default function AccountSettingsPage() {
       try {
         await saveUserManagedSettings(
           user.uid,
-          activeTab === "account" ? { appearanceScheme } : { publicProfileEnabled }
+          activeTab === "account" ? { appearanceScheme: appearanceScheme ?? "ladderstar" } : { publicProfileEnabled }
         );
         if (activeTab === "account") {
-          applyAppearanceScheme(appearanceScheme);
+          applyAppearanceScheme(appearanceScheme ?? "ladderstar");
         }
         setMessage("Settings saved.");
       } catch (err) {
@@ -769,7 +774,7 @@ export default function AccountSettingsPage() {
             <div className="grid gap-3 md:grid-cols-2">
               {appearanceSchemes.map((scheme) => {
                 const option = appearanceLabels[scheme];
-                const selected = appearanceScheme === scheme;
+                const selected = (appearanceScheme ?? "ladderstar") === scheme;
                 return (
                   <button
                     key={scheme}

@@ -82,6 +82,7 @@ export default function AdminPage() {
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [adminEmail, setAdminEmail] = useState("");
   const [walletDelta, setWalletDelta] = useState("");
+  const [walletPool, setWalletPool] = useState<"monthly" | "forever">("forever");
   const [walletReason, setWalletReason] = useState("");
   const [notesDraft, setNotesDraft] = useState("");
   const [filters, setFilters] = useState<FilterState>({ q: "", accountType: "all", status: "all", publicProfile: "all" });
@@ -431,15 +432,27 @@ export default function AdminPage() {
                     <div className="space-y-4">
                       <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
                         <div className="text-3xl font-bold text-white">{wallet.balance}</div>
-                        <div className="text-sm font-medium text-emerald-300">{walletLabel(wallet.currency)}</div>
+                        <div className="text-sm font-medium text-emerald-300">Total {walletLabel(wallet.currency)}</div>
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-[110px_minmax(0,1fr)]">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Info label="Monthly" value={`${wallet.monthlyBalance} ${walletLabel(wallet.currency)}`} />
+                        <Info label="Forever" value={`${wallet.foreverBalance} ${walletLabel(wallet.currency)}`} />
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-[110px_130px_minmax(0,1fr)]">
                         <input
                           value={walletDelta}
                           onChange={(event) => setWalletDelta(event.target.value)}
                           placeholder="+10"
                           className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
                         />
+                        <select
+                          value={walletPool}
+                          onChange={(event) => setWalletPool(event.target.value === "monthly" ? "monthly" : "forever")}
+                          className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
+                        >
+                          <option value="forever">Forever</option>
+                          <option value="monthly">Monthly</option>
+                        </select>
                         <input
                           value={walletReason}
                           onChange={(event) => setWalletReason(event.target.value)}
@@ -451,6 +464,7 @@ export default function AdminPage() {
                         onClick={() => callAdminApi("/api/admin/wallets/adjust", {
                           uid: detail.profile.uid,
                           delta: Number(walletDelta),
+                          pool: walletPool,
                           reason: walletReason,
                         }, "Wallet adjusted.")}
                         disabled={isActing || !walletDelta.trim() || !walletReason.trim()}
