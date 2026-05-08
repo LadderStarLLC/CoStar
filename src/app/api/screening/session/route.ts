@@ -1,11 +1,18 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb, jsonError } from '@/lib/firebaseAdmin';
 import { consumeWalletBalance } from '@/lib/walletAdmin';
+import {
+  findActiveScreeningLink,
+  getRecordingConfig,
+  isBusinessScreeningRecordingEnabled,
+  SCREENING_RECORDING_CONSENT_TEXT,
+  SCREENING_RECORDING_CONSENT_VERSION,
+  writeRecordingEvent,
+} from '@/lib/screeningRecording';
 
 type GetBody = never;
 type SubmitBody = {
@@ -13,25 +20,12 @@ type SubmitBody = {
   participantName?: string;
   participantEmail?: string;
   answers?: Array<{ question: string; answer: string }>;
+  recordingId?: string | null;
 };
-
-function hashToken(token: string) {
-  return crypto.createHash('sha256').update(token).digest('hex');
-}
 
 async function findLink(token: string) {
   const db = getAdminDb();
-  const snap = await db.collection('businessScreeningLinks')
-    .where('tokenHash', '==', hashToken(token))
-    .where('status', '==', 'active')
-    .limit(1)
-    .get();
-  const doc = snap.docs[0];
-  if (!doc) return null;
-  const data = doc.data();
-  const expiresAt = data.expiresAt?.toDate?.() as Date | undefined;
-  if (!expiresAt || expiresAt.getTime() < Date.now()) return null;
-  return { id: doc.id, data };
+  return findActiveScreeningLink(db, token);
 }
 
 function buildQuestions(link: Record<string, any>): string[] {
@@ -60,6 +54,12 @@ export async function GET(req: NextRequest) {
       companyName: link.data.companyName ?? '',
       expiresAt: link.data.expiresAt?.toDate?.()?.toISOString?.() ?? null,
       questions: buildQuestions(link.data),
+      recording: {
+        enabled: isBusinessScreeningRecordingEnabled(link),
+        maxBytes: getRecordingConfig().maxBytes,
+        consentTextVersion: SCREENING_RECORDING_CONSENT_VERSION,
+        consentTextSnapshot: SCREENING_RECORDING_CONSENT_TEXT,
+      },
     });
   } catch (err) {
     return jsonError(err);
@@ -82,6 +82,32 @@ export async function POST(req: NextRequest) {
     }
 
     const db = getAdminDb();
+    const recordingRequired = isBusinessScreeningRecordingEnabled(link);
+    let recordingSnap = null;
+    if (recordingRequired) {
+      const recordingId = body.recordingId?.trim();
+      if (!recordingId) {
+        return NextResponse.json({ error: 'A completed recording is required for this screening.' }, { status: 400 });
+      }
+      recordingSnap = await db.collection('businessScreeningRecordings').doc(recordingId).get();
+      const recording = recordingSnap.data();
+      if (
+        !recordingSnap.exists ||
+        recording?.businessUid !== link.data.businessUid ||
+        recording?.linkId !== link.id ||
+        recording?.status !== 'ready' ||
+        recording?.deletedAt
+      ) {
+        return NextResponse.json({ error: 'Recording is missing or not ready.' }, { status: 400 });
+      }
+      const consentSnap = recording?.consentId
+        ? await db.collection('businessScreeningRecordingConsents').doc(recording.consentId).get()
+        : null;
+      if (!consentSnap?.exists || consentSnap.data()?.consentGiven !== true) {
+        return NextResponse.json({ error: 'Recording consent is required.' }, { status: 400 });
+      }
+    }
+
     await consumeWalletBalance(db, {
       uid: link.data.businessUid,
       amount: 1,
@@ -108,8 +134,25 @@ export async function POST(req: NextRequest) {
       analysis,
       screeningDebited: true,
       durationSeconds: null,
+      recordingRequired,
+      recordingId: recordingSnap?.id ?? null,
       createdAt: FieldValue.serverTimestamp(),
     });
+
+    if (recordingSnap?.id) {
+      await db.collection('businessScreeningRecordings').doc(recordingSnap.id).set({
+        reportId: reportRef.id,
+        participantName: body.participantName?.trim() ?? '',
+        participantEmail: body.participantEmail?.trim().toLowerCase() ?? '',
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      await writeRecordingEvent(db, {
+        recordingId: recordingSnap.id,
+        reportId: reportRef.id,
+        businessUid: link.data.businessUid,
+        action: 'recording.attached_to_report',
+      });
+    }
 
     return NextResponse.json({ ok: true, reportId: reportRef.id });
   } catch (err) {

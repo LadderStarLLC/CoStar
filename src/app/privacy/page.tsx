@@ -29,7 +29,7 @@ export default function PrivacyPage() {
               <p>We collect account information such as name, email address, authentication provider, profile photo, account type, role, status, and settings. Firebase Authentication may process sign-in data for Google, GitHub, email, and related authentication paths.</p>
               <p>We collect profile information you provide, including talent, business, and agency profile fields. Private profile data is stored separately from published public profile projections. Public profile documents are intended to contain only fields you choose to publish or that are appropriate for public display.</p>
               <p>We collect job-board and business workflow data, including job postings, applications or apply links where available, search and filter activity, employer or agency context, and operational metadata needed to provide the service.</p>
-              <p>We collect interview data when you use AI interview practice, including settings, microphone audio sent during a session, transcripts, generated feedback, scores, strengths, improvements, session timestamps, and session status.</p>
+              <p>We collect interview data when you use AI interview practice, including settings, microphone audio sent during a session, transcripts, generated feedback, scores, strengths, improvements, session timestamps, and session status. If you choose to continue with a recorded business screening session, we also collect the consent record and audio/video recording for that screening.</p>
               <p>We collect messaging data for the global chat widget, including conversation metadata, participant IDs, message content, TipTap rich-text JSON, timestamps, and related delivery state.</p>
               <p>We collect billing and wallet data, including Stripe checkout and subscription references, entitlements, wallet balances, wallet transaction history, billing contact details where provided, and admin adjustment reasons.</p>
               <p>We collect device, log, analytics, and security data such as IP address, browser type, device identifiers, pages viewed, performance information, crash or error context, approximate location inferred from network data, and anti-abuse signals.</p>
@@ -41,7 +41,7 @@ export default function PrivacyPage() {
           body: (
             <>
               <p>We use information to operate accounts, authenticate users, provide job search and profile features, publish selected public profile data, enable messaging, run AI interview practice, process billing, manage premium wallet balances, provide support, prevent abuse, and secure the service.</p>
-              <p>We use profile and job data to make LadderStar useful for discovery, matching, search, professional presentation, and employer or agency workflows. We use interview content to generate practice feedback and maintain session history.</p>
+              <p>We use profile and job data to make LadderStar useful for discovery, matching, search, professional presentation, and employer or agency workflows. We use interview content to generate practice feedback, maintain session history, and provide business screening reports or recordings to the authorized hiring team when a recorded screening is explicitly enabled and consented to.</p>
               <p>We use analytics and performance data to understand reliability, improve product flows, diagnose errors, and protect the service. We may use aggregated or de-identified information for product analytics and reporting.</p>
             </>
           ),
@@ -60,6 +60,7 @@ export default function PrivacyPage() {
           body: (
             <>
               <p>AI interview practice may send audio, transcripts, prompts, and session context to Google Gemini or related AI infrastructure so the service can conduct a live practice interview and generate feedback. Generated feedback can be inaccurate, incomplete, or inappropriate for your exact situation.</p>
+              <p>Recorded business screenings require clear notice and candidate consent before camera or microphone access. LadderStar does not use recorded screening video for facial-expression scoring, emotion detection, biometric identification, personality claims, or AI judgments based on appearance.</p>
               <p>Do not submit sensitive personal information, confidential employer information, trade secrets, government identifiers, health information, or information you do not have the right to share during interview practice.</p>
             </>
           ),

@@ -23,6 +23,12 @@ service firebase.storage {
         );
     }
 
+    // Business screening recordings are private objects. Candidate uploads,
+    // playback, and deletion must go through server routes using Admin SDK.
+    match /business-screenings/{allPaths=**} {
+      allow read, write: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }
