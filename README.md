@@ -16,6 +16,7 @@ Ladder Star is an AI-powered career platform for practicing interviews, discover
 Ladder Star is part career platform, part practice room, part recruiter inbox, and part AI interview coach. The app has a few important wires under the floorboards, mostly around Gemini Live API and Firebase authorization, so this README is the map before you start moving things around.
 
 - **Interview**: real-time AI voice interviews through Google's Gemini Multimodal Live API.
+- **Business Screenings**: token-based employer screening links with optional consent-gated audio/video recording.
 - **Job Board**: searchable jobs, job detail pages, save/apply actions, and job-specific audition entry points.
 - **Profiles**: public profile pages for talent, businesses, and agencies.
 - **Messaging**: a global floating chat widget with safe rich-text messages.
@@ -40,6 +41,7 @@ Browser
 - **Auth**: Firebase Authentication with Google sign-in
 - **Database**: Firestore
 - **Storage**: Firebase Storage for profile images
+- **Recorded screening storage**: private Firebase Storage objects accessed only through server-authorized routes
 - **AI**: Gemini Live API for real-time interview audio, Gemini text generation for extended feedback
 - **Messaging editor**: TipTap, stored as serialized JSON rather than raw HTML
 - **Deployment**: Vercel preview and production deployments
@@ -182,6 +184,12 @@ Run linting:
 npm run lint
 ```
 
+Run tests:
+
+```bash
+npm run test
+```
+
 ### Local Secrets Note
 
 The committed `.env.local` values are placeholders. Local UI and layout work can run normally, but anything that hits Gemini or Firebase Admin routes needs real credentials. The real secrets live in Vercel's environment variable dashboard and should never be committed.
@@ -225,6 +233,14 @@ STRIPE_WEBHOOK_SECRET=
 NEXT_PUBLIC_APP_URL=
 ```
 
+Recorded business screenings:
+
+```env
+RECORDED_SCREENINGS_ENABLED=false
+RECORDED_SCREENING_RETENTION_DAYS=90
+RECORDED_SCREENING_MAX_BYTES=209715200
+```
+
 `GEMINI_API_KEY` is the fallback key used when a user has not saved a personal Gemini API key in Settings. In Vercel, `FIREBASE_PRIVATE_KEY` must be configured so escaped `\n` sequences can be converted back to real newlines by the route handler.
 
 ## Firestore Data Model
@@ -234,6 +250,11 @@ The major collections are:
 - `users/{uid}`: account type, role, profile, public profile state, moderation state, business/agency details, and profile completion.
 - `auditionSettings/{uid}`: per-user Gemini key override, voice, live API host, interviewer name/tone/style, and saved presets.
 - `auditionSessions/{uid}/sessions/{sessionId}`: interview status, timestamps, transcript, score, feedback, strengths, improvements, and optional ultra feedback.
+- `businessScreeningLinks/{linkId}`: server-created employer screening links, including optional recording policy flags.
+- `businessScreeningReports/{reportId}`: completed business screening answers, generated analysis, and optional recording reference.
+- `businessScreeningRecordingConsents/{consentId}`: timestamped consent/decline records with text version and snapshot.
+- `businessScreeningRecordings/{recordingId}`: private recording metadata, retention, status, and storage key.
+- `businessScreeningRecordingEvents/{eventId}`: server-written recording audit events.
 - `conversations/{id}`: participant IDs, latest message metadata, and unread state for the messaging inbox.
 - `conversations/{id}/messages/{messageId}`: individual chat messages, including TipTap JSON content.
 - `jobs`: scraped or imported job listings.
@@ -260,6 +281,18 @@ Firestore security rules are in `firestore.rules`. The messaging rules are inten
 - `POST /api/audition/token`: Firebase-auth-gated, returns `{ key, host }` for the Gemini Live WebSocket. This does not mint ephemeral tokens.
 - `POST /api/audition/sessions`: Firebase-auth-gated, server-side session persistence with `merge: true`.
 - `POST /api/audition/ultra-feedback`: generates extended post-interview analysis from transcript and initial feedback.
+
+### Business Screening Recordings
+
+- `POST /api/business/screening-links`: business-only link creation; accepts `recordingEnabled` when `RECORDED_SCREENINGS_ENABLED=true`.
+- `GET /api/screening/session`: public token metadata, questions, and recording disclosure requirements.
+- `POST /api/screening/recording/consent`: stores candidate consent or decline before camera/mic access.
+- `POST /api/screening/recording/init`: creates server-owned recording metadata after consent.
+- `POST /api/screening/recording/upload`: uploads a consented browser recording to private Firebase Storage.
+- `GET /api/business/screening-recordings/[recordingId]/playback`: authenticated business/admin playback URL.
+- `DELETE /api/business/screening-recordings/[recordingId]`: authenticated soft delete plus media removal.
+
+Recorded business screenings are limited to explicit business screening links. The normal `/audition` practice flow must not record unless a separate business-only screening route is deliberately added. The cleanup helper `cleanupExpiredScreeningRecordings` in `src/lib/screeningRecording.ts` can be wired to a future cron job to remove expired recordings.
 
 ### Content, Jobs, And Search
 
@@ -327,6 +360,8 @@ If Google sign-in fails on a Vercel preview URL, Firebase Auth probably blocked 
 - Do not store TipTap messages as raw HTML; store serialized JSON.
 - Do not loosen messaging rules unless the privacy model is being deliberately redesigned.
 - Do not switch the Gemini Live API audition flow back to ephemeral tokens.
+- Do not enable recording outside explicit business screening sessions.
+- Do not add facial-expression scoring, emotion detection, biometric identification, or appearance-based AI judgments.
 
 ## License
 

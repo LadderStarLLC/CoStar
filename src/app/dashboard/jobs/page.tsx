@@ -22,6 +22,8 @@ import {
   ExternalLink,
   Clipboard,
   MessageSquare,
+  Film,
+  ShieldCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -44,6 +46,19 @@ type ScreeningReport = {
   participantEmail?: string;
   analysis?: string;
   createdAt?: string | null;
+  recordingId?: string | null;
+  recording?: {
+    id: string;
+    status: string;
+    fileSizeBytes?: number | null;
+    durationSeconds?: number | null;
+    retentionDeleteAt?: string | null;
+    deletedAt?: string | null;
+  } | null;
+  recordingConsent?: {
+    consentedAt?: string | null;
+    consentTextVersion?: string | null;
+  } | null;
 };
 
 export default function EmployerJobsPage() {
@@ -62,9 +77,12 @@ export default function EmployerJobsPage() {
   const [screeningJob, setScreeningJob] = useState<JobData | null>(null);
   const [screeningMode, setScreeningMode] = useState<'auto' | 'exact' | 'bank'>('auto');
   const [screeningQuestions, setScreeningQuestions] = useState('');
+  const [screeningRecordingEnabled, setScreeningRecordingEnabled] = useState(false);
   const [screeningUrl, setScreeningUrl] = useState('');
   const [isCreatingScreening, setIsCreatingScreening] = useState(false);
   const [screeningReports, setScreeningReports] = useState<ScreeningReport[]>([]);
+  const [recordingPlaybackUrls, setRecordingPlaybackUrls] = useState<Record<string, string>>({});
+  const [recordingActionId, setRecordingActionId] = useState<string | null>(null);
   const [companyForm, setCompanyForm] = useState({
     name: '',
     website: '',
@@ -282,15 +300,65 @@ export default function EmployerJobsPage() {
           jobId: screeningJob.jobId,
           questionMode: screeningMode,
           questions: screeningQuestions.split('\n').map((q) => q.trim()).filter(Boolean),
+          recordingEnabled: screeningRecordingEnabled,
         }),
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload.error || 'Could not create screening link.');
       setScreeningUrl(payload.url);
+      if (screeningRecordingEnabled && !payload.recordingEnabled) {
+        setError('Screening link created, but recording is disabled by server configuration.');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create screening link.');
     } finally {
       setIsCreatingScreening(false);
+    }
+  };
+
+  const handleLoadRecording = async (recordingId: string) => {
+    if (!user) return;
+    setRecordingActionId(recordingId);
+    setError(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/business/screening-recordings/${recordingId}/playback`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'Could not load recording.');
+      setRecordingPlaybackUrls((current) => ({ ...current, [recordingId]: payload.url }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load recording.');
+    } finally {
+      setRecordingActionId(null);
+    }
+  };
+
+  const handleDeleteRecording = async (recordingId: string) => {
+    if (!user || !confirm('Delete this screening recording? This removes playback access.')) return;
+    setRecordingActionId(recordingId);
+    setError(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/business/screening-recordings/${recordingId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'Could not delete recording.');
+      setRecordingPlaybackUrls((current) => {
+        const next = { ...current };
+        delete next[recordingId];
+        return next;
+      });
+      setScreeningReports((current) => current.map((report) => report.recording?.id === recordingId
+        ? { ...report, recording: { ...report.recording, status: 'deleted', deletedAt: new Date().toISOString() } }
+        : report));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete recording.');
+    } finally {
+      setRecordingActionId(null);
     }
   };
 
@@ -592,6 +660,54 @@ export default function EmployerJobsPage() {
                       <summary className="cursor-pointer text-sm font-semibold text-slate-200">
                         {report.participantName || report.participantEmail || 'Candidate'} for {report.jobTitle || 'Screening'}
                       </summary>
+                      {report.recording && (
+                        <div className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-start gap-2">
+                              <Film className="mt-0.5 h-4 w-4 text-amber-300" />
+                              <div>
+                                <p className="text-sm font-semibold text-white">Recorded screening</p>
+                                <p className="text-xs text-slate-300">
+                                  Status: {report.recording.status}
+                                  {report.recording.durationSeconds ? ` • ${Math.round(report.recording.durationSeconds)}s` : ''}
+                                  {report.recording.fileSizeBytes ? ` • ${(report.recording.fileSizeBytes / 1024 / 1024).toFixed(1)} MB` : ''}
+                                </p>
+                                {report.recordingConsent?.consentedAt && (
+                                  <p className="mt-1 inline-flex items-center gap-1 text-xs text-slate-300">
+                                    <ShieldCheck className="h-3 w-3" />
+                                    Consent logged {new Date(report.recordingConsent.consentedAt).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {report.recording.status === 'ready' && !report.recording.deletedAt && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleLoadRecording(report.recording!.id)}
+                                  disabled={recordingActionId === report.recording.id}
+                                  className="rounded-lg bg-amber-400 px-3 py-2 text-xs font-bold text-slate-950 disabled:opacity-50"
+                                >
+                                  {recordingActionId === report.recording.id ? 'Loading...' : 'View'}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteRecording(report.recording!.id)}
+                                  disabled={recordingActionId === report.recording.id}
+                                  className="rounded-lg border border-red-400/30 px-3 py-2 text-xs font-bold text-red-200 hover:bg-red-500/10 disabled:opacity-50"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {recordingPlaybackUrls[report.recording.id] && (
+                            <video
+                              controls
+                              src={recordingPlaybackUrls[report.recording.id]}
+                              className="mt-3 aspect-video w-full max-w-2xl rounded-lg border border-white/10 bg-black"
+                            />
+                          )}
+                        </div>
+                      )}
                       <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-300">{report.analysis}</pre>
                     </details>
                   ))}
@@ -673,6 +789,7 @@ export default function EmployerJobsPage() {
                             setScreeningJob(job);
                             setScreeningMode('auto');
                             setScreeningQuestions('');
+                            setScreeningRecordingEnabled(false);
                             setScreeningUrl('');
                           }}
                           className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded-lg"
@@ -763,6 +880,18 @@ export default function EmployerJobsPage() {
                   </div>
                 </div>
               )}
+
+              <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-slate-950 p-4 text-sm text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={screeningRecordingEnabled}
+                  onChange={(event) => setScreeningRecordingEnabled(event.target.checked)}
+                  className="mt-1 h-4 w-4 accent-amber-400"
+                />
+                <span>
+                  Require audio/video recording for this screening. Candidate consent, camera, and microphone permission will be required before the screening starts.
+                </span>
+              </label>
 
               <button
                 onClick={handleCreateScreeningLink}

@@ -204,6 +204,29 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // Recorded business screening media metadata is server-owned. Review access
+    // goes through API routes so playback URLs and delete events can be audited.
+    match /businessScreeningRecordingConsents/{consentId} {
+      allow read: if signedIn() && (
+        resource.data.businessUid == request.auth.uid ||
+        isPrivilegedAccount()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /businessScreeningRecordings/{recordingId} {
+      allow read: if signedIn() && (
+        resource.data.businessUid == request.auth.uid ||
+        isPrivilegedAccount()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /businessScreeningRecordingEvents/{eventId} {
+      allow read: if isPrivilegedAccount();
+      allow create, update, delete: if false;
+    }
+
     // Premium currency wallets - server-owned balances and ledger.
     match /accountWallets/{userId} {
       allow read: if isOwner(userId);

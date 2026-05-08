@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
       .where('businessUid', '==', decoded.uid);
     if (jobId) query = query.where('jobId', '==', jobId);
     const snap = await query.orderBy('createdAt', 'desc').limit(20).get();
-    const reports = snap.docs.map((doc) => {
+    const reports: Array<Record<string, any>> = snap.docs.map((doc) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -24,6 +24,28 @@ export async function GET(req: NextRequest) {
         createdAt: data.createdAt?.toDate?.()?.toISOString?.() ?? null,
       };
     });
+    await Promise.all(reports.map(async (report) => {
+      if (!report.recordingId) return;
+      const recordingSnap = await db.collection('businessScreeningRecordings').doc(report.recordingId).get();
+      const recording = recordingSnap.data();
+      if (!recordingSnap.exists || recording?.businessUid !== decoded.uid) return;
+      report.recording = {
+        id: recordingSnap.id,
+        status: recording.status ?? 'failed',
+        fileSizeBytes: recording.fileSizeBytes ?? null,
+        durationSeconds: recording.durationSeconds ?? null,
+        retentionDeleteAt: recording.retentionDeleteAt?.toDate?.()?.toISOString?.() ?? null,
+        deletedAt: recording.deletedAt?.toDate?.()?.toISOString?.() ?? null,
+      };
+      if (recording.consentId) {
+        const consentSnap = await db.collection('businessScreeningRecordingConsents').doc(recording.consentId).get();
+        const consent = consentSnap.data();
+        report.recordingConsent = consentSnap.exists ? {
+          consentedAt: consent?.consentedAt?.toDate?.()?.toISOString?.() ?? null,
+          consentTextVersion: consent?.consentTextVersion ?? null,
+        } : null;
+      }
+    }));
     return NextResponse.json({ reports });
   } catch (err) {
     return jsonError(err);

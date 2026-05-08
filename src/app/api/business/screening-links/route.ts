@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getCallerProfile, jsonError } from '@/lib/firebaseAdmin';
+import { getRecordingConfig, SCREENING_RECORDING_CONSENT_VERSION } from '@/lib/screeningRecording';
 
 type QuestionMode = 'exact' | 'bank' | 'auto';
 
@@ -12,6 +13,7 @@ type Body = {
   jobId?: string;
   questionMode?: QuestionMode;
   questions?: string[];
+  recordingEnabled?: boolean;
 };
 
 function hashToken(token: string) {
@@ -49,14 +51,20 @@ export async function POST(req: NextRequest) {
     const linkRef = db.collection('businessScreeningLinks').doc();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+    const recordingConfig = getRecordingConfig();
+    const recordingEnabled = Boolean(body.recordingEnabled && recordingConfig.enabled);
     await linkRef.set({
       businessUid: decoded.uid,
       jobId: body.jobId,
       jobTitle: job.title ?? 'Screening',
       companyName: job.companyName ?? '',
       jobDescription: job.description ?? job.shortDescription ?? '',
+      sessionType: 'business_screening',
       questionMode,
       questions,
+      recordingEnabled,
+      recordingPolicyVersion: recordingEnabled ? SCREENING_RECORDING_CONSENT_VERSION : null,
+      recordingRetentionDays: recordingEnabled ? recordingConfig.retentionDays : null,
       tokenHash: hashToken(token),
       status: 'active',
       createdAt: FieldValue.serverTimestamp(),
@@ -69,6 +77,7 @@ export async function POST(req: NextRequest) {
       token,
       url: `${origin}/screening/${token}`,
       expiresAt: expiresAt.toISOString(),
+      recordingEnabled,
     });
   } catch (err) {
     return jsonError(err);

@@ -67,6 +67,7 @@ GitHub PR -> Vercel preview -> preview testing.
 ### Local commands
 
 - Build/type/lint sanity check: `npm.cmd run build`
+- Unit tests: `npm.cmd run test`
 - Dev server for UI-only work: `npm.cmd run dev`
 - Production start after build: `npm.cmd run start`
 
@@ -467,6 +468,53 @@ Audition API routes:
 - `POST /api/audition/token`
 - `POST /api/audition/sessions`
 - `POST /api/audition/ultra-feedback`
+
+---
+
+## Recorded Business Screening Sessions
+
+Recorded interviews are allowed only for explicit business screening sessions,
+not for general candidate practice, profile-building interviews, job-specific
+audition practice, or non-business flows.
+
+Feature flags and defaults:
+- `RECORDED_SCREENINGS_ENABLED=false`
+- `RECORDED_SCREENING_RETENTION_DAYS=90`
+- `RECORDED_SCREENING_MAX_BYTES=209715200`
+
+Current MVP behavior:
+- Business users may request recording when creating a screening link, but the
+  server honors it only when `RECORDED_SCREENINGS_ENABLED=true`.
+- Candidate recording consent is mandatory before camera/microphone access.
+- Consent records store the text version and full text snapshot.
+- Browser recording uses MediaRecorder and uploads media through server routes.
+- Media is stored under private Firebase Storage paths, never public web paths
+  or public bucket URLs.
+- Reviewer playback and deletion go through authenticated API routes.
+- Access is limited to the owning business account and platform admins/owners.
+  Team-member access is not modeled yet; add it in the shared authorization
+  helper before exposing team review.
+
+Server-owned collections:
+- `businessScreeningRecordingConsents`
+- `businessScreeningRecordings`
+- `businessScreeningRecordingEvents`
+
+Recording routes:
+- `POST /api/screening/recording/consent`
+- `POST /api/screening/recording/init`
+- `POST /api/screening/recording/upload`
+- `POST /api/screening/recording/complete`
+- `GET /api/business/screening-recordings`
+- `GET /api/business/screening-recordings/[recordingId]/playback`
+- `DELETE /api/business/screening-recordings/[recordingId]`
+
+Do not add facial-expression scoring, emotion detection, biometric
+identification, personality claims, or AI judgments based on appearance.
+
+Expired recordings are selected by `cleanupExpiredScreeningRecordings` in
+`src/lib/screeningRecording.ts`. There is no scheduler in this repo yet; wire
+that helper to cron or a scheduled function before relying on automatic cleanup.
 
 ---
 
