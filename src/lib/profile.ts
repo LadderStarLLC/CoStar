@@ -11,7 +11,7 @@ import {
   updateDoc,
   addDoc,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 import type { CompanyData } from './companies';
 
 export type AccountType = 'talent' | 'business' | 'agency' | 'admin' | 'owner';
@@ -1061,23 +1061,32 @@ export async function lockAccountType(
   accountType: AccountType,
   source: AccountTypeSource = 'signup'
 ): Promise<void> {
-  if (!db) throw new Error('Firestore not initialized');
+  void source;
+  if (!auth?.currentUser || auth.currentUser.uid !== uid) {
+    throw new Error('You must be signed in to lock an account type.');
+  }
+  if (!isPublicAccountType(accountType)) {
+    throw new Error('Only public account types can be selected during onboarding.');
+  }
 
   const current = await getUserProfile(uid);
   if (current?.accountTypeLocked && current.accountType && current.accountType !== accountType) {
     throw new Error('Account type is locked for this account.');
   }
 
-  const profileRef = doc(db, 'users', uid);
-  await updateDoc(profileRef, {
-    accountType,
-    role: accountType,
-    accountTypeLocked: true,
-    accountTypeLockedAt: current?.accountTypeLockedAt ?? serverTimestamp(),
-    accountTypeSource: current?.accountTypeSource ?? source,
-    profileComplete: calculateProfileComplete({ ...(current ?? {}), accountType, role: accountType }),
-    updatedAt: serverTimestamp(),
+  const token = await auth.currentUser.getIdToken();
+  const response = await fetch('/api/account/bootstrap', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ requestedType: accountType }),
   });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error || 'Could not lock account type.');
+  }
 }
 
 export async function saveTypeSpecificProfile(

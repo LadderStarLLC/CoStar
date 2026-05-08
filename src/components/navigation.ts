@@ -41,7 +41,6 @@ export function getNavigationItems(user: NavigationUser): NavigationItem[] {
     { href: '/jobs', label: 'Jobs', icon: Briefcase },
     { href: '/pricing', label: 'Pricing', icon: Tag },
     { href: '/blog', label: 'Blog', icon: Newspaper },
-    { href: '/search', label: 'Search', icon: Search },
     { href: '/audition', label: 'Start Interview Prep', icon: Sparkles, kind: 'primary' },
   ];
 

@@ -93,15 +93,15 @@ export default function FeaturedJobsPreview() {
     <div className="rounded-lg border border-white/10 bg-[#262A2E]/90 p-4 shadow-2xl shadow-black/30">
       <div className="rounded-lg border border-[#5DC99B]/20 bg-[#1A1D20] p-4">
         <div className="grid sm:grid-cols-[1fr_auto] gap-3">
-          <Link href={searchHref} className="relative block">
+          <Link href={searchHref} className="relative block min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#5DC99B]" />
-            <div className="rounded-lg border border-[#5DC99B]/45 bg-[#262A2E] py-3 pl-10 pr-4 text-[#F4F5F7]/86">
+            <div className="truncate rounded-lg border border-[#5DC99B]/45 bg-[#262A2E] py-3 pl-10 pr-4 text-[#F4F5F7]/86">
               senior, AI, product, strategy
             </div>
           </Link>
           <Link
             href={searchHref}
-            className="inline-flex items-center justify-center gap-2 rounded-lg ladderstar-action px-5 py-3 font-bold text-[#1A1D20]"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg ladderstar-action px-5 py-3 font-bold text-[#1A1D20]"
           >
             <SlidersHorizontal className="w-4 h-4" />
             View roles
