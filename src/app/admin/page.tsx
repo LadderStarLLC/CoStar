@@ -743,7 +743,7 @@ function PricingAudienceEditor({
 
             <div className="grid gap-3 sm:grid-cols-3">
               <NumberField label="Monthly $" value={tier.monthlyPrice} onChange={(value) => onTierChange(tier.id, { monthlyPrice: value })} />
-              <NumberField label="Annual $" value={tier.annualPrice ?? ""} onChange={(value) => onTierChange(tier.id, { annualPrice: value })} />
+              <OptionalNumberField label="Annual $" value={tier.annualPrice} onChange={(value) => onTierChange(tier.id, { annualPrice: value })} />
               <NumberField label="Allowance" value={tier.monthlyAllowance} onChange={(value) => onTierChange(tier.id, { monthlyAllowance: Math.round(value) })} />
             </div>
 
@@ -803,6 +803,22 @@ function NumberField({ label, value, onChange }: { label: string; value: number 
         step="1"
         value={value}
         onChange={(event) => onChange(Number(event.target.value || 0))}
+        className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
+      />
+    </label>
+  );
+}
+
+function OptionalNumberField({ label, value, onChange }: { label: string; value?: number; onChange: (value: number | undefined) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-semibold text-slate-400">{label}</span>
+      <input
+        type="number"
+        min="0"
+        step="1"
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value === "" ? undefined : Number(event.target.value))}
         className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
       />
     </label>
