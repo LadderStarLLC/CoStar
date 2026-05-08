@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, Eye, EyeOff, Loader2, RefreshCw, Search, Shield, UserCog, Users, Wallet } from "lucide-react";
+import { BarChart3, Eye, EyeOff, Loader2, Percent, RefreshCw, Save, Search, Shield, Tag, Upload, UserCog, Users, Wallet } from "lucide-react";
 import NavHeader from "@/components/NavHeader";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
+import {
+  getEffectiveTierAmountCents,
+  type BillingCycle,
+  type PricingAudience,
+  type PricingCatalog,
+  type PricingTier,
+} from "@/lib/pricing";
 import { walletLabel, type WalletSummary } from "@/lib/wallet";
 
 interface AdminSummary {
@@ -73,6 +80,17 @@ type FilterState = {
   publicProfile: string;
 };
 
+interface AdminPricingConfig {
+  publishedCatalog: PricingCatalog;
+  draftCatalog: PricingCatalog;
+  version: number;
+  publishedAt: string | null;
+  publishedBy: string | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
+  lastPublishReason: string | null;
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -90,6 +108,11 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isActing, setIsActing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"users" | "pricing">("users");
+  const [pricingConfig, setPricingConfig] = useState<AdminPricingConfig | null>(null);
+  const [pricingDraft, setPricingDraft] = useState<PricingCatalog | null>(null);
+  const [pricingReason, setPricingReason] = useState("");
+  const [isPricingLoading, setIsPricingLoading] = useState(false);
 
   const isPrivileged = user?.accountType === "admin" || user?.accountType === "owner";
   const isOwner = user?.accountType === "owner";
@@ -164,6 +187,21 @@ export default function AdminPage() {
     }
   }, [apiFetch]);
 
+  const fetchPricing = useCallback(async () => {
+    if (!isOwner) return;
+    setIsPricingLoading(true);
+    setError(null);
+    try {
+      const data = await apiFetch("/api/admin/pricing") as AdminPricingConfig;
+      setPricingConfig(data);
+      setPricingDraft(cloneCatalog(data.draftCatalog));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load pricing.");
+    } finally {
+      setIsPricingLoading(false);
+    }
+  }, [apiFetch, isOwner]);
+
   useEffect(() => {
     if (isPrivileged) {
       fetchSummary();
@@ -181,6 +219,10 @@ export default function AdminPage() {
     fetchDetail(selectedUid);
   }, [fetchDetail, selectedUid]);
 
+  useEffect(() => {
+    if (isOwner) fetchPricing();
+  }, [fetchPricing, isOwner]);
+
   async function callAdminApi(path: string, body: Record<string, unknown>, success: string) {
     setIsActing(true);
     setError(null);
@@ -197,6 +239,44 @@ export default function AdminPage() {
     } finally {
       setIsActing(false);
     }
+  }
+
+  async function callPricingApi(path: string, body: Record<string, unknown>, success: string) {
+    if (!pricingDraft) return;
+    setIsActing(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const data = await apiFetch(path, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      setMessage(success);
+      if (data.catalog) setPricingDraft(cloneCatalog(data.catalog));
+      if (data.draftCatalog) setPricingDraft(cloneCatalog(data.draftCatalog));
+      await fetchPricing();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Pricing action failed.");
+    } finally {
+      setIsActing(false);
+    }
+  }
+
+  function updateTier(audienceKey: string, tierId: string, updates: Partial<PricingTier>) {
+    setPricingDraft((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        audiences: current.audiences.map((audience) => audience.key !== audienceKey ? audience : {
+          ...audience,
+          tiers: audience.tiers.map((tier) => tier.id !== tierId ? tier : {
+            ...tier,
+            ...updates,
+            sale: updates.sale ? { ...(tier.sale ?? { enabled: false, percentOff: 0, label: "" }), ...updates.sale } : tier.sale,
+          }),
+        }),
+      };
+    });
   }
 
   const selectedUser = useMemo(
@@ -262,6 +342,27 @@ export default function AdminPage() {
         </div>
 
         {isOwner && (
+          <div className="mb-8 inline-grid grid-cols-2 rounded-lg border border-white/10 bg-slate-800/50 p-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab("users")}
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-bold transition ${activeTab === "users" ? "bg-amber-500 text-slate-950" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
+            >
+              <Users className="h-4 w-4" />
+              Users
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("pricing")}
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-bold transition ${activeTab === "pricing" ? "bg-amber-500 text-slate-950" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
+            >
+              <Tag className="h-4 w-4" />
+              Pricing
+            </button>
+          </div>
+        )}
+
+        {activeTab === "users" && isOwner && (
           <section className="mb-8 rounded-lg border border-white/10 bg-slate-800/50 p-6">
             <h2 className="mb-4 text-xl font-bold text-white">Owner Role Management</h2>
             <div className="flex flex-col gap-3 lg:flex-row">
@@ -296,6 +397,7 @@ export default function AdminPage() {
           </section>
         )}
 
+        {activeTab === "users" && (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
           <section className="rounded-lg border border-white/10 bg-slate-800/50 p-6">
             <div className="mb-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_150px_150px_150px]">
@@ -515,6 +617,84 @@ export default function AdminPage() {
             )}
           </aside>
         </div>
+        )}
+
+        {activeTab === "pricing" && isOwner && (
+          <section className="rounded-lg border border-white/10 bg-slate-800/50 p-6">
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-300">
+                  <Percent className="h-4 w-4" />
+                  Owner pricing
+                </div>
+                <h2 className="text-2xl font-bold text-white">Pricing Catalog</h2>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
+                  Draft changes are private. Publishing updates the public pricing page and new Stripe checkout sessions immediately.
+                </p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Version {pricingConfig?.version ?? 0} · Last published {formatDateTime(pricingConfig?.publishedAt ?? null)}
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={fetchPricing}
+                  disabled={isActing || isPricingLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-700 px-4 py-2 font-semibold text-white hover:bg-slate-600 disabled:opacity-50"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Reload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => pricingDraft && callPricingApi("/api/admin/pricing/draft", { catalog: pricingDraft }, "Pricing draft saved.")}
+                  disabled={isActing || isPricingLoading || !pricingDraft}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-700 px-4 py-2 font-semibold text-white hover:bg-slate-600 disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4" />
+                  Save Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={() => pricingDraft && callPricingApi("/api/admin/pricing/publish", { catalog: pricingDraft, reason: pricingReason }, "Pricing published.")}
+                  disabled={isActing || isPricingLoading || !pricingDraft || !pricingReason.trim()}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2 font-bold text-slate-950 hover:bg-amber-400 disabled:opacity-50"
+                >
+                  <Upload className="h-4 w-4" />
+                  Publish
+                </button>
+              </div>
+            </div>
+
+            <label className="mb-6 block">
+              <span className="mb-2 block text-sm font-semibold text-slate-300">Publish reason</span>
+              <input
+                value={pricingReason}
+                onChange={(event) => setPricingReason(event.target.value)}
+                placeholder="Example: Spring launch sale"
+                className="w-full rounded-lg border border-white/10 bg-slate-900 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+              />
+            </label>
+
+            {isPricingLoading && (
+              <div className="flex min-h-48 items-center justify-center">
+                <Loader2 className="h-7 w-7 animate-spin text-amber-500" />
+              </div>
+            )}
+
+            {!isPricingLoading && pricingDraft && (
+              <div className="space-y-6">
+                {pricingDraft.audiences.map((audience) => (
+                  <PricingAudienceEditor
+                    key={audience.key}
+                    audience={audience}
+                    onTierChange={(tierId, updates) => updateTier(audience.key, tierId, updates)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </main>
     </div>
   );
@@ -534,6 +714,114 @@ function FilterSelect({ value, onChange, options }: { value: string; onChange: (
   );
 }
 
+function PricingAudienceEditor({
+  audience,
+  onTierChange,
+}: {
+  audience: PricingAudience;
+  onTierChange: (tierId: string, updates: Partial<PricingTier>) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-slate-900/70 p-5">
+      <div className="mb-5">
+        <h3 className="text-xl font-bold text-white">{audience.label}</h3>
+        <p className="mt-1 text-sm text-slate-400">{audience.currencyLabel}</p>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {audience.tiers.map((tier) => (
+          <div key={tier.id} className="rounded-lg border border-white/10 bg-slate-950/60 p-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="text-lg font-bold text-white">{tier.name}</div>
+                <div className="text-xs text-slate-500">{tier.id}</div>
+              </div>
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-right">
+                <div className="text-sm font-bold text-emerald-200">{formatAdminPrice(tier, "monthly")}/mo</div>
+                <div className="text-xs text-emerald-300">{formatAdminPrice(tier, "annual")}/yr</div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <NumberField label="Monthly $" value={tier.monthlyPrice} onChange={(value) => onTierChange(tier.id, { monthlyPrice: value })} />
+              <NumberField label="Annual $" value={tier.annualPrice ?? ""} onChange={(value) => onTierChange(tier.id, { annualPrice: value })} />
+              <NumberField label="Allowance" value={tier.monthlyAllowance} onChange={(value) => onTierChange(tier.id, { monthlyAllowance: Math.round(value) })} />
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-[130px_120px_minmax(0,1fr)]">
+              <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm font-semibold text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={Boolean(tier.sale?.enabled)}
+                  onChange={(event) => onTierChange(tier.id, { sale: { ...(tier.sale ?? { percentOff: 0 }), enabled: event.target.checked } })}
+                  className="h-4 w-4"
+                />
+                Sale
+              </label>
+              <NumberField label="% off" value={tier.sale?.percentOff ?? 0} onChange={(value) => onTierChange(tier.id, { sale: { ...(tier.sale ?? { enabled: false }), percentOff: Math.round(value) } })} />
+              <TextField label="Sale label" value={tier.sale?.label ?? ""} onChange={(value) => onTierChange(tier.id, { sale: { ...(tier.sale ?? { enabled: false, percentOff: 0 }), label: value } })} />
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <TextField label="CTA" value={tier.cta} onChange={(value) => onTierChange(tier.id, { cta: value })} />
+              <TextField label="Contact href" value={tier.contactHref ?? ""} onChange={(value) => onTierChange(tier.id, { contactHref: value })} />
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm font-semibold text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={Boolean(tier.featured)}
+                  onChange={(event) => onTierChange(tier.id, { featured: event.target.checked })}
+                  className="h-4 w-4"
+                />
+                Featured
+              </label>
+              <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm font-semibold text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={Boolean(tier.earlyAccess)}
+                  onChange={(event) => onTierChange(tier.id, { earlyAccess: event.target.checked })}
+                  className="h-4 w-4"
+                />
+                Early access
+              </label>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NumberField({ label, value, onChange }: { label: string; value: number | string; onChange: (value: number) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-semibold text-slate-400">{label}</span>
+      <input
+        type="number"
+        min="0"
+        step="1"
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value || 0))}
+        className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
+      />
+    </label>
+  );
+}
+
+function TextField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-semibold text-slate-400">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
+      />
+    </label>
+  );
+}
+
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-white/10 bg-slate-900 p-3">
@@ -543,9 +831,25 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
+function formatAdminPrice(tier: PricingTier, cycle: BillingCycle) {
+  const { effectiveAmountCents } = getEffectiveTierAmountCents(tier, cycle);
+  return `$${(effectiveAmountCents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+}
+
 function formatDate(value: string | null): string {
   if (!value) return "Unknown";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) return "Never";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function cloneCatalog(catalog: PricingCatalog): PricingCatalog {
+  return JSON.parse(JSON.stringify(catalog)) as PricingCatalog;
 }

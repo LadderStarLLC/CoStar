@@ -22,7 +22,7 @@ describe('recording support detection', () => {
   it('chooses the first supported recording MIME type', () => {
     const mediaRecorder = {
       isTypeSupported: (mimeType: string) => mimeType === 'video/webm',
-    } as typeof MediaRecorder;
+    } as unknown as typeof MediaRecorder;
     expect(getPreferredRecordingMimeType(mediaRecorder)).toBe('video/webm');
   });
 });

@@ -4,10 +4,11 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getCallerProfile, jsonError } from "@/lib/firebaseAdmin";
 import {
-  findPricingTier,
-  getTierAmountCents,
+  findPricingTierInCatalog,
+  getEffectiveTierAmountCents,
   type BillingCycle,
 } from "@/lib/pricing";
+import { getPublishedPricingCatalog } from "@/lib/pricingCatalogServer";
 import { getStripe } from "@/lib/stripeServer";
 
 type CheckoutBody = {
@@ -27,14 +28,15 @@ function isCheckoutAccountType(value: unknown): value is "talent" | "business" |
 
 export async function POST(req: NextRequest) {
   try {
-    const { decoded, profile } = await getCallerProfile(req);
+    const { decoded, profile, db } = await getCallerProfile(req);
     const body = await req.json() as CheckoutBody;
     const billingCycle = body.billingCycle;
     if (billingCycle !== "monthly" && billingCycle !== "annual") {
       return NextResponse.json({ error: "Invalid billing cycle." }, { status: 400 });
     }
 
-    const plan = body.tierId ? findPricingTier(body.tierId) : null;
+    const catalog = await getPublishedPricingCatalog(db);
+    const plan = body.tierId ? findPricingTierInCatalog(catalog, body.tierId) : null;
     if (!plan) {
       return NextResponse.json({ error: "Invalid pricing tier." }, { status: 400 });
     }
@@ -64,13 +66,17 @@ export async function POST(req: NextRequest) {
     }
 
     const baseUrl = getBaseUrl(req);
-    const amountCents = getTierAmountCents(plan.tier, billingCycle);
+    const { baseAmountCents, effectiveAmountCents, salePercentOff } = getEffectiveTierAmountCents(plan.tier, billingCycle);
     const interval = billingCycle === "monthly" ? "month" : "year";
     const metadata = {
       uid: decoded.uid,
       accountType: plan.audience.key,
       tierId: plan.tier.id,
       billingCycle,
+      pricingVersion: String(catalog.version ?? 0),
+      baseAmountCents: String(baseAmountCents),
+      effectiveAmountCents: String(effectiveAmountCents),
+      salePercentOff: String(salePercentOff),
     };
 
     const session = await getStripe().checkout.sessions.create({
@@ -84,11 +90,11 @@ export async function POST(req: NextRequest) {
           quantity: 1,
           price_data: {
             currency: "usd",
-            unit_amount: amountCents,
+            unit_amount: effectiveAmountCents,
             recurring: { interval },
             product_data: {
               name: `LadderStar ${plan.audience.label} ${plan.tier.name}`,
-              description: `${plan.tier.allowance} ${plan.audience.currencyLabel.toLowerCase()} reset monthly.`,
+              description: `${plan.tier.allowance} ${plan.audience.currencyLabel.toLowerCase()} reset monthly.${salePercentOff ? ` ${salePercentOff}% sale applied.` : ""}`,
             },
           },
         },

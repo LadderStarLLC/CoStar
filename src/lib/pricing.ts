@@ -21,6 +21,7 @@ export interface PricingTier {
   description: string;
   monthlyPrice: number;
   annualPrice?: number;
+  sale?: PricingSale;
   monthlyAllowance: number;
   allowance: string;
   allowanceDetail: string;
@@ -31,6 +32,12 @@ export interface PricingTier {
   features: string[];
 }
 
+export interface PricingSale {
+  enabled: boolean;
+  percentOff: number;
+  label?: string;
+}
+
 export interface PricingAudience {
   key: PricingAudienceKey;
   label: string;
@@ -39,6 +46,12 @@ export interface PricingAudience {
   signupHref: string;
   currencyLabel: string;
   tiers: PricingTier[];
+}
+
+export interface PricingCatalog {
+  audiences: PricingAudience[];
+  version?: number;
+  publishedAt?: string | null;
 }
 
 export const getAnnualPrice = (tier: PricingTier) => tier.annualPrice ?? tier.monthlyPrice * 10;
@@ -255,20 +268,146 @@ export const pricingAudiences: PricingAudience[] = [
   },
 ];
 
-export function findPricingTier(tierId: string) {
-  for (const audience of pricingAudiences) {
+export const defaultPricingCatalog: PricingCatalog = {
+  audiences: pricingAudiences,
+};
+
+export function findPricingTierInCatalog(catalog: PricingCatalog, tierId: string) {
+  for (const audience of catalog.audiences) {
     const tier = audience.tiers.find((item) => item.id === tierId);
     if (tier) return { audience, tier };
   }
   return null;
 }
 
-export function getFreeTierForAccountType(accountType: PricingAudienceKey) {
-  const audience = pricingAudiences.find((item) => item.key === accountType);
+export function findPricingTier(tierId: string) {
+  return findPricingTierInCatalog(defaultPricingCatalog, tierId);
+}
+
+export function getFreeTierForAccountTypeInCatalog(catalog: PricingCatalog, accountType: PricingAudienceKey) {
+  const audience = catalog.audiences.find((item) => item.key === accountType);
   return audience?.tiers.find((tier) => tier.monthlyPrice === 0) ?? null;
+}
+
+export function getFreeTierForAccountType(accountType: PricingAudienceKey) {
+  return getFreeTierForAccountTypeInCatalog(defaultPricingCatalog, accountType);
 }
 
 export function getTierAmountCents(tier: PricingTier, billingCycle: BillingCycle) {
   const amount = billingCycle === "annual" ? getAnnualPrice(tier) : tier.monthlyPrice;
-  return amount * 100;
+  return Math.round(amount * 100);
+}
+
+export function getEffectiveTierAmountCents(tier: PricingTier, billingCycle: BillingCycle) {
+  const baseAmountCents = getTierAmountCents(tier, billingCycle);
+  const sale = normalizeSale(tier.sale);
+  if (!sale.enabled || sale.percentOff <= 0 || baseAmountCents <= 0) {
+    return {
+      baseAmountCents,
+      effectiveAmountCents: baseAmountCents,
+      salePercentOff: 0,
+    };
+  }
+
+  return {
+    baseAmountCents,
+    effectiveAmountCents: Math.max(0, Math.round(baseAmountCents * (100 - sale.percentOff) / 100)),
+    salePercentOff: sale.percentOff,
+  };
+}
+
+export function normalizePricingCatalog(input: unknown): PricingCatalog {
+  const raw = input as Partial<PricingCatalog> | null | undefined;
+  const incomingAudiences = Array.isArray(raw?.audiences) ? raw.audiences : pricingAudiences;
+  const audiences = pricingAudiences.map((defaultAudience) => {
+    const incomingAudience = incomingAudiences.find((item) => item?.key === defaultAudience.key);
+    return {
+      ...defaultAudience,
+      ...pickStringFields(incomingAudience, ["label", "eyebrow", "summary", "signupHref", "currencyLabel"]),
+      tiers: defaultAudience.tiers.map((defaultTier) => {
+        const incomingTier = incomingAudience?.tiers?.find((item) => item?.id === defaultTier.id);
+        return normalizeTier(defaultTier, incomingTier);
+      }),
+    };
+  });
+
+  return {
+    audiences,
+    version: typeof raw?.version === "number" && Number.isFinite(raw.version) ? raw.version : undefined,
+    publishedAt: typeof raw?.publishedAt === "string" ? raw.publishedAt : raw?.publishedAt === null ? null : undefined,
+  };
+}
+
+export function validatePricingCatalog(catalog: PricingCatalog) {
+  const errors: string[] = [];
+  for (const audience of catalog.audiences) {
+    for (const tier of audience.tiers) {
+      if (!Number.isFinite(tier.monthlyPrice) || tier.monthlyPrice < 0) {
+        errors.push(`${tier.id} monthly price must be 0 or greater.`);
+      }
+      if (tier.annualPrice !== undefined && (!Number.isFinite(tier.annualPrice) || tier.annualPrice < 0)) {
+        errors.push(`${tier.id} annual price must be 0 or greater.`);
+      }
+      if (!Number.isInteger(tier.monthlyAllowance) || tier.monthlyAllowance < 0) {
+        errors.push(`${tier.id} monthly allowance must be a whole number 0 or greater.`);
+      }
+      const sale = normalizeSale(tier.sale);
+      if (sale.enabled && (!Number.isInteger(sale.percentOff) || sale.percentOff < 1 || sale.percentOff > 100)) {
+        errors.push(`${tier.id} sale percent must be between 1 and 100.`);
+      }
+    }
+  }
+  return errors;
+}
+
+function normalizeTier(defaultTier: PricingTier, input?: Partial<PricingTier>): PricingTier {
+  const monthlyPrice = normalizeMoney(input?.monthlyPrice, defaultTier.monthlyPrice);
+  const annualPrice = input && "annualPrice" in input
+    ? input.annualPrice === undefined || input.annualPrice === null
+      ? undefined
+      : normalizeMoney(input.annualPrice, getAnnualPrice(defaultTier))
+    : defaultTier.annualPrice;
+
+  return {
+    ...defaultTier,
+    ...pickStringFields(input, ["name", "description", "allowance", "allowanceDetail", "contactHref", "cta"]),
+    monthlyPrice,
+    annualPrice,
+    monthlyAllowance: normalizeInteger(input?.monthlyAllowance, defaultTier.monthlyAllowance),
+    featured: typeof input?.featured === "boolean" ? input.featured : defaultTier.featured,
+    earlyAccess: typeof input?.earlyAccess === "boolean" ? input.earlyAccess : defaultTier.earlyAccess,
+    sale: normalizeSale(input?.sale),
+    features: Array.isArray(input?.features)
+      ? input.features.map((item) => String(item).trim()).filter(Boolean).slice(0, 20)
+      : defaultTier.features,
+  };
+}
+
+function normalizeSale(input?: Partial<PricingSale> | null): PricingSale {
+  return {
+    enabled: Boolean(input?.enabled),
+    percentOff: normalizeInteger(input?.percentOff, 0),
+    label: typeof input?.label === "string" ? input.label.trim().slice(0, 80) : "",
+  };
+}
+
+function normalizeMoney(value: unknown, fallback: number) {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.round(numeric * 100) / 100;
+}
+
+function normalizeInteger(value: unknown, fallback: number) {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.round(numeric);
+}
+
+function pickStringFields<T extends string>(input: unknown, keys: T[]): Partial<Record<T, string>> {
+  if (!input || typeof input !== "object") return {};
+  const source = input as Record<string, unknown>;
+  return keys.reduce<Partial<Record<T, string>>>((fields, key) => {
+    if (typeof source[key] === "string") fields[key] = source[key].trim();
+    return fields;
+  }, {});
 }
