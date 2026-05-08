@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Coins, Menu, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Coins, X } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
 import BrandLogo from './BrandLogo';
 import { getNavigationItems, type NavigationUser } from './navigation';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,10 @@ import { currencyForAccountType, walletLabel, type WalletSummary } from '@/lib/w
 type AppSidebarProps = {
   user: NavigationUser;
   walletSummary: WalletSummary | null;
+  collapsed: boolean;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
+  onToggleCollapsed: () => void;
 };
 
 function isActivePath(pathname: string, href: string) {
@@ -19,28 +23,36 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export default function AppSidebar({ user, walletSummary }: AppSidebarProps) {
+export default function AppSidebar({
+  user,
+  walletSummary,
+  collapsed,
+  mobileOpen,
+  onCloseMobile,
+  onToggleCollapsed,
+}: AppSidebarProps) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const accountType = user?.accountType ?? null;
-  const items = useMemo(() => getNavigationItems(user), [user]);
+  const items = useMemo(() => {
+    const seen = new Set<string>();
+    return getNavigationItems(user).filter((item) => {
+      const key = `${item.href}:${item.label}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [user]);
   const menuCurrency = walletSummary?.wallet?.currency ?? currencyForAccountType(accountType);
   const menuBalance = walletSummary?.wallet?.balance;
 
   useEffect(() => {
-    document.body.classList.add('has-ladderstar-sidebar');
-    return () => document.body.classList.remove('has-ladderstar-sidebar');
-  }, []);
-
-  useEffect(() => {
-    document.body.classList.toggle('ladderstar-sidebar-collapsed', collapsed);
-    return () => document.body.classList.remove('ladderstar-sidebar-collapsed');
-  }, [collapsed]);
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+    if (!mobileOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCloseMobile();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileOpen, onCloseMobile]);
 
   const sidebarContent = (compact: boolean) => (
     <div className="flex h-full flex-col">
@@ -57,7 +69,7 @@ export default function AppSidebar({ user, walletSummary }: AppSidebarProps) {
         {!compact && (
           <button
             type="button"
-            onClick={() => setMobileOpen(false)}
+            onClick={onCloseMobile}
             className="rounded-lg p-2 text-[#F4F5F7]/55 transition hover:bg-white/5 hover:text-[#F4F5F7] lg:hidden"
             aria-label="Close navigation"
           >
@@ -77,6 +89,7 @@ export default function AppSidebar({ user, walletSummary }: AppSidebarProps) {
             <Link
               key={`${item.href}-${item.label}`}
               href={item.href}
+              onClick={onCloseMobile}
               title={compact ? item.label : undefined}
               className={cn(
                 'group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition',
@@ -136,25 +149,16 @@ export default function AppSidebar({ user, walletSummary }: AppSidebarProps) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-[#1A1D20]/70 text-[#F4F5F7]/72 transition hover:border-[#5DC99B]/35 hover:text-[#5DC99B] lg:hidden"
-        aria-label="Open navigation"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
-
       <aside
         className={cn(
-          'fixed bottom-0 left-0 top-0 z-40 hidden border-r border-white/10 bg-[#262A2E]/95 shadow-2xl shadow-black/25 backdrop-blur-xl transition-[width] duration-300 lg:block',
+          'fixed bottom-0 left-0 top-0 z-[60] hidden border-r border-white/10 bg-[#262A2E]/95 shadow-2xl shadow-black/25 backdrop-blur-xl transition-[width] duration-300 lg:block',
           collapsed ? 'w-[76px]' : 'w-72',
         )}
       >
         {sidebarContent(collapsed)}
         <button
           type="button"
-          onClick={() => setCollapsed((current) => !current)}
+          onClick={onToggleCollapsed}
           className="absolute -right-3 top-24 flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-[#262A2E] text-[#F4F5F7]/68 shadow-lg transition hover:border-[#5DC99B]/35 hover:text-[#5DC99B]"
           aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
         >
@@ -167,7 +171,7 @@ export default function AppSidebar({ user, walletSummary }: AppSidebarProps) {
           <button
             type="button"
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
+            onClick={onCloseMobile}
             aria-label="Close navigation overlay"
           />
           <aside className="relative h-full w-[min(22rem,calc(100vw-2rem))] border-r border-white/10 bg-[#262A2E] shadow-2xl">
