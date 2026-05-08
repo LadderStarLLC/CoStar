@@ -4,7 +4,7 @@ import { ContactBlock, LegalPage } from '@/components/legal/LegalPage';
 
 export const metadata: Metadata = {
   title: 'Terms of Service - LadderStar',
-  description: 'Read the LadderStar Terms of Service for accounts, profiles, jobs, messaging, AI audition practice, billing, wallets, and acceptable use.',
+  description: 'Read the LadderStar Terms of Service for accounts, profiles, jobs, messaging, AI interview practice, billing, wallets, and acceptable use.',
 };
 
 export default function TermsPage() {
@@ -12,7 +12,7 @@ export default function TermsPage() {
     <LegalPage
       eyebrow="Legal"
       title="Terms of Service"
-      description="These Terms govern access to and use of LadderStar, including accounts, public profiles, job tools, messaging, AI audition practice, billing, and premium wallet features."
+      description="These Terms govern access to and use of LadderStar, including accounts, public profiles, job tools, messaging, AI interview practice, billing, and premium wallet features."
       sections={[
         {
           title: '1. Agreement and operator',
@@ -37,16 +37,16 @@ export default function TermsPage() {
           body: (
             <>
               <p>You retain ownership of content you submit, but you grant LadderStar a worldwide, non-exclusive, royalty-free license to host, store, reproduce, display, process, transmit, and use that content to operate, improve, secure, and promote the service.</p>
-              <p>You are responsible for profile content, job listings, messages, audition inputs, uploaded materials, and any information you publish. Do not submit content that is false, misleading, discriminatory, infringing, confidential without authorization, unlawful, or harmful.</p>
+              <p>You are responsible for profile content, job listings, messages, interview inputs, uploaded materials, and any information you publish. Do not submit content that is false, misleading, discriminatory, infringing, confidential without authorization, unlawful, or harmful.</p>
               <p>Employers and agencies are responsible for complying with employment, labor, anti-discrimination, privacy, wage transparency, and recruiting laws that apply to their listings, communications, and hiring practices.</p>
             </>
           ),
         },
         {
-          title: '4. AI audition practice',
+          title: '4. AI interview practice',
           body: (
             <>
-              <p>AI audition features provide practice interviews, transcription, scoring, feedback, and coaching-style suggestions. AI output may be inaccurate, incomplete, biased, or unsuitable for your circumstances. You are responsible for reviewing output before relying on it.</p>
+              <p>AI interview features provide practice interviews, transcription, scoring, feedback, and coaching-style suggestions. AI output may be inaccurate, incomplete, biased, or unsuitable for your circumstances. You are responsible for reviewing output before relying on it.</p>
               <p>LadderStar does not guarantee interviews, employment, compensation, candidate quality, hiring outcomes, immigration outcomes, or professional results. AI tools do not replace human judgment, legal advice, career advice, or employer-specific evaluation.</p>
             </>
           ),

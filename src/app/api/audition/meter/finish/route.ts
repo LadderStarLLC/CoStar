@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       uid: decoded.uid,
       meterId: body.meterId,
       usedAmount: usedMinutes,
-      reason: `Audition ${body.status ?? 'finished'} settlement${body.jobTitle ? `: ${body.jobTitle}` : ''}`,
+      reason: `Interview ${body.status ?? 'finished'} settlement${body.jobTitle ? `: ${body.jobTitle}` : ''}`,
       status: body.status ?? 'finished',
       durationSeconds: seconds,
     });

@@ -1,133 +1,118 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BadgeCheck,
-  CheckCircle2,
   Mic,
   Sparkles,
-  Star,
   TrendingUp,
 } from "lucide-react";
 import NavHeader from "@/components/NavHeader";
 import FeaturedJobsPreview from "@/components/FeaturedJobsPreview";
-
-const coachingTracks = [
-  "Voice-driven AI interview practice",
-  "Offer conversations and compensation preparation",
-  "Resume, portfolio, and profile optimization",
-  "Role-specific coaching prompts and next steps",
-];
+import ImageMarquee from "@/components/ImageMarquee";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#1A1D20] text-[#F4F5F7]">
+    <div className="min-h-screen bg-[#1A1D20] text-[#F4F5F7] overflow-x-hidden">
       <NavHeader />
 
       <main>
-        <section className="relative overflow-hidden ladderstar-surface">
+        {/* Hero Section: Problem & Solution Focused */}
+        <section className="relative overflow-hidden ladderstar-surface border-b border-white/5">
           <div className="absolute inset-x-0 top-0 h-px ladderstar-emerald-line" />
-          <div className="max-w-7xl mx-auto px-6 py-16 md:py-24">
-            <div className="grid lg:grid-cols-[1.02fr_0.98fr] gap-10 lg:gap-14 items-center">
-              <div>
-                <h1 className="text-5xl md:text-7xl font-black tracking-tight text-balance">
-                  Roles worth
-                  <span className="block bg-gradient-to-r from-[#E5B536] to-[#5DC99B] bg-clip-text text-transparent">
-                    reaching for.
-                  </span>
-                </h1>
-
-                <p className="mt-6 max-w-2xl text-lg md:text-xl leading-8 text-[#F4F5F7]/76">
-                  LadderStar brings curated external roles, public professional profiles, and AI interview practice into one focused career workspace.
-                </p>
-
-                <div className="mt-9 flex flex-col sm:flex-row gap-3">
-                  <Link
-                    href="/jobs"
-                    className="inline-flex items-center justify-center gap-2 rounded-lg ladderstar-action px-6 py-3.5 font-bold text-[#1A1D20] transition hover:brightness-110"
-                  >
-                    Browse roles
-                    <ArrowRight className="w-5 h-5" />
-                  </Link>
-                  <Link
-                    href="/audition"
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#5DC99B]/35 bg-[#262A2E] px-6 py-3.5 font-semibold text-[#F4F5F7] transition hover:border-[#5DC99B] hover:text-[#5DC99B]"
-                  >
-                    Practice an interview
-                    <Mic className="w-5 h-5" />
-                  </Link>
-                </div>
-
-                <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-xl">
-                  {[
-                    ["Search", "curated external roles"],
-                    ["Publish", "a professional profile"],
-                    ["Practice", "AI mock interviews"],
-                  ].map(([value, label]) => (
-                    <div key={label} className="border-l border-[#5DC99B]/40 pl-4">
-                      <div className="text-2xl font-black text-[#E5B536]">{value}</div>
-                      <div className="text-xs uppercase tracking-[0.18em] text-[#F4F5F7]/55">{label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <FeaturedJobsPreview />
-            </div>
-          </div>
-        </section>
-
-        <section id="outcomes" className="border-y border-white/10 bg-[#262A2E] px-6 py-16">
-          <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-5">
-            {[
-              ["Curated discovery", "Search external job listings with filters for salary, location, work style, and seniority."],
-              ["Profile presence", "Create a public talent, company, or agency profile you control from your account settings."],
-              ["Interview practice", "Use LadderStar Audition for voice-based mock interviews and feedback reports."],
-            ].map(([title, description]) => (
-              <div key={title} className="rounded-lg border border-white/10 bg-[#1A1D20]/65 p-6">
-                <BadgeCheck className="w-6 h-6 text-[#5DC99B]" />
-                <h2 className="mt-5 text-xl font-bold">{title}</h2>
-                <p className="mt-3 leading-7 text-[#F4F5F7]/68">{description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="coaching" className="px-6 py-20">
-          <div className="max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-10 items-start">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#E5B536]/30 px-3 py-1.5 text-sm font-semibold text-[#E5B536]">
+          <div className="max-w-7xl mx-auto px-6 py-20 md:py-32">
+            <div className="text-center max-w-4xl mx-auto">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#5DC99B]/30 bg-[#5DC99B]/10 px-4 py-1.5 text-sm font-bold text-[#5DC99B] mb-8">
                 <Sparkles className="w-4 h-4" />
-                Career coaching layer
+                The professional career workspace
               </div>
-              <h2 className="mt-5 text-4xl md:text-5xl font-black tracking-tight text-balance">
-                Keep the long-term climb, but start with the next conversation.
-              </h2>
-              <p className="mt-5 text-lg leading-8 text-[#F4F5F7]/70">
-                The job board helps you find roles worth pursuing. Audition practice helps you rehearse the interview, pressure-test your story, and prepare for offer conversations without pretending outcomes are guaranteed.
-              </p>
-              <Link
-                href="/audition"
-                className="mt-8 inline-flex items-center gap-2 rounded-lg ladderstar-action px-6 py-3.5 font-bold text-[#1A1D20] transition hover:brightness-110"
-              >
-                Start a mock interview
-                <Star className="w-5 h-5 fill-[#1A1D20]" />
-              </Link>
-            </div>
+              
+              <h1 className="text-5xl md:text-8xl font-black tracking-tight text-balance leading-[0.9]">
+                Stop guessing. 
+                <span className="block bg-gradient-to-r from-[#E5B536] to-[#5DC99B] bg-clip-text text-transparent">
+                  Start landing.
+                </span>
+              </h1>
 
-            <div className="rounded-lg border border-[#5DC99B]/25 ladderstar-ascent-gradient p-6">
-              <div className="grid sm:grid-cols-2 gap-4">
-                {coachingTracks.map((track) => (
-                  <div key={track} className="rounded-lg border border-white/10 bg-[#262A2E]/85 p-5">
-                    <CheckCircle2 className="w-5 h-5 text-[#5DC99B]" />
-                    <p className="mt-4 font-semibold leading-7">{track}</p>
-                  </div>
-                ))}
+              <p className="mt-8 text-xl md:text-2xl leading-relaxed text-[#F4F5F7]/70 font-medium">
+                Standard job boards are noisy, interview anxiety is real, and feedback is non-existent. CoStar solves this with curated high-signal roles and real-time AI interview practice that actually prepares you.
+              </p>
+
+              <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link
+                  href="/jobs"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl ladderstar-action px-8 py-4 text-lg font-bold text-[#1A1D20] transition hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Explore Curated Roles
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+                <Link
+                  href="/audition"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#262A2E] px-8 py-4 text-lg font-bold text-[#F4F5F7] transition hover:bg-[#32373C] hover:border-white/20"
+                >
+                  <Mic className="w-5 h-5 text-[#5DC99B]" />
+                  Practice Interview
+                </Link>
+              </div>
+
+              <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-left border-t border-white/5 pt-12">
+                <div>
+                  <h3 className="text-[#E5B536] font-bold text-lg mb-2">The Noise Problem</h3>
+                  <p className="text-sm text-[#F4F5F7]/60 leading-relaxed">Most job boards are flooded with low-quality listings. We curate only high-signal executive and technical roles.</p>
+                </div>
+                <div>
+                  <h3 className="text-[#E5B536] font-bold text-lg mb-2">The Anxiety Problem</h3>
+                  <p className="text-sm text-[#F4F5F7]/60 leading-relaxed">Interviews are high-stakes. Our Gemini-powered voice sessions let you fail safely and improve fast.</p>
+                </div>
+                <div>
+                  <h3 className="text-[#E5B536] font-bold text-lg mb-2">The Feedback Problem</h3>
+                  <p className="text-sm text-[#F4F5F7]/60 leading-relaxed">&quot;We went with another candidate&quot; is useless. Get granular, actionable feedback reports after every practice.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Visual Showcase: Image Marquee */}
+        <section className="px-6 py-20 bg-[#1A1D20]">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-black mb-4">Platform Overview</h2>
+              <p className="text-[#F4F5F7]/60">Everything you need to navigate your next career move.</p>
+            </div>
+            <ImageMarquee />
+          </div>
+        </section>
+
+        {/* Featured Jobs Section */}
+        <section className="px-6 py-24 bg-[#262A2E]/30 border-t border-white/5">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid lg:grid-cols-[0.8fr_1.2fr] gap-16 items-start">
+              <div>
+                <div className="inline-flex items-center gap-2 text-[#E5B536] font-bold mb-4">
+                  <TrendingUp className="w-5 h-5" />
+                  Live Market Data
+                </div>
+                <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[1.1] mb-6">
+                  High-signal roles, refreshed daily.
+                </h2>
+                <p className="text-lg text-[#F4F5F7]/70 leading-relaxed mb-8">
+                  We filter for seniority, compensation transparency, and impact. No ghost jobs, no multi-level marketing, just real opportunities for top talent.
+                </p>
+                <Link
+                  href="/jobs"
+                  className="group inline-flex items-center gap-2 text-[#5DC99B] font-bold text-lg hover:underline"
+                >
+                  Browse all active roles
+                  <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </div>
+              <div className="relative">
+                <div className="absolute -inset-4 bg-[#5DC99B]/5 blur-3xl rounded-full" />
+                <FeaturedJobsPreview />
               </div>
             </div>
           </div>
         </section>
       </main>
-
     </div>
   );
 }

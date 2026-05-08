@@ -468,7 +468,7 @@ export default function AccountSettingsPage() {
       setGiftMinutes(15);
       const nextWalletSummary = await fetchWalletSummary(user);
       setWalletSummary(nextWalletSummary);
-      setMessage("Audition minutes gifted.");
+      setMessage("Interview minutes gifted.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not gift minutes.");
     } finally {

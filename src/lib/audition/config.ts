@@ -1,4 +1,4 @@
-// ─── Gemini Audition Configuration ───────────────────────────────────────────
+// ─── Gemini Interview Configuration ──────────────────────────────────────────
 // All model names, voices, and API parameters are centralized here.
 // Change any value in this file to update behavior across the entire feature.
 

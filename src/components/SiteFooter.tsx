@@ -21,7 +21,7 @@ const footerGroups = [
     links: [
       { href: '/jobs', label: 'Jobs' },
       { href: '/pricing', label: 'Pricing' },
-      { href: '/audition', label: 'Audition practice' },
+      { href: '/audition', label: 'Interview practice' },
       { href: '/blog', label: 'Blog' },
       { href: '/search', label: 'Search' },
       { href: '/sign-up', label: 'Create account' },

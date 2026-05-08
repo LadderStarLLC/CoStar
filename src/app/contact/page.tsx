@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 const contacts = [
-  ['General support', 'Questions about accounts, profiles, job tools, messaging, or audition practice.', 'support@ladderstar.com', MessageSquare],
+  ['General support', 'Questions about accounts, profiles, job tools, messaging, or interview practice.', 'support@ladderstar.com', MessageSquare],
   ['Privacy requests', 'Access, deletion, correction, opt-out, international privacy, or data rights requests.', 'privacy@ladderstar.com', LockKeyhole],
   ['Legal notices', 'Terms, subpoenas, intellectual property concerns, or formal legal correspondence.', 'legal@ladderstar.com', Scale],
   ['Billing support', 'Subscription, checkout, cancellation, duplicate charge, and wallet balance questions.', 'support@ladderstar.com', CreditCard],
