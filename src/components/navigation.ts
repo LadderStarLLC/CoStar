@@ -3,6 +3,7 @@ import {
   Building2,
   Home,
   LayoutDashboard,
+  LayoutGrid,
   Newspaper,
   Search,
   Settings,
@@ -23,6 +24,7 @@ export type NavigationItem = {
   label: string;
   icon: LucideIcon;
   kind?: 'primary' | 'admin';
+  children?: NavigationItem[];
 };
 
 export function getProfileHref(user: NavigationUser) {
@@ -41,6 +43,15 @@ export function getNavigationItems(user: NavigationUser): NavigationItem[] {
     { href: '/jobs', label: 'Jobs', icon: Briefcase },
     { href: '/pricing', label: 'Pricing', icon: Tag },
     { href: '/blog', label: 'Blog', icon: Newspaper },
+    {
+      href: '#',
+      label: 'Apps',
+      icon: LayoutGrid,
+      children: [
+        { href: '/feature-a', label: 'Feature A', icon: Sparkles },
+        { href: '/feature-b', label: 'Feature B', icon: Sparkles },
+      ],
+    },
     { href: '/audition', label: 'Start Interview Prep', icon: Sparkles, kind: 'primary' },
   ];
 

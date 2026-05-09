@@ -4,7 +4,8 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getCallerProfile, jsonError } from '@/lib/firebaseAdmin';
-import { canReviewBusinessScreening, deletePrivateRecording, writeRecordingEvent } from '@/lib/screeningRecording';
+import { canReviewBusinessScreening, writeRecordingEvent } from '@/lib/screeningRecording';
+import { buildSoftDeleteMetadata } from '@/lib/softDelete';
 
 export async function DELETE(
   req: NextRequest,
@@ -20,10 +21,15 @@ export async function DELETE(
     if (!(await canReviewBusinessScreening(db, decoded, profile, recording.businessUid))) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    await deletePrivateRecording(recording.storageKey ?? null);
-    await snap.ref.set({
-      status: 'deleted',
+    const metadata = buildSoftDeleteMetadata({
       deletedAt: FieldValue.serverTimestamp(),
+      deletedBy: decoded.uid,
+      deletionReason: 'Reviewer deleted recording from dashboard.',
+      deleteSource: 'user',
+    });
+    await snap.ref.set({
+      ...metadata,
+      status: 'deleted',
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
     await writeRecordingEvent(db, {

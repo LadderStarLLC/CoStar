@@ -170,6 +170,8 @@ export default function NavHeader() {
                 className="flex items-center gap-2 text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors focus:outline-none"
               >
                 {user.photoURL ? (
+                  // User avatars can come from arbitrary provider domains; a broad next/image allowlist would be riskier than this explicit fallback.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full object-cover" />
                 ) : (
                   <User size={18} />

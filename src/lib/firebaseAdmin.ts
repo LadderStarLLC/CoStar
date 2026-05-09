@@ -1,7 +1,9 @@
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
+import { getAuth, type DecodedIdToken } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import type { AccountType } from './profile';
+import { PREVIEW_AUTH_EMAIL, PREVIEW_AUTH_UID } from './deploymentMode';
+import { getPreviewSessionFromRequest } from './previewAuth';
 
 export const OWNER_EMAIL = 'kyletouchet@gmail.com';
 
@@ -30,13 +32,24 @@ export function getAdminDb(): Firestore {
   return getFirestore(getAdminApp());
 }
 
-export async function verifyBearerToken(req: Request) {
+export async function verifyBearerToken(req: Request): Promise<DecodedIdToken> {
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    throw new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  if (authHeader?.startsWith('Bearer ')) {
+    return getAuth(getAdminApp()).verifyIdToken(authHeader.slice(7));
   }
 
-  return getAuth(getAdminApp()).verifyIdToken(authHeader.slice(7));
+  const previewSession = getPreviewSessionFromRequest(req);
+  if (previewSession?.uid === PREVIEW_AUTH_UID) {
+    return {
+      uid: PREVIEW_AUTH_UID,
+      email: PREVIEW_AUTH_EMAIL,
+      name: 'Preview Business User',
+      picture: undefined,
+      previewAuth: true,
+    } as unknown as DecodedIdToken;
+  }
+
+  throw new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 }
 
 export async function getCallerProfile(req: Request) {

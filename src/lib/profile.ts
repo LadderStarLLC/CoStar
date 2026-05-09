@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import type { CompanyData } from './companies';
+import { createUserSlug } from './profileSlug';
 
 export type AccountType = 'talent' | 'business' | 'agency' | 'admin' | 'owner';
 export type SocialPlatform = 'github' | 'linkedin' | 'email';
@@ -324,13 +325,7 @@ export function normalizeEmail(email?: string | null): string | null {
 }
 
 export function createSlug(value?: string | null, fallback?: string): string {
-  const base = (value || fallback || 'profile')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-
-  return base || 'profile';
+  return createUserSlug(value, fallback);
 }
 
 export async function isSlugAvailable(slug: string, excludeUid?: string): Promise<boolean> {
@@ -343,17 +338,31 @@ export async function isSlugAvailable(slug: string, excludeUid?: string): Promis
 }
 
 export async function generateUniqueSlug(value: string | null | undefined, uid: string): Promise<string> {
-  const baseSlug = createSlug(value, uid);
-  let slug = baseSlug;
-  let counter = 1;
-
-  while (!(await isSlugAvailable(slug, uid))) {
-    slug = `${baseSlug}-${counter}`;
-    counter++;
-    if (counter > 100) break; // Safety break
+  if (!auth?.currentUser || auth.currentUser.uid !== uid) {
+    throw new Error('You must be signed in to generate a profile slug.');
   }
 
-  return slug;
+  const token = await auth.currentUser.getIdToken();
+  const response = await fetch('/api/profile/slug', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ value }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error || 'Could not generate a profile slug.');
+  }
+
+  const body = await response.json();
+  if (typeof body?.slug !== 'string' || !body.slug) {
+    throw new Error('Profile slug response was invalid.');
+  }
+
+  return body.slug;
 }
 
 export function normalizeProfile(uid: string, data: Partial<UserProfile> = {}): UserProfile {

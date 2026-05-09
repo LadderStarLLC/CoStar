@@ -447,7 +447,13 @@ export default function ProfilePage() {
             <Panel title="Identity">
               <div className="flex flex-col gap-5 sm:flex-row">
                 <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#1A1D20]">
-                  {photoURL ? <img src={photoURL} alt="" className="h-full w-full object-cover" /> : <UserRound className="h-10 w-10 text-[#F4F5F7]/40" />}
+                  {photoURL ? (
+                    <>
+                      {/* User-managed profile photo hosts are not constrained yet, so keep img until we define a remote image policy. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photoURL} alt="" className="h-full w-full object-cover" />
+                    </>
+                  ) : <UserRound className="h-10 w-10 text-[#F4F5F7]/40" />}
                 </div>
                 <div className="flex-1">
                   <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#1A1D20] px-4 py-2 font-semibold text-white hover:border-[#5DC99B]">

@@ -45,7 +45,7 @@ export interface AuditionSession {
   id: string;
   userId: string;
   date: string;
-  status: 'in-progress' | 'completed' | 'cancelled';
+  status: 'in-progress' | 'completed' | 'cancelled' | 'deleted';
   startedAt: string;
   endedAt?: string;
   mode: 'freeform' | 'job';
@@ -60,6 +60,10 @@ export interface AuditionSession {
   improvements: string[];
   durationSeconds: number;
   ultraFeedback?: string;
+  deletedAt?: any;
+  deletedBy?: string | null;
+  deletionReason?: string | null;
+  deleteSource?: 'user' | 'admin' | 'retention' | 'preview';
   walletMeterId?: string;
   walletTransactionId?: string;
   walletSettlementTransactionId?: string | null;

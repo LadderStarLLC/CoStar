@@ -63,8 +63,12 @@ export async function POST(
       lastUpdatedAt: FieldValue.serverTimestamp(),
       unreadBy: recipientIds,
       archivedBy: FieldValue.arrayRemove(decoded.uid, ...recipientIds),
-      [`archivedAtBy.${decoded.uid}`]: FieldValue.delete(),
-      ...Object.fromEntries(recipientIds.map((uid: string) => [`archivedAtBy.${uid}`, FieldValue.delete()])),
+      [`archivedAtBy.${decoded.uid}`]: null,
+      [`unarchivedAtBy.${decoded.uid}`]: FieldValue.serverTimestamp(),
+      ...Object.fromEntries(recipientIds.flatMap((uid: string) => [
+        [`archivedAtBy.${uid}`, null],
+        [`unarchivedAtBy.${uid}`, FieldValue.serverTimestamp()],
+      ])),
     });
     await writeChatEvent(db, params.conversationId, {
       type: 'message.sent',

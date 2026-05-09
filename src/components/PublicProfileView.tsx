@@ -65,6 +65,8 @@ export default function PublicProfileView({ profile, preview = false }: PublicPr
               <div className="flex flex-col gap-6 sm:flex-row">
                 <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#1A1D20]">
                   {fields.photoURL ? (
+                    // Public profile photos are user-supplied and may come from many hosts; document the ambiguity instead of permitting all remotes globally.
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={fields.photoURL} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <Icon className="h-12 w-12 text-[#E5B536]" />
@@ -202,7 +204,13 @@ function AgencyProfile({ profile }: { profile: PublicProfile }) {
               <Link key={member.uid} href={`/talent/${member.slug || member.uid}`} className="rounded-lg border border-white/10 bg-[#1A1D20] p-4 hover:border-[#E5B536]/60">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/5">
-                    {member.photoURL ? <img src={member.photoURL} alt="" className="h-full w-full object-cover" /> : <Sparkles className="h-4 w-4 text-[#E5B536]" />}
+                    {member.photoURL ? (
+                      <>
+                        {/* Roster member photos are user-supplied and not tied to a fixed host set. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={member.photoURL} alt="" className="h-full w-full object-cover" />
+                      </>
+                    ) : <Sparkles className="h-4 w-4 text-[#E5B536]" />}
                   </div>
                   <div>
                     <div className="font-semibold text-white">{member.displayName}</div>

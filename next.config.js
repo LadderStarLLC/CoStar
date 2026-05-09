@@ -4,7 +4,7 @@ const nextConfig = {
     NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
   },
   images: {
-    domains: ['images.clerk.dev', 'img.clerk.com'],
+    domains: ['images.clerk.dev', 'img.clerk.com', 'images.unsplash.com'],
   },
 };
 

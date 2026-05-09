@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   Mic,
@@ -21,10 +22,12 @@ export default function Home() {
         <section className="relative overflow-hidden pt-12 pb-16 md:pt-16 md:pb-24 bg-[#1A1D20]">
           {/* Ambient Photographic Background */}
           <div className="absolute inset-0 z-0 pointer-events-none">
-            <img 
+            <Image
               src="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2500&auto=format&fit=crop" 
               alt="" 
-              role="presentation"
+              aria-hidden="true"
+              fill
+              sizes="100vw"
               className="w-full h-full object-cover opacity-15"
             />
             {/* Fade out to the bottom and smooth edges */}
@@ -59,10 +62,12 @@ export default function Home() {
               <div className="flex flex-col p-8 rounded-2xl border border-white/10 bg-[#1A1D20] relative overflow-hidden group hover:border-[#5DC99B]/50 transition-all duration-500 hover:shadow-[0_0_40px_rgba(93,201,155,0.15)] hover:-translate-y-1">
                 {/* Ambient Image Layer */}
                 <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-40 transition-opacity duration-700 pointer-events-none">
-                  <img 
+                  <Image
                     src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=800&auto=format&fit=crop" 
                     alt="" 
-                    role="presentation"
+                    aria-hidden="true"
+                    fill
+                    sizes="(min-width: 1024px) 33vw, 100vw"
                     className="w-full h-full object-cover grayscale mix-blend-luminosity scale-105 group-hover:scale-100 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#1A1D20] via-[#1A1D20]/90 to-transparent" />
@@ -101,10 +106,12 @@ export default function Home() {
               <div className="flex flex-col p-8 rounded-2xl border border-white/10 bg-[#1A1D20] relative overflow-hidden group hover:border-[#E5B536]/50 transition-all duration-500 hover:shadow-[0_0_40px_rgba(229,181,54,0.1)] hover:-translate-y-1">
                 {/* Ambient Image Layer */}
                 <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-40 transition-opacity duration-700 pointer-events-none">
-                  <img 
+                  <Image
                     src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=800&auto=format&fit=crop" 
                     alt="" 
-                    role="presentation"
+                    aria-hidden="true"
+                    fill
+                    sizes="(min-width: 1024px) 33vw, 100vw"
                     className="w-full h-full object-cover grayscale mix-blend-luminosity scale-105 group-hover:scale-100 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#1A1D20] via-[#1A1D20]/90 to-transparent" />
@@ -142,10 +149,12 @@ export default function Home() {
               <div className="flex flex-col p-8 rounded-2xl border border-white/10 bg-[#1A1D20] relative overflow-hidden group hover:border-blue-500/50 transition-all duration-500 hover:shadow-[0_0_40px_rgba(59,130,246,0.15)] hover:-translate-y-1">
                 {/* Ambient Image Layer */}
                 <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-40 transition-opacity duration-700 pointer-events-none">
-                  <img 
+                  <Image
                     src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=800&auto=format&fit=crop" 
                     alt="" 
-                    role="presentation"
+                    aria-hidden="true"
+                    fill
+                    sizes="(min-width: 1024px) 33vw, 100vw"
                     className="w-full h-full object-cover grayscale mix-blend-luminosity scale-105 group-hover:scale-100 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#1A1D20] via-[#1A1D20]/90 to-transparent" />
@@ -187,10 +196,12 @@ export default function Home() {
         <section className="px-6 py-24 bg-[#1A1D20] border-t border-white/5 relative overflow-hidden">
           {/* Ambient Digital Background */}
           <div className="absolute inset-0 z-0 pointer-events-none opacity-5">
-            <img 
+            <Image
               src="https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?q=80&w=2000&auto=format&fit=crop" 
               alt="" 
-              role="presentation"
+              aria-hidden="true"
+              fill
+              sizes="100vw"
               className="w-full h-full object-cover grayscale mix-blend-luminosity"
             />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_#1A1D20_70%)]" />

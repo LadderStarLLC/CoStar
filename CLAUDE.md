@@ -588,6 +588,27 @@ through server APIs so they can validate permissions and write audit logs.
 
 ---
 
+## Data Deletion and Retention
+
+User-facing delete actions must be soft deletes. Do not remove Firebase Auth
+users, Firestore documents, storage objects, messages, recordings, profiles,
+jobs, sessions, connections, wallet records, audit records, or other user or
+operational information from normal product flows.
+
+Use metadata such as:
+- `deletedAt`
+- `deletedBy`
+- `deletionReason`
+- `deleteSource`
+
+Account deletion disables the Firebase Auth user and hides public profile
+surfaces, but retains account and operational records. Recording deletion hides
+playback and marks metadata as deleted, but must not delete private storage
+objects. Retention cleanup also marks records deleted rather than physically
+removing media or documents.
+
+---
+
 ## Deployment Configuration
 
 Platform: Vercel.
@@ -597,10 +618,17 @@ Required environment variables:
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY`
+- `PREVIEW_AUTH_SECRET` for secret-gated Vercel preview test sign-in
 - Firebase client config variables: `NEXT_PUBLIC_FIREBASE_*`
 
 `FIREBASE_PRIVATE_KEY` must have escaped `\n` converted to actual newlines at
 runtime. Existing route handlers use `.replace(/\\n/g, '\n')` for this.
+
+Vercel preview deployments may expose a secret-gated test sign-in at
+`/sign-in?preview=1`. Preview auth must remain disabled unless
+`VERCEL_ENV=preview` and `PREVIEW_AUTH_SECRET` are both present. The preview
+persona is a non-privileged `business` account and must not grant admin or owner
+access.
 
 ---
 
