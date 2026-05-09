@@ -32,6 +32,7 @@ export default function AppSidebar({
   onToggleCollapsed,
 }: AppSidebarProps) {
   const pathname = usePathname();
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const accountType = user?.accountType ?? null;
   const items = useMemo(() => {
     const seen = new Set<string>();
@@ -91,28 +92,86 @@ export default function AppSidebar({
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4" aria-label="Sidebar navigation">
         {items.map((item) => {
           const Icon = item.icon;
-          const active = isActivePath(pathname, item.href);
+          const hasChildren = item.children && item.children.length > 0;
+          const isChildActive = hasChildren && item.children!.some((child) => isActivePath(pathname, child.href));
+          const active = isActivePath(pathname, item.href) || isChildActive;
           const primary = item.kind === 'primary';
           const admin = item.kind === 'admin';
+          const isExpanded = expandedGroups[item.label];
 
-          return (
+          const handleItemClick = (e: React.MouseEvent) => {
+            if (hasChildren) {
+              e.preventDefault();
+              if (compact) {
+                onToggleCollapsed();
+                setExpandedGroups((prev) => ({ ...prev, [item.label]: true }));
+              } else {
+                setExpandedGroups((prev) => ({ ...prev, [item.label]: !prev[item.label] }));
+              }
+            } else {
+              onCloseMobile();
+            }
+          };
+
+          const parentLink = (
             <Link
-              key={`${item.href}-${item.label}`}
+              key={`${item.href}-${item.label}-parent`}
               href={item.href}
-              onClick={onCloseMobile}
+              onClick={handleItemClick}
               title={compact ? item.label : undefined}
               className={cn(
                 'group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition',
                 compact && 'justify-center px-2',
-                active && !primary && !admin && 'bg-white/10 text-[#F4F5F7]',
-                !active && !primary && !admin && 'text-[#F4F5F7]/68 hover:bg-white/5 hover:text-[#F4F5F7]',
+                active && !primary && !admin && !hasChildren && 'bg-white/10 text-[#F4F5F7]',
+                (!active || hasChildren) && !primary && !admin && 'text-[#F4F5F7]/68 hover:bg-white/5 hover:text-[#F4F5F7]',
                 primary && 'ladderstar-action text-[#1A1D20] shadow-[0_16px_32px_rgba(229,181,54,0.18)] hover:brightness-110',
                 admin && 'border border-[#E5B536]/25 bg-[#E5B536]/10 text-[#E5B536] hover:border-[#E5B536]/45',
               )}
             >
               <Icon className={cn('h-5 w-5 shrink-0', primary && 'text-[#1A1D20]')} />
-              {!compact && <span className="truncate">{item.label}</span>}
+              {!compact && (
+                <>
+                  <span className="truncate flex-1">{item.label}</span>
+                  {hasChildren && (
+                    isExpanded ? (
+                      <ChevronDown className="h-4 w-4 shrink-0 text-[#F4F5F7]/48" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 shrink-0 text-[#F4F5F7]/48" />
+                    )
+                  )}
+                </>
+              )}
             </Link>
+          );
+
+          if (!hasChildren) return parentLink;
+
+          return (
+            <div key={`${item.href}-${item.label}-container`} className="space-y-1">
+              {parentLink}
+              {!compact && isExpanded && (
+                <div className="space-y-1 pl-4">
+                  {item.children!.map((child) => {
+                    const ChildIcon = child.icon;
+                    const childActive = isActivePath(pathname, child.href);
+                    return (
+                      <Link
+                        key={`${child.href}-${child.label}`}
+                        href={child.href}
+                        onClick={onCloseMobile}
+                        className={cn(
+                          'group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition',
+                          childActive ? 'bg-white/10 text-[#F4F5F7]' : 'text-[#F4F5F7]/68 hover:bg-white/5 hover:text-[#F4F5F7]',
+                        )}
+                      >
+                        <ChildIcon className="h-5 w-5 shrink-0" />
+                        <span className="truncate">{child.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>

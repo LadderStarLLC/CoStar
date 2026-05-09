@@ -7,12 +7,12 @@ import {
   setDoc,
   updateDoc,
   serverTimestamp,
-  deleteDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { AccountType } from './profile';
+import { isSoftDeleted } from './softDelete';
 
-export type ConnectionStatus = 'pending' | 'accepted' | 'rejected';
+export type ConnectionStatus = 'pending' | 'accepted' | 'rejected' | 'removed';
 
 export interface ConnectionRecord {
   id: string;
@@ -23,6 +23,8 @@ export interface ConnectionRecord {
   status: ConnectionStatus;
   createdAt: any;
   updatedAt: any;
+  deletedAt?: any;
+  deletedBy?: string | null;
 }
 
 export interface Connection {
@@ -49,14 +51,24 @@ export async function getConnection(viewerId: string, targetId: string): Promise
   // Check if viewer requested target
   const q1 = query(connectionsRef, where('requesterId', '==', viewerId), where('targetId', '==', targetId));
   const snap1 = await getDocs(q1);
-  if (!snap1.empty) return { id: snap1.docs[0].id, ...snap1.docs[0].data() } as ConnectionRecord;
+  const firstMatch = snap1.docs
+    .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as ConnectionRecord))
+    .find(isActiveConnection);
+  if (firstMatch) return firstMatch;
 
   // Check if target requested viewer
   const q2 = query(connectionsRef, where('requesterId', '==', targetId), where('targetId', '==', viewerId));
   const snap2 = await getDocs(q2);
-  if (!snap2.empty) return { id: snap2.docs[0].id, ...snap2.docs[0].data() } as ConnectionRecord;
+  const secondMatch = snap2.docs
+    .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as ConnectionRecord))
+    .find(isActiveConnection);
+  if (secondMatch) return secondMatch;
 
   return null;
+}
+
+export function isActiveConnection(connection: ConnectionRecord): boolean {
+  return !isSoftDeleted(connection) && connection.status !== 'removed';
 }
 
 export async function getConnectionStatus(viewerId: string, targetId: string): Promise<Connection | null> {
@@ -131,5 +143,12 @@ export async function updateConnectionStatus(connectionId: string, status: Conne
 
 export async function removeConnection(connectionId: string): Promise<void> {
   if (!db) throw new Error('Firestore not initialized');
-  await deleteDoc(doc(db, 'connections', connectionId));
+  await updateDoc(doc(db, 'connections', connectionId), {
+    status: 'removed',
+    deletedAt: serverTimestamp(),
+    deletedBy: null,
+    deletionReason: 'User removed connection.',
+    deleteSource: 'user',
+    updatedAt: serverTimestamp(),
+  });
 }

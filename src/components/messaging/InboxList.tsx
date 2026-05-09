@@ -50,7 +50,11 @@ export default function InboxList({ conversations, currentUserId, activeConversa
               {conv.conversationType === 'ai' ? (
                 <Bot size={18} className="text-amber-400" />
               ) : otherParticipant?.avatarUrl ? (
-                <img src={otherParticipant.avatarUrl} alt={otherParticipant.name} className="h-10 w-10 rounded-full object-cover" />
+                <>
+                  {/* Messaging avatars are user-controlled URLs; keep img until we settle on a bounded remote image policy. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={otherParticipant.avatarUrl} alt={otherParticipant.name} className="h-10 w-10 rounded-full object-cover" />
+                </>
               ) : (
                 <span className="text-sm font-medium text-slate-300">
                   {otherParticipant?.name?.charAt(0) || '?'}

@@ -2,18 +2,23 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Chrome, Github, Mail } from "lucide-react";
+import { ArrowLeft, Chrome, Github, Mail, ShieldCheck } from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
+import { isClientVercelPreview } from "@/lib/deploymentMode";
 
 export default function SignInPage() {
-  const { user, signInWithGoogle, signInWithGithub, signInWithEmail, loading } = useAuth();
+  const { user, signInWithGoogle, signInWithGithub, signInWithEmail, signInWithPreview, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [previewSecret, setPreviewSecret] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const showPreviewAuth = searchParams.get("preview") === "1" && isClientVercelPreview(process.env);
 
   useEffect(() => {
     if (!loading && user) {
@@ -29,6 +34,18 @@ export default function SignInPage() {
       await signInWithEmail(email, password);
     } catch (err: any) {
       setError(err.message || "Failed to sign in. Please check your credentials.");
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePreviewSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+    try {
+      await signInWithPreview(previewSecret);
+    } catch (err: any) {
+      setError(err.message || "Failed to start preview session.");
       setIsSubmitting(false);
     }
   };
@@ -57,6 +74,31 @@ export default function SignInPage() {
           <h1 className="text-3xl font-black tracking-tight text-[#F4F5F7] mb-2">Welcome Back</h1>
           <p className="text-[#F4F5F7]/62">Sign in to continue to LadderStar</p>
         </div>
+
+        {showPreviewAuth && (
+          <form onSubmit={handlePreviewSignIn} className="mb-6 space-y-3 rounded-lg border border-[#5DC99B]/30 bg-[#5DC99B]/10 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[#5DC99B]">
+              <ShieldCheck size={18} />
+              Vercel preview testing
+            </div>
+            <input
+              type="password"
+              value={previewSecret}
+              onChange={(e) => setPreviewSecret(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-black/20 p-3 text-white placeholder-white/30 focus:border-[#5DC99B] focus:outline-none"
+              placeholder="Preview access secret"
+              required
+            />
+            <button
+              type="submit"
+              disabled={isSubmitting || !previewSecret.trim()}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#5DC99B] px-4 py-3 font-bold text-[#1A1D20] transition hover:brightness-110 disabled:opacity-50"
+            >
+              <ShieldCheck size={18} />
+              {isSubmitting ? "Starting preview..." : "Enter preview as Employer"}
+            </button>
+          </form>
+        )}
 
         {showEmailForm ? (
           <form onSubmit={handleEmailSignIn} className="space-y-4">

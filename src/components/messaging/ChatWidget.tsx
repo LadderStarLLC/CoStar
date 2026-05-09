@@ -200,7 +200,11 @@ export default function ChatWidget() {
                   {activeConv?.conversationType === 'ai' ? (
                     <Bot size={15} className="text-amber-400" />
                   ) : otherParticipant?.avatarUrl ? (
-                    <img src={otherParticipant.avatarUrl} alt={otherParticipant.name} className="h-7 w-7 rounded-full object-cover" />
+                    <>
+                      {/* Messaging avatars are user-controlled URLs; keep img until we settle on a bounded remote image policy. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={otherParticipant.avatarUrl} alt={otherParticipant.name} className="h-7 w-7 rounded-full object-cover" />
+                    </>
                   ) : (
                     <span className="text-[10px] font-medium text-slate-300">
                       {otherParticipant?.name?.charAt(0) || '?'}
@@ -330,7 +334,11 @@ function SearchResults({
             {result.type === 'ai' || (result.type === 'conversation' && result.conversationType === 'ai') ? (
               <Bot size={18} className="text-amber-400" />
             ) : result.image ? (
-              <img src={result.image} alt={result.title} className="h-10 w-10 rounded-full object-cover" />
+              <>
+                {/* Search result thumbnails are mixed remote sources; keep img until we define an allowlist strategy. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={result.image} alt={result.title} className="h-10 w-10 rounded-full object-cover" />
+              </>
             ) : (
               <span className="text-sm font-medium text-slate-300">{result.title.charAt(0)}</span>
             )}

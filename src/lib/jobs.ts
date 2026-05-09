@@ -3,7 +3,6 @@ import {
   doc,
   addDoc,
   updateDoc,
-  deleteDoc,
   getDoc,
   getDocs,
   query,
@@ -163,6 +162,10 @@ export interface JobData {
   // Status & Metadata
   status?: 'draft' | 'active' | 'paused' | 'closed' | 'filled';
   visibility?: 'public' | 'private' | 'unlisted';
+  deletedAt?: any;
+  deletedBy?: string | null;
+  deletionReason?: string | null;
+  deleteSource?: 'user' | 'admin' | 'retention' | 'preview';
 
   // SEO & Display
   category?: string;
@@ -642,13 +645,17 @@ export async function updateJob(jobId: string, updates: Partial<JobData>): Promi
 }
 
 // Soft delete a job (mark as closed)
-export async function deleteJob(jobId: string): Promise<void> {
+export async function deleteJob(jobId: string, deletedBy?: string | null): Promise<void> {
   if (!db) throw new Error('Firestore not initialized');
 
   const jobRef = doc(db, 'jobs', jobId);
   await updateDoc(jobRef, {
     status: 'closed',
     closedAt: serverTimestamp(),
+    deletedAt: serverTimestamp(),
+    deletedBy: deletedBy ?? null,
+    deletionReason: 'Employer deleted job from dashboard.',
+    deleteSource: 'user',
     updatedAt: serverTimestamp(),
   });
 }
@@ -852,10 +859,12 @@ export async function getJobsByEmployer(employerId: string): Promise<JobData[]> 
   );
 
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({
-    jobId: doc.id,
-    ...doc.data(),
-  })) as JobData[];
+  return snapshot.docs
+    .map(doc => ({
+      jobId: doc.id,
+      ...doc.data(),
+    }) as JobData)
+    .filter((job) => !job.deletedAt) as JobData[];
 }
 
 // Get jobs by company ID

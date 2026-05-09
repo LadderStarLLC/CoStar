@@ -7,9 +7,10 @@ import {
   getDoc,
   getDocs,
   setDoc,
-  deleteDoc,
+  updateDoc,
   orderBy,
   query,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { stripUndefinedFields } from '@/lib/audition/sessionSerialization';
@@ -34,7 +35,9 @@ export function useAuditionSessions(uid: string | null) {
       orderBy('date', 'desc'),
     );
     const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data() as AuditionSession);
+    return snap.docs
+      .map((d) => d.data() as AuditionSession)
+      .filter((session) => session.status !== 'deleted' && !session.deletedAt);
   }, [uid]);
 
   const getSession = useCallback(
@@ -51,7 +54,13 @@ export function useAuditionSessions(uid: string | null) {
   const deleteSession = useCallback(
     async (sessionId: string) => {
       if (!uid || !db) return;
-      await deleteDoc(doc(db, 'auditionSessions', uid, 'sessions', sessionId));
+      await updateDoc(doc(db, 'auditionSessions', uid, 'sessions', sessionId), {
+        status: 'deleted',
+        deletedAt: serverTimestamp(),
+        deletedBy: uid,
+        deletionReason: 'User deleted audition session from history.',
+        deleteSource: 'user',
+      });
     },
     [uid],
   );

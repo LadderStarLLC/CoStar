@@ -3,6 +3,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { getAdminApp } from './firebaseAdmin';
+import { buildSoftDeleteMetadata } from './softDelete';
 
 export const SCREENING_RECORDING_CONSENT_VERSION = 'business-screening-recording-v1';
 export const SCREENING_RECORDING_CONSENT_TEXT =
@@ -102,12 +103,6 @@ export async function uploadPrivateRecording(storageKey: string, data: Buffer, m
   });
 }
 
-export async function deletePrivateRecording(storageKey?: string | null) {
-  if (!storageKey) return;
-  const bucket = getStorage(getAdminApp()).bucket();
-  await bucket.file(storageKey).delete({ ignoreNotFound: true });
-}
-
 export async function getPrivateRecordingSignedUrl(storageKey: string) {
   const bucket = getStorage(getAdminApp()).bucket();
   const [url] = await bucket.file(storageKey).getSignedUrl({
@@ -129,10 +124,15 @@ export async function selectExpiredScreeningRecordings(db: Firestore, now = new 
 export async function cleanupExpiredScreeningRecordings(db: Firestore) {
   const expired = await selectExpiredScreeningRecordings(db);
   for (const item of expired) {
-    await deletePrivateRecording(item.data.storageKey ?? null);
-    await db.collection('businessScreeningRecordings').doc(item.id).set({
-      status: 'deleted',
+    const metadata = buildSoftDeleteMetadata({
       deletedAt: FieldValue.serverTimestamp(),
+      deletedBy: null,
+      deletionReason: 'Recording retention window expired.',
+      deleteSource: 'retention',
+    });
+    await db.collection('businessScreeningRecordings').doc(item.id).set({
+      ...metadata,
+      status: 'deleted',
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
     await writeRecordingEvent(db, {

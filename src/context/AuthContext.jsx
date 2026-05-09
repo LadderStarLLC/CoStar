@@ -5,6 +5,7 @@ import {
     GoogleAuthProvider,
     GithubAuthProvider,
     signInWithPopup,
+    signInWithCustomToken,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signOut,
@@ -91,6 +92,22 @@ export const AuthProvider = ({ children }) => {
             console.error("Error signing in with email:", error);
             throw error;
         }
+    };
+
+    const signInWithPreview = async (secret) => {
+        if (!auth) {
+            throw new Error("Firebase Auth not initialized.");
+        }
+        const response = await fetch('/api/preview-auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ secret }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(payload.error || "Preview sign-in failed.");
+        }
+        await signInWithCustomToken(auth, payload.customToken);
     };
 
     const signUpWithEmail = async (email, password, requestedType = null) => {
@@ -188,6 +205,7 @@ export const AuthProvider = ({ children }) => {
         signInWithGoogle,
         signInWithGithub,
         signInWithEmail,
+        signInWithPreview,
         signUpWithEmail,
         logout,
         loading

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GithubAuthProvider, deleteUser, linkWithPopup, updateProfile } from "firebase/auth";
-import { deleteDoc, doc, onSnapshot } from "firebase/firestore";
+import { GithubAuthProvider, linkWithPopup, signOut, updateProfile } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
 import { Loader2, Save, Github, Linkedin, CheckCircle2, AlertCircle, Trash2, Camera, Palette, UserCog, Eye, Wallet, Lock, Shield, Send } from "lucide-react";
 import NavHeader from "@/components/NavHeader";
 import { useAuth } from "@/context/AuthContext";
@@ -414,13 +414,13 @@ export default function AccountSettingsPage() {
   };
 
   const deleteAccount = async () => {
-    if (!auth?.currentUser || !user || !db) {
+    if (!auth?.currentUser || !user) {
       setError("Sign in again before deleting your account.");
       return;
     }
 
     const confirmed = window.confirm(
-      "Delete this LadderStar account? This removes your profile and lets this email choose a new account type only after signing up again."
+      "Delete this LadderStar account? Your profile will be hidden and your sign-in will be disabled, but records are retained for legal and operational reasons."
     );
     if (!confirmed) return;
 
@@ -429,8 +429,17 @@ export default function AccountSettingsPage() {
     setMessage(null);
 
     try {
-      await deleteDoc(doc(db, "users", user.uid));
-      await deleteUser(auth.currentUser);
+      const token = await user.getIdToken();
+      const response = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason: "User requested account deletion from settings." }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      await signOut(auth);
       router.push("/");
     } catch (err: any) {
       console.error("Failed to delete account:", err);
@@ -713,6 +722,8 @@ export default function AccountSettingsPage() {
             <div className="mb-6 flex items-center gap-4">
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border border-white/10 bg-slate-900 relative">
                 {auth?.currentUser?.photoURL ? (
+                  // User avatars can come from arbitrary identity-provider domains; keep raw img until a safe remote-image allowlist exists.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={auth.currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <Camera className="w-8 h-8 text-slate-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />

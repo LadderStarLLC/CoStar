@@ -277,12 +277,14 @@ export function AuditionPage({ jobId, mode = 'job' }: AuditionPageProps) {
       [isConnected, sendAudioChunk],
     ),
   });
+  const preloadMicPermission = audioCapture.preloadPermission;
 
   useEffect(() => {
     if (phase === 'setup') {
-      audioCapture.preloadPermission();
+      // Depend on the stable callback instead of the hook object to avoid stale-method ambiguity.
+      preloadMicPermission();
     }
-  }, [phase, audioCapture.preloadPermission]);
+  }, [phase, preloadMicPermission]);
 
   const handleStartAudition = useCallback(async () => {
     setPhase('requesting-permission');

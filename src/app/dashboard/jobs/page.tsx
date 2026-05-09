@@ -275,7 +275,7 @@ export default function EmployerJobsPage() {
     if (!confirm('Are you sure you want to delete this job?')) return;
 
     try {
-      await deleteJob(jobId);
+      await deleteJob(jobId, user?.uid ?? null);
       // Refresh jobs
       if (user) {
         const jobsData = await getJobsByEmployer(user.uid);
