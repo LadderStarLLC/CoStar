@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Coins, Search, X } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight, Coins, Search, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import BrandLogo from './BrandLogo';
 import { getNavigationItems, type NavigationUser } from './navigation';
 import { cn } from '@/lib/utils';
