@@ -2,30 +2,43 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Briefcase, ChevronLeft, ChevronRight, Mic, Users } from 'lucide-react';
 
 const slides = [
   {
     id: 1,
-    title: "AI Interview Practice",
-    description: "Rehearse with Gemini Live API and get real-time voice feedback on your performance.",
+    profileType: "Talent",
+    title: "Practice, apply, and get discovered",
+    description: "Build a public profile, rehearse with AI interview practice, and find high-signal roles curated for ambitious talent.",
     image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=2000&auto=format&fit=crop",
     accent: "#5DC99B",
+    cta: "Join as Talent",
+    ctaHref: "/sign-up?type=talent",
+    ctaIcon: Mic,
   },
   {
     id: 2,
-    title: "Curated Job Board",
-    description: "Skip the noise with hand-picked roles from top companies across the globe.",
+    profileType: "Business",
+    title: "Hire with more signal and less noise",
+    description: "Post roles, screen candidates, and manage business hiring workflows from one LadderStar profile.",
     image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2000&auto=format&fit=crop",
     accent: "#E5B536",
+    cta: "Start Hiring",
+    ctaHref: "/sign-up?type=business",
+    ctaIcon: Briefcase,
   },
   {
     id: 3,
-    title: "Professional Profiles",
-    description: "Control your narrative with a public-facing profile that showcases your real skills.",
+    profileType: "Agency",
+    title: "Represent talent and grow your roster",
+    description: "Showcase your agency, organize talent relationships, and discover the next candidates your clients need.",
     image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2000&auto=format&fit=crop",
     accent: "#60A5FA",
+    cta: "Build Your Roster",
+    ctaHref: "/sign-up?type=agency",
+    ctaIcon: Users,
   },
 ];
 
@@ -54,6 +67,7 @@ export default function ImageMarquee() {
   }, [next]);
 
   const slide = slides[index];
+  const CtaIcon = slide.ctaIcon;
 
   const variants = {
     enter: (dir: number) => ({ opacity: 0, x: dir > 0 ? 80 : -80 }),
@@ -96,15 +110,32 @@ export default function ImageMarquee() {
           <div className="relative z-10 flex flex-col justify-center h-full max-w-7xl mx-auto px-6 md:px-12 py-16">
             <div className="max-w-2xl">
               <div
-                className="inline-block h-1 w-12 rounded-full mb-8"
+                className="inline-block h-1 w-12 rounded-full mb-6"
                 style={{ backgroundColor: slide.accent }}
               />
+              <p
+                className="mb-3 text-sm font-black uppercase tracking-[0.3em]"
+                style={{ color: slide.accent }}
+              >
+                {slide.profileType}
+              </p>
               <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-5 text-[#F4F5F7] drop-shadow-lg leading-[1.1]">
                 {slide.title}
               </h2>
               <p className="text-lg md:text-xl text-[#F4F5F7]/75 leading-relaxed max-w-lg font-medium">
                 {slide.description}
               </p>
+              <Link
+                href={slide.ctaHref}
+                className="mt-9 inline-flex items-center gap-3 rounded-xl px-7 py-4 text-base md:text-lg font-black text-[#0D0F11] shadow-xl transition-all hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-white/80 focus:ring-offset-2 focus:ring-offset-[#0D0F11]"
+                style={{
+                  backgroundColor: slide.accent,
+                  boxShadow: `0 20px 45px ${slide.accent}35`,
+                }}
+              >
+                <CtaIcon className="h-5 w-5" aria-hidden="true" />
+                {slide.cta}
+              </Link>
             </div>
           </div>
         </motion.div>
