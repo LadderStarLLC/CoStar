@@ -39,7 +39,7 @@ const accountTypeOptions: Array<{
 ];
 
 export default function SignUpPage() {
-  const { user, signInWithGoogle, signInWithGithub, signUpWithEmail, loading } = useAuth();
+  const { user, signInWithGoogle, signInWithGithub, signUpWithEmail, recreateDeletedAccountWithEmail, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedTypeParam = searchParams.get("type");
@@ -67,7 +67,21 @@ export default function SignUpPage() {
     try {
       await signUpWithEmail(email, password, requestedType);
     } catch (err: any) {
-      setError(err.message || "Failed to create account. Please try again.");
+      const canTryDeletedAccountRecreation =
+        requestedType && (err?.code === "auth/email-already-in-use" || err?.code === "auth/user-disabled");
+
+      if (canTryDeletedAccountRecreation) {
+        try {
+          await recreateDeletedAccountWithEmail(email, password, requestedType);
+          return;
+        } catch (reactivationErr: any) {
+          setError(reactivationErr.message || "This email already has an account. Sign in, or recreate it with the original password if it was deleted.");
+        }
+      } else if (err?.code === "auth/user-disabled") {
+        setError("This LadderStar account was deleted. Select a profile type here and use the same sign-in method to recreate it.");
+      } else {
+        setError(err.message || "Failed to create account. Please try again.");
+      }
       setIsSubmitting(false);
     }
   };

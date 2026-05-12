@@ -17,7 +17,7 @@ import { createUserSlug } from './profileSlug';
 
 export type AccountType = 'talent' | 'business' | 'agency' | 'admin' | 'owner';
 export type SocialPlatform = 'github' | 'linkedin' | 'email';
-export type AccountTypeSource = 'signup' | 'legacy' | 'migration' | 'system';
+export type AccountTypeSource = 'signup' | 'legacy' | 'migration' | 'system' | 'reactivation';
 export type PublicAccountType = 'talent' | 'business' | 'agency';
 export type AppearanceScheme = 'ladderstar' | 'light' | 'midnight' | 'high-contrast';
 export type BillingStatus = 'free' | 'active' | 'past_due' | 'canceled';

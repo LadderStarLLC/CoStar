@@ -607,6 +607,16 @@ playback and marks metadata as deleted, but must not delete private storage
 objects. Retention cleanup also marks records deleted rather than physically
 removing media or documents.
 
+Self-deleted non-privileged accounts may be recreated through the self-service
+reactivation flow. `POST /api/account/reactivate-deleted` may temporarily
+re-enable Firebase Auth only when `users/{uid}` clearly has user-delete
+metadata (`deletedAt`, `deleteSource: "user"`, and `disabled: true`) and the
+account is not `admin` or `owner`. The profile remains deleted/disabled until
+the user successfully signs in and `/api/account/bootstrap` verifies the
+Firebase ID token. During that verified recreation only, account type
+immutability is reset and the user may choose any public account type:
+`talent`, `business`, or `agency`.
+
 ---
 
 ## Deployment Configuration

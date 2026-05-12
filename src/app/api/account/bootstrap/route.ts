@@ -4,6 +4,12 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import {
+  buildRecreatedAccountProfileUpdate,
+  isSelfDeletedAccount,
+  resolveBootstrapAccountType,
+  resolveSelfDeletedReactivationType,
+} from '@/lib/accountReactivation';
+import {
   getAdminDb,
   isOwnerEmail,
   jsonError,
@@ -28,9 +34,15 @@ export async function POST(req: NextRequest) {
     const email = normalizeAdminEmail(decoded.email);
     const now = FieldValue.serverTimestamp();
     const forcedOwner = isOwnerEmail(email);
-    const nextAccountType: AccountType | null = forcedOwner
-      ? 'owner'
-      : existing.accountType === 'user' ? 'talent' : existing.accountType ?? requestedType ?? null;
+    const reactivationType = forcedOwner
+      ? null
+      : resolveSelfDeletedReactivationType(existing, requestedType);
+    const nextAccountType: AccountType | null = resolveBootstrapAccountType({
+      forcedOwner,
+      existingAccountType: existing.accountType,
+      requestedType,
+      reactivationType,
+    });
 
     const baseData = {
       uid: decoded.uid,
@@ -83,7 +95,15 @@ export async function POST(req: NextRequest) {
       : {};
 
     if (snap.exists) {
-      await userRef.update({ ...baseData, ...accountData, ...freeEntitlementData });
+      if (!forcedOwner && isSelfDeletedAccount(existing) && !reactivationType) {
+        throw new Response(JSON.stringify({ error: 'Deleted account reactivation request has expired. Start account recreation again.' }), { status: 403 });
+      }
+
+      const reactivationData = reactivationType
+        ? buildRecreatedAccountProfileUpdate(reactivationType, FieldValue.delete(), now)
+        : {};
+
+      await userRef.update({ ...baseData, ...accountData, ...freeEntitlementData, ...reactivationData });
     } else {
       await userRef.set({
         ...baseData,
