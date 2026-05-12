@@ -21,6 +21,12 @@ import {
     isAccountType,
 } from '@/lib/profile';
 
+function getDeletedAccountMessage(requestedType) {
+    return requestedType
+        ? "This deleted LadderStar account can be recreated. Use the same sign-in method and password to confirm you own it."
+        : "This LadderStar account was deleted. To recreate it, choose Sign up, select a profile type, and use the same sign-in method.";
+}
+
 async function bootstrapAccount(currentUser, requestedType) {
     const token = await currentUser.getIdToken();
     const response = await fetch('/api/account/bootstrap', {
@@ -37,6 +43,19 @@ async function bootstrapAccount(currentUser, requestedType) {
     }
 
     return response.json();
+}
+
+async function requestDeletedAccountReactivation(email, requestedType) {
+    const response = await fetch('/api/account/reactivate-deleted', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, requestedType }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(payload.error || 'This account cannot be recreated through self-service.');
+    }
+    return payload;
 }
 
 const AuthContext = createContext();
@@ -60,7 +79,24 @@ export const AuthProvider = ({ children }) => {
             await signInWithPopup(auth, provider);
         } catch (error) {
             console.error("Error signing in with Google:", error);
-            alert("Sign-In Error: " + error.message);
+            if (error?.code === 'auth/user-disabled') {
+                const disabledEmail = error?.customData?.email || error?.email;
+                if (requestedType && disabledEmail) {
+                    try {
+                        await requestDeletedAccountReactivation(disabledEmail, requestedType);
+                        window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
+                        await signInWithPopup(auth, provider);
+                        return;
+                    } catch (reactivationError) {
+                        console.error("Error recreating deleted Google account:", reactivationError);
+                        alert(reactivationError.message || getDeletedAccountMessage(requestedType));
+                        return;
+                    }
+                }
+                alert(getDeletedAccountMessage(requestedType));
+            } else {
+                alert("Sign-In Error: " + error.message);
+            }
         }
     };
 
@@ -77,7 +113,24 @@ export const AuthProvider = ({ children }) => {
             await signInWithPopup(auth, provider);
         } catch (error) {
             console.error("Error signing in with Github:", error);
-            alert("Sign-In Error: " + error.message);
+            if (error?.code === 'auth/user-disabled') {
+                const disabledEmail = error?.customData?.email || error?.email;
+                if (requestedType && disabledEmail) {
+                    try {
+                        await requestDeletedAccountReactivation(disabledEmail, requestedType);
+                        window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
+                        await signInWithPopup(auth, provider);
+                        return;
+                    } catch (reactivationError) {
+                        console.error("Error recreating deleted Github account:", reactivationError);
+                        alert(reactivationError.message || getDeletedAccountMessage(requestedType));
+                        return;
+                    }
+                }
+                alert(getDeletedAccountMessage(requestedType));
+            } else {
+                alert("Sign-In Error: " + error.message);
+            }
         }
     };
 
@@ -122,6 +175,25 @@ export const AuthProvider = ({ children }) => {
             await createUserWithEmailAndPassword(auth, email, password);
         } catch (error) {
             console.error("Error signing up with email:", error);
+            throw error;
+        }
+    };
+
+    const recreateDeletedAccountWithEmail = async (email, password, requestedType) => {
+        if (!auth) {
+            throw new Error("Firebase Auth not initialized.");
+        }
+        if (!requestedType || !isAccountType(requestedType)) {
+            throw new Error("Choose a public account type before recreating this account.");
+        }
+        await requestDeletedAccountReactivation(email, requestedType);
+        window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            if (error?.code === 'auth/wrong-password' || error?.code === 'auth/invalid-credential') {
+                throw new Error("This deleted account is ready to recreate. Sign in with the original password to confirm you own it.");
+            }
             throw error;
         }
     };
@@ -207,6 +279,7 @@ export const AuthProvider = ({ children }) => {
         signInWithEmail,
         signInWithPreview,
         signUpWithEmail,
+        recreateDeletedAccountWithEmail,
         logout,
         loading
     };

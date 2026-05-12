@@ -33,7 +33,11 @@ export default function SignInPage() {
     try {
       await signInWithEmail(email, password);
     } catch (err: any) {
-      setError(err.message || "Failed to sign in. Please check your credentials.");
+      if (err?.code === "auth/user-disabled") {
+        setError("This LadderStar account was deleted. To recreate it, choose Sign up, select a profile type, and use the same sign-in method.");
+      } else {
+        setError(err.message || "Failed to sign in. Please check your credentials.");
+      }
       setIsSubmitting(false);
     }
   };
