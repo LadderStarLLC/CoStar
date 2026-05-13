@@ -13,11 +13,9 @@ import {
   User,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { isPrivilegedAccountType, type AccountType } from '@/lib/profile';
+import { isPrivilegedAccountType, needsProfileOnboarding, type UserProfile } from '@/lib/profile';
 
-export type NavigationUser = {
-  accountType?: AccountType | null;
-} | null;
+export type NavigationUser = Partial<UserProfile> | null;
 
 export type NavigationItem = {
   href: string;
@@ -32,8 +30,8 @@ export function getProfileHref(user: NavigationUser) {
 
   if (!user) return '/sign-in';
   if (isPrivilegedAccountType(accountType)) return '/account';
-  if (accountType) return '/profile';
-  return '/onboarding';
+  if (needsProfileOnboarding(user)) return '/onboarding';
+  return '/profile';
 }
 
 export function getNavigationItems(user: NavigationUser): NavigationItem[] {

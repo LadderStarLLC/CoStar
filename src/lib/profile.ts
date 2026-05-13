@@ -1120,6 +1120,21 @@ export function getCurrentAccountPath(profile: Partial<UserProfile> | null | und
   return profile?.accountType ?? null;
 }
 
+export function needsProfileOnboarding(profile: Partial<UserProfile> | null | undefined): boolean {
+  if (!profile?.accountType) return true;
+  if (isPrivilegedAccountType(profile.accountType)) return false;
+
+  if (profile.accountType === 'business') {
+    return !Boolean(profile.businessProfile?.companyName?.trim());
+  }
+
+  if (profile.accountType === 'agency') {
+    return !Boolean(profile.agencyProfile?.agencyName?.trim());
+  }
+
+  return !Boolean(profile.headline?.trim());
+}
+
 export function createPreviewProfile(
   operator: Partial<UserProfile>,
   accountType: PublicAccountType

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Building2, Chrome, Github, Mail, User, Users2 } from "lucide-react";
-import { accountTypeLabels, normalizeAccountType, type AccountType } from "@/lib/profile";
+import { accountTypeLabels, needsProfileOnboarding, normalizeAccountType, type AccountType } from "@/lib/profile";
 import BrandLogo from "@/components/BrandLogo";
 
 const accountTypeOptions: Array<{
@@ -53,10 +53,11 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitLabel, setSubmitLabel] = useState("Creating account...");
 
   useEffect(() => {
     if (!loading && user) {
-      router.push(user.accountType === "admin" || user.accountType === "owner" ? "/admin" : user.accountType ? "/profile" : "/onboarding");
+      router.push(user.accountType === "admin" || user.accountType === "owner" ? "/admin" : needsProfileOnboarding(user) ? "/onboarding" : "/profile");
     }
   }, [user, loading, router]);
 
@@ -64,6 +65,7 @@ export default function SignUpPage() {
     e.preventDefault();
     setError("");
     setIsSubmitting(true);
+    setSubmitLabel("Creating account...");
     try {
       await signUpWithEmail(email, password, requestedType);
     } catch (err: any) {
@@ -72,7 +74,9 @@ export default function SignUpPage() {
 
       if (canTryDeletedAccountRecreation) {
         try {
+          setSubmitLabel("Preparing recreation...");
           await recreateDeletedAccountWithEmail(email, password, requestedType);
+          setSubmitLabel("Confirming ownership...");
           return;
         } catch (reactivationErr: any) {
           setError(reactivationErr.message || "This email already has an account. Sign in, or recreate it with the original password if it was deleted.");
@@ -120,7 +124,7 @@ export default function SignUpPage() {
           </h1>
           <p className="text-[#F4F5F7]/62">
             {requestedType
-              ? "This account type is permanent for this email once the account is created."
+              ? "Deleted accounts can choose a new Talent, Employer, or Agency path after confirming ownership."
               : "Select the experience that matches how you will use LadderStar."}
           </p>
         </div>
@@ -161,7 +165,7 @@ export default function SignUpPage() {
                 disabled={isSubmitting}
                 className="w-full py-3 mt-4 ladderstar-action text-[#1A1D20] rounded-lg font-bold hover:brightness-110 transition disabled:opacity-50"
               >
-                {isSubmitting ? "Creating account..." : "Sign Up"}
+                {isSubmitting ? submitLabel : "Sign Up"}
               </button>
             </form>
           ) : (

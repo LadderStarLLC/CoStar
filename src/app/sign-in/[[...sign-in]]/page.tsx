@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Chrome, Github, Mail, ShieldCheck } from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
 import { isClientVercelPreview } from "@/lib/deploymentMode";
+import { needsProfileOnboarding } from "@/lib/profile";
 
 export default function SignInPage() {
   const { user, signInWithGoogle, signInWithGithub, signInWithEmail, signInWithPreview, loading } = useAuth();
@@ -22,7 +23,7 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push(user.accountType === "admin" || user.accountType === "owner" ? "/admin" : user.accountType ? "/profile" : "/onboarding");
+      router.push(user.accountType === "admin" || user.accountType === "owner" ? "/admin" : needsProfileOnboarding(user) ? "/onboarding" : "/profile");
     }
   }, [user, loading, router]);
 

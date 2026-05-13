@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue } from 'firebase-admin/firestore';
 import {
@@ -38,9 +39,11 @@ export async function POST(req: NextRequest) {
     }
 
     const nowMs = Date.now();
+    const reactivationToken = randomBytes(32).toString('base64url');
     await userRef.set({
       pendingReactivation: {
         requestedType,
+        reactivationToken,
         requestedAt: FieldValue.serverTimestamp(),
         requestedAtMs: nowMs,
         source: 'self-service',
@@ -52,7 +55,7 @@ export async function POST(req: NextRequest) {
       await auth.updateUser(authUser.uid, { disabled: false });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, reactivationToken, requestedType });
   } catch (err) {
     return jsonError(err);
   }
