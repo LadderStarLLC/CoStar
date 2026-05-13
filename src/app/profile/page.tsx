@@ -23,6 +23,7 @@ import {
   hidePublicProfile,
   isPublicAccountType,
   isPrivilegedAccountType,
+  needsProfileOnboarding,
   publishPublicProfile,
   savePublicProfileDraft,
   saveTypeSpecificProfile,
@@ -103,7 +104,7 @@ export default function ProfilePage() {
       setLoading(true);
       try {
         const next = await getUserProfile(user.uid);
-        if (!next?.accountType) {
+        if (!next || needsProfileOnboarding(next)) {
           router.push("/onboarding");
           return;
         }

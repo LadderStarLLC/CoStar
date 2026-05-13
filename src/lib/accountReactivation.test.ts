@@ -6,6 +6,7 @@ import {
   isSelfDeletedAccount,
   normalizePublicReactivationType,
   resolveBootstrapAccountType,
+  resolvePendingDeletedAccountReactivation,
   resolveSelfDeletedReactivationType,
 } from './accountReactivation';
 
@@ -20,6 +21,8 @@ describe('account reactivation helpers', () => {
   it('allows self-deleted non-privileged accounts with a public requested type', () => {
     expect(isSelfDeletedAccount(deletedProfile)).toBe(true);
     expect(canStartDeletedAccountReactivation(deletedProfile, 'business')).toBe(true);
+    expect(canStartDeletedAccountReactivation({ ...deletedProfile, accountType: 'business' }, 'agency')).toBe(true);
+    expect(canStartDeletedAccountReactivation({ ...deletedProfile, accountType: 'agency' }, 'talent')).toBe(true);
     expect(normalizePublicReactivationType('user')).toBe('talent');
   });
 
@@ -44,13 +47,58 @@ describe('account reactivation helpers', () => {
     expect(isPendingReactivationFresh({
       requestedType: 'agency',
       requestedAtMs: 1_000,
+      reactivationToken: 'token-1',
       source: 'self-service',
-    }, 2_000)).toBe(true);
+    }, 2_000, undefined, 'token-1')).toBe(true);
     expect(isPendingReactivationFresh({
       requestedType: 'agency',
       requestedAtMs: 1_000,
+      reactivationToken: 'token-1',
       source: 'self-service',
-    }, 31 * 60 * 1000)).toBe(false);
+    }, 31 * 60 * 1000, undefined, 'token-1')).toBe(false);
+    expect(isPendingReactivationFresh({
+      requestedType: 'agency',
+      requestedAtMs: 1_000,
+      reactivationToken: 'token-1',
+      source: 'self-service',
+    }, 2_000, undefined, 'token-2')).toBe(false);
+  });
+
+  it('requires matching fresh pending token before finalizing recreation', () => {
+    const profile = {
+      ...deletedProfile,
+      pendingReactivation: {
+        requestedType: 'agency',
+        requestedAtMs: 1_000,
+        reactivationToken: 'token-1',
+        source: 'self-service',
+      },
+    };
+
+    expect(resolvePendingDeletedAccountReactivation({
+      profile,
+      requestedType: 'agency',
+      reactivationToken: 'token-1',
+      nowMs: 2_000,
+    })).toEqual({ requestedType: 'agency', errorCode: null });
+    expect(resolvePendingDeletedAccountReactivation({
+      profile,
+      requestedType: 'business',
+      reactivationToken: 'token-1',
+      nowMs: 2_000,
+    }).errorCode).toBe('DELETED_ACCOUNT_REACTIVATION_INVALID');
+    expect(resolvePendingDeletedAccountReactivation({
+      profile,
+      requestedType: 'agency',
+      reactivationToken: 'token-2',
+      nowMs: 2_000,
+    }).errorCode).toBe('DELETED_ACCOUNT_REACTIVATION_INVALID');
+    expect(resolvePendingDeletedAccountReactivation({
+      profile,
+      requestedType: 'agency',
+      reactivationToken: 'token-1',
+      nowMs: 31 * 60 * 1000,
+    }).errorCode).toBe('DELETED_ACCOUNT_REACTIVATION_EXPIRED');
   });
 
   it('resolves the recreated account type from pending request before body request', () => {
@@ -88,6 +136,15 @@ describe('account reactivation helpers', () => {
       requestedType: 'business',
       reactivationType: null,
     })).toBe('talent');
+  });
+
+  it('uses verified reactivation type over the deleted account type', () => {
+    expect(resolveBootstrapAccountType({
+      forcedOwner: false,
+      existingAccountType: 'business',
+      requestedType: 'agency',
+      reactivationType: 'agency',
+    })).toBe('agency');
   });
 
   it('preserves forced owner bootstrap behavior', () => {

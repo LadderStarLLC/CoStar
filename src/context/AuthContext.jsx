@@ -21,13 +21,30 @@ import {
     isAccountType,
 } from '@/lib/profile';
 
+const REQUESTED_ACCOUNT_TYPE_KEY = 'costar:requestedAccountType';
+const REACTIVATION_TOKEN_KEY = 'costar:reactivationToken';
+
 function getDeletedAccountMessage(requestedType) {
     return requestedType
-        ? "This deleted LadderStar account can be recreated. Use the same sign-in method and password to confirm you own it."
+        ? "Deleted accounts can choose a new Talent, Employer, or Agency path after confirming ownership. Use the same sign-in method and password to continue."
         : "This LadderStar account was deleted. To recreate it, choose Sign up, select a profile type, and use the same sign-in method.";
 }
 
-async function bootstrapAccount(currentUser, requestedType) {
+function storeSignupIntent(requestedType, reactivationToken = null) {
+    if (requestedType && isAccountType(requestedType)) {
+        window.sessionStorage.setItem(REQUESTED_ACCOUNT_TYPE_KEY, requestedType);
+    }
+    if (reactivationToken) {
+        window.sessionStorage.setItem(REACTIVATION_TOKEN_KEY, reactivationToken);
+    }
+}
+
+function clearSignupIntent() {
+    window.sessionStorage.removeItem(REQUESTED_ACCOUNT_TYPE_KEY);
+    window.sessionStorage.removeItem(REACTIVATION_TOKEN_KEY);
+}
+
+async function bootstrapAccount(currentUser, requestedType, reactivationToken = null) {
     const token = await currentUser.getIdToken();
     const response = await fetch('/api/account/bootstrap', {
         method: 'POST',
@@ -35,11 +52,14 @@ async function bootstrapAccount(currentUser, requestedType) {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ requestedType }),
+        body: JSON.stringify({ requestedType, reactivationToken }),
     });
 
     if (!response.ok) {
-        throw new Error(await response.text());
+        const payload = await response.json().catch(() => ({}));
+        const error = new Error(payload.error || 'Account setup failed.');
+        error.code = payload.code;
+        throw error;
     }
 
     return response.json();
@@ -54,6 +74,9 @@ async function requestDeletedAccountReactivation(email, requestedType) {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
         throw new Error(payload.error || 'This account cannot be recreated through self-service.');
+    }
+    if (!payload.reactivationToken || !payload.requestedType) {
+        throw new Error('Deleted account recreation could not be prepared. Start account recreation again.');
     }
     return payload;
 }
@@ -73,9 +96,7 @@ export const AuthProvider = ({ children }) => {
         }
         const provider = new GoogleAuthProvider();
         try {
-            if (requestedType && isAccountType(requestedType)) {
-                window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
-            }
+            storeSignupIntent(requestedType);
             await signInWithPopup(auth, provider);
         } catch (error) {
             console.error("Error signing in with Google:", error);
@@ -83,8 +104,8 @@ export const AuthProvider = ({ children }) => {
                 const disabledEmail = error?.customData?.email || error?.email;
                 if (requestedType && disabledEmail) {
                     try {
-                        await requestDeletedAccountReactivation(disabledEmail, requestedType);
-                        window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
+                        const reactivation = await requestDeletedAccountReactivation(disabledEmail, requestedType);
+                        storeSignupIntent(requestedType, reactivation.reactivationToken);
                         await signInWithPopup(auth, provider);
                         return;
                     } catch (reactivationError) {
@@ -107,9 +128,7 @@ export const AuthProvider = ({ children }) => {
         }
         const provider = new GithubAuthProvider();
         try {
-            if (requestedType && isAccountType(requestedType)) {
-                window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
-            }
+            storeSignupIntent(requestedType);
             await signInWithPopup(auth, provider);
         } catch (error) {
             console.error("Error signing in with Github:", error);
@@ -117,8 +136,8 @@ export const AuthProvider = ({ children }) => {
                 const disabledEmail = error?.customData?.email || error?.email;
                 if (requestedType && disabledEmail) {
                     try {
-                        await requestDeletedAccountReactivation(disabledEmail, requestedType);
-                        window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
+                        const reactivation = await requestDeletedAccountReactivation(disabledEmail, requestedType);
+                        storeSignupIntent(requestedType, reactivation.reactivationToken);
                         await signInWithPopup(auth, provider);
                         return;
                     } catch (reactivationError) {
@@ -169,9 +188,7 @@ export const AuthProvider = ({ children }) => {
             return;
         }
         try {
-            if (requestedType && isAccountType(requestedType)) {
-                window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
-            }
+            storeSignupIntent(requestedType);
             await createUserWithEmailAndPassword(auth, email, password);
         } catch (error) {
             console.error("Error signing up with email:", error);
@@ -186,8 +203,8 @@ export const AuthProvider = ({ children }) => {
         if (!requestedType || !isAccountType(requestedType)) {
             throw new Error("Choose a public account type before recreating this account.");
         }
-        await requestDeletedAccountReactivation(email, requestedType);
-        window.sessionStorage.setItem('costar:requestedAccountType', requestedType);
+        const reactivation = await requestDeletedAccountReactivation(email, requestedType);
+        storeSignupIntent(requestedType, reactivation.reactivationToken);
         try {
             await signInWithEmailAndPassword(auth, email, password);
         } catch (error) {
@@ -231,17 +248,28 @@ export const AuthProvider = ({ children }) => {
 
                 const userRef = doc(db, 'users', currentUser.uid);
                 const userSnap = await getDoc(userRef);
-                const storedRequestedType = window.sessionStorage.getItem('costar:requestedAccountType');
+                const storedRequestedType = window.sessionStorage.getItem(REQUESTED_ACCOUNT_TYPE_KEY);
+                const reactivationToken = window.sessionStorage.getItem(REACTIVATION_TOKEN_KEY);
                 const requestedType = isAccountType(storedRequestedType) ? storedRequestedType : null;
-                window.sessionStorage.removeItem('costar:requestedAccountType');
+                clearSignupIntent();
 
                 let profile;
                 try {
                     profile = await bootstrapAccount(
                         currentUser,
-                        userSnap.exists() && userSnap.data()?.accountType ? null : requestedType
+                        userSnap.exists() && userSnap.data()?.accountType && !reactivationToken ? null : requestedType,
+                        reactivationToken
                     );
                 } catch (bootstrapError) {
+                    if (reactivationToken || String(bootstrapError?.code || '').startsWith('DELETED_ACCOUNT_REACTIVATION_')) {
+                        console.warn("Deleted account recreation bootstrap failed:", bootstrapError);
+                        await signOut(auth);
+                        setUser(null);
+                        if (typeof window !== 'undefined') {
+                            window.alert(bootstrapError.message || "Deleted account recreation needs to be restarted from sign up.");
+                        }
+                        return;
+                    }
                     console.warn("Server bootstrap failed; falling back to client sync:", bootstrapError);
                     profile = await createOrSyncUserProfileFromAuth(
                         currentUser,

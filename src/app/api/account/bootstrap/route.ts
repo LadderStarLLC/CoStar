@@ -7,7 +7,7 @@ import {
   buildRecreatedAccountProfileUpdate,
   isSelfDeletedAccount,
   resolveBootstrapAccountType,
-  resolveSelfDeletedReactivationType,
+  resolvePendingDeletedAccountReactivation,
 } from '@/lib/accountReactivation';
 import {
   getAdminDb,
@@ -21,12 +21,25 @@ import { resolveEntitlements } from '@/lib/entitlements';
 
 const publicAccountTypes: AccountType[] = ['talent', 'business', 'agency'];
 
+function deletedReactivationError(code: string) {
+  const messages: Record<string, string> = {
+    DELETED_ACCOUNT_REACTIVATION_REQUIRED: 'Deleted account recreation must be started from sign up before signing in.',
+    DELETED_ACCOUNT_REACTIVATION_EXPIRED: 'Deleted account recreation has expired. Start account recreation again.',
+    DELETED_ACCOUNT_REACTIVATION_INVALID: 'Deleted account recreation does not match this sign-up attempt. Start account recreation again.',
+  };
+  return new Response(JSON.stringify({
+    code,
+    error: messages[code] ?? 'Deleted account recreation failed.',
+  }), { status: 403 });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const decoded = await verifyBearerToken(req);
     const body = await req.json().catch(() => ({}));
     const requestedBodyType = body?.requestedType === 'user' ? 'talent' : body?.requestedType;
     const requestedType = publicAccountTypes.includes(requestedBodyType) ? requestedBodyType as AccountType : null;
+    const reactivationToken = typeof body?.reactivationToken === 'string' ? body.reactivationToken : null;
     const db = getAdminDb();
     const userRef = db.doc(`users/${decoded.uid}`);
     const snap = await userRef.get();
@@ -34,9 +47,17 @@ export async function POST(req: NextRequest) {
     const email = normalizeAdminEmail(decoded.email);
     const now = FieldValue.serverTimestamp();
     const forcedOwner = isOwnerEmail(email);
-    const reactivationType = forcedOwner
-      ? null
-      : resolveSelfDeletedReactivationType(existing, requestedType);
+    const pendingReactivation = forcedOwner
+      ? { requestedType: null, errorCode: null }
+      : resolvePendingDeletedAccountReactivation({
+          profile: existing,
+          requestedType,
+          reactivationToken,
+        });
+    if (pendingReactivation.errorCode) {
+      throw deletedReactivationError(pendingReactivation.errorCode);
+    }
+    const reactivationType = pendingReactivation.requestedType;
     const nextAccountType: AccountType | null = resolveBootstrapAccountType({
       forcedOwner,
       existingAccountType: existing.accountType,
@@ -76,7 +97,16 @@ export async function POST(req: NextRequest) {
             billingCycle: 'free',
           });
           return {
-            billing: existing.billing ?? {
+            billing: reactivationType ? {
+              provider: null,
+              subscriptionStatus: 'free',
+              accountType: entitlements.accountType,
+              tierId: entitlements.tierId,
+              tierName: entitlements.tierName,
+              billingCycle: 'free',
+              monthlyAllowance: entitlements.monthlyAllowance,
+              updatedAt: now,
+            } : existing.billing ?? {
               provider: null,
               subscriptionStatus: 'free',
               accountType: entitlements.accountType,
@@ -86,7 +116,10 @@ export async function POST(req: NextRequest) {
               monthlyAllowance: entitlements.monthlyAllowance,
               updatedAt: now,
             },
-            entitlements: existing.entitlements ?? {
+            entitlements: reactivationType ? {
+              ...entitlements,
+              updatedAt: now,
+            } : existing.entitlements ?? {
               ...entitlements,
               updatedAt: now,
             },
@@ -96,7 +129,7 @@ export async function POST(req: NextRequest) {
 
     if (snap.exists) {
       if (!forcedOwner && isSelfDeletedAccount(existing) && !reactivationType) {
-        throw new Response(JSON.stringify({ error: 'Deleted account reactivation request has expired. Start account recreation again.' }), { status: 403 });
+        throw deletedReactivationError('DELETED_ACCOUNT_REACTIVATION_REQUIRED');
       }
 
       const reactivationData = reactivationType
