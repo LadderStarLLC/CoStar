@@ -54,6 +54,7 @@ export default function SignUpPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitLabel, setSubmitLabel] = useState("Creating account...");
+  const [providerSubmitting, setProviderSubmitting] = useState<"google" | "github" | null>(null);
 
   useEffect(() => {
     if (!loading && user) {
@@ -87,6 +88,20 @@ export default function SignUpPage() {
         setError(err.message || "Failed to create account. Please try again.");
       }
       setIsSubmitting(false);
+    }
+  };
+
+  const handleProviderSignUp = async (provider: "google" | "github") => {
+    setError("");
+    setProviderSubmitting(provider);
+    try {
+      if (provider === "google") {
+        await signInWithGoogle(requestedType);
+      } else {
+        await signInWithGithub(requestedType);
+      }
+    } finally {
+      setProviderSubmitting(null);
     }
   };
 
@@ -171,18 +186,20 @@ export default function SignUpPage() {
           ) : (
             <div className="space-y-4">
               <button
-                onClick={() => signInWithGoogle(requestedType)}
-                className="w-full py-4 ladderstar-action text-[#1A1D20] rounded-lg font-bold text-lg hover:brightness-110 transition flex items-center justify-center gap-3"
+                onClick={() => handleProviderSignUp("google")}
+                disabled={Boolean(providerSubmitting)}
+                className="w-full py-4 ladderstar-action text-[#1A1D20] rounded-lg font-bold text-lg hover:brightness-110 transition flex items-center justify-center gap-3 disabled:opacity-50"
               >
                 <Chrome size={24} />
-                Continue with Google
+                {providerSubmitting === "google" ? "Preparing account recreation..." : "Continue with Google"}
               </button>
               <button
-                onClick={() => signInWithGithub(requestedType)}
-                className="w-full py-4 bg-[#24292e] text-white rounded-lg font-bold text-lg hover:brightness-110 transition flex items-center justify-center gap-3 border border-white/10"
+                onClick={() => handleProviderSignUp("github")}
+                disabled={Boolean(providerSubmitting)}
+                className="w-full py-4 bg-[#24292e] text-white rounded-lg font-bold text-lg hover:brightness-110 transition flex items-center justify-center gap-3 border border-white/10 disabled:opacity-50"
               >
                 <Github size={24} />
-                Continue with GitHub
+                {providerSubmitting === "github" ? "Preparing account recreation..." : "Continue with GitHub"}
               </button>
               <button
                 onClick={() => setShowEmailForm(true)}
