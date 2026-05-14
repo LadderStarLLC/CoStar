@@ -20,6 +20,7 @@ import {
     createOrSyncUserProfileFromAuth,
     isAccountType,
 } from '@/lib/profile';
+import { continueDeletedProviderReactivation } from '@/lib/providerReactivation';
 
 const REQUESTED_ACCOUNT_TYPE_KEY = 'costar:requestedAccountType';
 const REACTIVATION_TOKEN_KEY = 'costar:reactivationToken';
@@ -104,9 +105,14 @@ export const AuthProvider = ({ children }) => {
                 const disabledEmail = error?.customData?.email || error?.email;
                 if (requestedType && disabledEmail) {
                     try {
-                        const reactivation = await requestDeletedAccountReactivation(disabledEmail, requestedType);
-                        storeSignupIntent(requestedType, reactivation.reactivationToken);
-                        await signInWithPopup(auth, provider);
+                        await continueDeletedProviderReactivation({
+                            auth,
+                            provider,
+                            email: disabledEmail,
+                            requestedType,
+                            requestDeletedAccountReactivation,
+                            storeSignupIntent,
+                        });
                         return;
                     } catch (reactivationError) {
                         console.error("Error recreating deleted Google account:", reactivationError);
@@ -136,9 +142,14 @@ export const AuthProvider = ({ children }) => {
                 const disabledEmail = error?.customData?.email || error?.email;
                 if (requestedType && disabledEmail) {
                     try {
-                        const reactivation = await requestDeletedAccountReactivation(disabledEmail, requestedType);
-                        storeSignupIntent(requestedType, reactivation.reactivationToken);
-                        await signInWithPopup(auth, provider);
+                        await continueDeletedProviderReactivation({
+                            auth,
+                            provider,
+                            email: disabledEmail,
+                            requestedType,
+                            requestDeletedAccountReactivation,
+                            storeSignupIntent,
+                        });
                         return;
                     } catch (reactivationError) {
                         console.error("Error recreating deleted Github account:", reactivationError);
