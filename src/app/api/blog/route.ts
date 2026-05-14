@@ -3,27 +3,44 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue, type Firestore, type Query } from 'firebase-admin/firestore';
-import { createBlogSlug } from '@/lib/blog';
+import { createBlogSlug, getStaticBlogPosts } from '@/lib/blog';
 import { getCallerProfile, getAdminDb, isPrivilegedType, jsonError, requireAdmin } from '@/lib/firebaseAdmin';
 
 export async function GET(req: NextRequest) {
   try {
-    const db = getAdminDb();
     const slug = req.nextUrl.searchParams.get('slug')?.trim();
     const includeDrafts = await callerCanManageBlog(req);
-    let ref: Query = db.collection('blogPosts');
+    const staticPosts = getStaticBlogPosts()
+      .filter((post) => !slug || post.slug === slug)
+      .filter((post) => includeDrafts || post.status === 'published');
 
-    if (slug) {
-      ref = ref.where('slug', '==', slug);
-    }
-    if (!includeDrafts) {
-      ref = ref.where('status', '==', 'published');
+    let firestorePosts: Array<Record<string, any>> = [];
+    try {
+      const db = getAdminDb();
+      let ref: Query = db.collection('blogPosts');
+
+      if (slug) {
+        ref = ref.where('slug', '==', slug);
+      }
+      if (!includeDrafts) {
+        ref = ref.where('status', '==', 'published');
+      }
+
+      const snap = await ref.get();
+      firestorePosts = snap.docs
+        .map((doc) => ({ id: doc.id, source: 'firestore', ...doc.data() }))
+        .filter((post: any) => includeDrafts || post.status === 'published');
+    } catch (err) {
+      if (staticPosts.length === 0) throw err;
     }
 
-    const snap = await ref.get();
-    const posts = snap.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter((post: any) => includeDrafts || post.status === 'published')
+    const seenSlugs = new Set<string>();
+    const posts = [...staticPosts, ...firestorePosts]
+      .filter((post: any) => {
+        if (!post.slug || seenSlugs.has(post.slug)) return false;
+        seenSlugs.add(post.slug);
+        return true;
+      })
       .sort((a: any, b: any) => timestampValue(b.publishedAt ?? b.updatedAt) - timestampValue(a.publishedAt ?? a.updatedAt));
 
     return NextResponse.json({ posts });
