@@ -30,7 +30,8 @@ export type AdminAuditAction =
   | 'user.wallet.adjusted'
   | 'user.lifecycle.disabled'
   | 'migration.talent.updated'
-  | 'pricing.catalog.published';
+  | 'pricing.catalog.published'
+  | 'homepage.content.published';
 
 export interface SocialConnection {
   platform: SocialPlatform;

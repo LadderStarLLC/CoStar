@@ -6,6 +6,7 @@ import { Briefcase, ExternalLink, Loader2, MapPin, Search, SlidersHorizontal } f
 import { JobData } from '@/lib/jobs';
 import { fetchCareerjetJobs } from '@/lib/careerjet';
 import { serializeCareerjetJob } from '@/lib/careerjet';
+import type { HomepageFeaturedJobs } from '@/lib/homepageContent';
 
 function formatSalary(job: JobData) {
   if (!job.salary?.visible || (!job.salary?.min && !job.salary?.max)) return 'Compensation varies';
@@ -40,7 +41,7 @@ function roleTags(job: JobData) {
     .slice(0, 3) as string[];
 }
 
-export default function FeaturedJobsPreview() {
+export default function FeaturedJobsPreview({ content }: { content: HomepageFeaturedJobs }) {
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +55,7 @@ export default function FeaturedJobsPreview() {
 
       try {
         const result = await fetchCareerjetJobs(
-          { search: 'senior executive director principal AI product engineering strategy' },
+          { search: content.searchQuery },
           'salary_high',
           1,
           12,
@@ -82,11 +83,11 @@ export default function FeaturedJobsPreview() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [content.searchQuery]);
 
   const searchHref = useMemo(
-    () => `/jobs?search=${encodeURIComponent('senior executive director principal AI product engineering strategy')}`,
-    [],
+    () => `/jobs?search=${encodeURIComponent(content.searchQuery)}`,
+    [content.searchQuery],
   );
 
   return (
@@ -96,7 +97,7 @@ export default function FeaturedJobsPreview() {
           <Link href={searchHref} className="relative block min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#5DC99B]" />
             <div className="truncate rounded-lg border border-[#5DC99B]/45 bg-[#262A2E] py-3 pl-10 pr-4 text-[#F4F5F7]/86">
-              senior, AI, product, strategy
+              {content.searchDisplayText}
             </div>
           </Link>
           <Link
@@ -104,7 +105,7 @@ export default function FeaturedJobsPreview() {
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg ladderstar-action px-5 py-3 font-bold text-[#1A1D20]"
           >
             <SlidersHorizontal className="w-4 h-4" />
-            View roles
+            {content.buttonLabel}
           </Link>
         </div>
       </div>

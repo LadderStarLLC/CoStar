@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, Eye, EyeOff, Loader2, Percent, RefreshCw, Save, Search, Shield, Tag, Upload, UserCog, Users, Wallet } from "lucide-react";
+import { BarChart3, Eye, EyeOff, Loader2, Megaphone, Percent, RefreshCw, Save, Search, Shield, Tag, Upload, UserCog, Users, Wallet } from "lucide-react";
 import NavHeader from "@/components/NavHeader";
+import SiteContentEditor, { type AdminHomepageConfig } from "@/components/admin/SiteContentEditor";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
+import type { HomepageContent } from "@/lib/homepageContent";
 import {
   getEffectiveTierAmountCents,
   type BillingCycle,
@@ -108,11 +110,15 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isActing, setIsActing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"users" | "pricing">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "pricing" | "site-content">("users");
   const [pricingConfig, setPricingConfig] = useState<AdminPricingConfig | null>(null);
   const [pricingDraft, setPricingDraft] = useState<PricingCatalog | null>(null);
   const [pricingReason, setPricingReason] = useState("");
   const [isPricingLoading, setIsPricingLoading] = useState(false);
+  const [homepageConfig, setHomepageConfig] = useState<AdminHomepageConfig | null>(null);
+  const [homepageDraft, setHomepageDraft] = useState<HomepageContent | null>(null);
+  const [homepageReason, setHomepageReason] = useState("");
+  const [isHomepageLoading, setIsHomepageLoading] = useState(false);
 
   const isPrivileged = user?.accountType === "admin" || user?.accountType === "owner";
   const isOwner = user?.accountType === "owner";
@@ -202,6 +208,21 @@ export default function AdminPage() {
     }
   }, [apiFetch, isOwner]);
 
+  const fetchHomepage = useCallback(async () => {
+    if (!isPrivileged) return;
+    setIsHomepageLoading(true);
+    setError(null);
+    try {
+      const data = await apiFetch("/api/admin/homepage") as AdminHomepageConfig;
+      setHomepageConfig(data);
+      setHomepageDraft(cloneContent(data.draftContent));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load site content.");
+    } finally {
+      setIsHomepageLoading(false);
+    }
+  }, [apiFetch, isPrivileged]);
+
   useEffect(() => {
     if (isPrivileged) {
       fetchSummary();
@@ -222,6 +243,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (isOwner) fetchPricing();
   }, [fetchPricing, isOwner]);
+
+  useEffect(() => {
+    if (isPrivileged) fetchHomepage();
+  }, [fetchHomepage, isPrivileged]);
 
   async function callAdminApi(path: string, body: Record<string, unknown>, success: string) {
     setIsActing(true);
@@ -257,6 +282,31 @@ export default function AdminPage() {
       await fetchPricing();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Pricing action failed.");
+    } finally {
+      setIsActing(false);
+    }
+  }
+
+  async function callHomepageApi(action: "draft" | "publish", success: string) {
+    if (!homepageDraft) return;
+    setIsActing(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const path = action === "publish" ? "/api/admin/homepage?action=publish" : "/api/admin/homepage";
+      const data = await apiFetch(path, {
+        method: "POST",
+        body: JSON.stringify({
+          content: homepageDraft,
+          ...(action === "publish" ? { reason: homepageReason } : {}),
+        }),
+      });
+      setMessage(success);
+      if (data.content) setHomepageDraft(cloneContent(data.content));
+      if (data.draftContent) setHomepageDraft(cloneContent(data.draftContent));
+      await fetchHomepage();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Site content action failed.");
     } finally {
       setIsActing(false);
     }
@@ -341,8 +391,8 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {isOwner && (
-          <div className="mb-8 inline-grid grid-cols-2 rounded-lg border border-white/10 bg-slate-800/50 p-1">
+        {isPrivileged && (
+          <div className={`mb-8 inline-grid rounded-lg border border-white/10 bg-slate-800/50 p-1 ${isOwner ? "grid-cols-3" : "grid-cols-2"}`}>
             <button
               type="button"
               onClick={() => setActiveTab("users")}
@@ -351,13 +401,23 @@ export default function AdminPage() {
               <Users className="h-4 w-4" />
               Users
             </button>
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("pricing")}
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-bold transition ${activeTab === "pricing" ? "bg-amber-500 text-slate-950" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
+              >
+                <Tag className="h-4 w-4" />
+                Pricing
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setActiveTab("pricing")}
-              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-bold transition ${activeTab === "pricing" ? "bg-amber-500 text-slate-950" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
+              onClick={() => setActiveTab("site-content")}
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-bold transition ${activeTab === "site-content" ? "bg-amber-500 text-slate-950" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
             >
-              <Tag className="h-4 w-4" />
-              Pricing
+              <Megaphone className="h-4 w-4" />
+              Site Content
             </button>
           </div>
         )}
@@ -695,6 +755,22 @@ export default function AdminPage() {
             )}
           </section>
         )}
+
+        {activeTab === "site-content" && (
+          <SiteContentEditor
+            config={homepageConfig}
+            draft={homepageDraft}
+            publishReason={homepageReason}
+            isLoading={isHomepageLoading}
+            isActing={isActing}
+            isOwner={isOwner}
+            onDraftChange={setHomepageDraft}
+            onPublishReasonChange={setHomepageReason}
+            onReload={fetchHomepage}
+            onSaveDraft={() => callHomepageApi("draft", "Site content draft saved.")}
+            onPublish={() => callHomepageApi("publish", "Site content published.")}
+          />
+        )}
       </main>
     </div>
   );
@@ -868,4 +944,8 @@ function formatDateTime(value: string | null): string {
 
 function cloneCatalog(catalog: PricingCatalog): PricingCatalog {
   return JSON.parse(JSON.stringify(catalog)) as PricingCatalog;
+}
+
+function cloneContent(content: HomepageContent): HomepageContent {
+  return JSON.parse(JSON.stringify(content)) as HomepageContent;
 }
