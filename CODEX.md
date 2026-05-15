@@ -544,6 +544,23 @@ that helper to cron or a scheduled function before relying on automatic cleanup.
 
 ---
 
+
+## AI / Agent Public Content API
+
+Machine-readable public content is exposed under `/api/ai/content/*` for
+approved AI and agent tooling. These routes must require
+`Authorization: Bearer $AI_CONTENT_API_TOKEN` and must expose only public or
+indexable content, such as published blog posts, public marketing/legal page
+summaries, and future deliberately public content projections.
+
+Do not expose private `users/{uid}` data, wallets, admin audit logs, support
+notes, messaging data, audition sessions, business screening recordings,
+billing records, moderation metadata, or other operational/private data through
+AI content routes. If protected Vercel previews are enabled, callers may also
+need Vercel's `x-vercel-protection-bypass` automation header before the app
+receives the request; that header is not a substitute for the app-level
+`AI_CONTENT_API_TOKEN` check.
+
 ## Messaging System
 
 Messaging is a global floating widget, not a standalone `/messages` route.
@@ -629,6 +646,7 @@ Required environment variables:
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY`
 - `PREVIEW_AUTH_SECRET` for secret-gated Vercel preview test sign-in
+- `AI_CONTENT_API_TOKEN` for machine-authenticated public content API access
 - Firebase client config variables: `NEXT_PUBLIC_FIREBASE_*`
 
 `FIREBASE_PRIVATE_KEY` must have escaped `\n` converted to actual newlines at

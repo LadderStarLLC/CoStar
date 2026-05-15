@@ -221,6 +221,7 @@ AI and job integrations:
 
 ```env
 GEMINI_API_KEY=
+AI_CONTENT_API_TOKEN=
 CAREERJET_API_KEY=
 JOOBLE_API_KEY=
 ```
@@ -241,7 +242,7 @@ RECORDED_SCREENING_RETENTION_DAYS=90
 RECORDED_SCREENING_MAX_BYTES=209715200
 ```
 
-`GEMINI_API_KEY` is the fallback key used when a user has not saved a personal Gemini API key in Settings. In Vercel, `FIREBASE_PRIVATE_KEY` must be configured so escaped `\n` sequences can be converted back to real newlines by the route handler.
+`GEMINI_API_KEY` is the fallback key used when a user has not saved a personal Gemini API key in Settings. `AI_CONTENT_API_TOKEN` gates the machine-readable public content API for approved AI/agent tooling. In Vercel, `FIREBASE_PRIVATE_KEY` must be configured so escaped `\n` sequences can be converted back to real newlines by the route handler.
 
 ## Firestore Data Model
 
@@ -300,8 +301,12 @@ Recorded business screenings are limited to explicit business screening links. T
 - `GET /api/search`: unified site search.
 - `POST /api/blog`: privileged blog creation.
 - `PATCH /api/blog/[postId]`: privileged blog updates.
+- `GET /api/ai/content/manifest`: machine-authenticated public content manifest for approved AI/agent tooling.
+- `GET /api/ai/content/pages`: machine-authenticated public page content, with optional `?path=/about` filtering.
+- `GET /api/ai/content/blog`: machine-authenticated published blog post summaries.
+- `GET /api/ai/content/blog/[slug]`: machine-authenticated published blog post content.
 
-Blog listing and post reads currently happen through Firestore client queries, with privileged writes handled by the API routes above.
+Blog listing and post reads currently happen through Firestore client queries, with privileged writes handled by the API routes above. AI content routes expose only public/indexable content and require `Authorization: Bearer $AI_CONTENT_API_TOKEN`. For protected Vercel previews, callers may also need Vercel's `x-vercel-protection-bypass` header.
 
 ## Project Map
 
@@ -324,6 +329,25 @@ src/lib                 Firebase, Admin SDK, jobs, profiles, search, messaging, 
 src/lib/audition        Interview config, prompts, serialization, audio utilities, types
 firestore.rules         Firestore authorization rules
 AGENTS.md               Deep implementation notes for AI coding agents
+```
+
+## Development Environment
+
+Use Node.js 24 LTS. The repo includes `.nvmrc` and `package.json` engines for Node 24 alignment across local development, Cloud Codex, and Vercel.
+
+Install dependencies with the lockfile:
+
+```bash
+npm ci --no-audit --no-fund
+```
+
+If Cloud Codex cannot reach the npm registry, dependency installation must be retried after the Cloud Codex network policy allows npm registry and tarball access.
+
+Then run:
+
+```bash
+npm run build
+npm run test
 ```
 
 ## Deployment
