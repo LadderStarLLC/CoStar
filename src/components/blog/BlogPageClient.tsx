@@ -190,12 +190,7 @@ export function BlogPageClient() {
                     </Link>
                     {post.excerpt && <p className="mt-2 max-w-3xl text-slate-400">{post.excerpt}</p>}
                   </div>
-                  {isPrivileged && post.source === 'static' && (
-                    <span className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm font-medium text-slate-400">
-                      Code published
-                    </span>
-                  )}
-                  {isPrivileged && post.source !== 'static' && (
+                  {isPrivileged && (
                     <div className="flex shrink-0 flex-wrap gap-2">
                       <button
                         onClick={() => setEditorState({ mode: 'edit', post })}
@@ -236,11 +231,6 @@ function normalizeBlogPost(id: string, data: any): BlogPost {
     createdAt: serializeBlogTimestamp(data.createdAt),
     updatedAt: serializeBlogTimestamp(data.updatedAt),
     publishedAt: serializeBlogTimestamp(data.publishedAt),
-    metaTitle: data.metaTitle,
-    metaDescription: data.metaDescription,
-    tags: Array.isArray(data.tags) ? data.tags : undefined,
-    canonicalPath: data.canonicalPath,
-    source: data.source,
   };
 }
 
