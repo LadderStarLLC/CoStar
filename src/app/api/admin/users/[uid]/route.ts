@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { jsonError, requireAdmin } from '@/lib/firebaseAdmin';
+import { getOperationalRolesForProfile } from '@/lib/operationalRoles';
 import { getOrCreateWalletSummary } from '@/lib/walletAdmin';
 
 export async function GET(req: NextRequest, { params }: { params: { uid: string } }) {
@@ -50,6 +51,8 @@ function serializeProfile(uid: string, data: FirebaseFirestore.DocumentData) {
     photoURL: data.photoURL ?? null,
     accountType: data.accountType === 'user' ? 'talent' : data.accountType ?? null,
     role: data.role ?? null,
+    blogRole: data.blogRole ?? null,
+    operationalRoles: getOperationalRolesForProfile(data),
     accountTypeLocked: Boolean(data.accountTypeLocked),
     headline: data.headline ?? '',
     location: data.location ?? '',

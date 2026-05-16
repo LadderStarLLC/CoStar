@@ -11,11 +11,12 @@ import { EMPTY_BLOG_CONTENT, safeParseBlogContent } from '@/lib/blog';
 interface BlogEditorProps {
   post?: BlogPost | null;
   isSaving: boolean;
+  canPublish: boolean;
   onCancel: () => void;
   onSave: (payload: { title: string; excerpt: string; contentJson: string; status: 'draft' | 'published' }) => Promise<void>;
 }
 
-export function BlogEditor({ post, isSaving, onCancel, onSave }: BlogEditorProps) {
+export function BlogEditor({ post, isSaving, canPublish, onCancel, onSave }: BlogEditorProps) {
   const [title, setTitle] = useState(post?.title ?? '');
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? '');
   const editor = useEditor({
@@ -108,15 +109,17 @@ export function BlogEditor({ post, isSaving, onCancel, onSave }: BlogEditorProps
           <Save className="h-4 w-4" />
           Save Draft
         </button>
-        <button
-          type="button"
-          onClick={(event) => submit(event, 'published')}
-          disabled={isSaving || !title.trim()}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2 font-bold text-slate-900 hover:bg-amber-400 disabled:opacity-50"
-        >
-          <Send className="h-4 w-4" />
-          Publish
-        </button>
+        {canPublish && (
+          <button
+            type="button"
+            onClick={(event) => submit(event, 'published')}
+            disabled={isSaving || !title.trim()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2 font-bold text-slate-900 hover:bg-amber-400 disabled:opacity-50"
+          >
+            <Send className="h-4 w-4" />
+            Publish
+          </button>
+        )}
       </div>
     </form>
   );

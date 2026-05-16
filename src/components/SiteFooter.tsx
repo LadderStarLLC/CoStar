@@ -19,7 +19,7 @@ const footerGroups = [
   {
     title: 'Platform',
     links: [
-      { href: '/jobs', label: 'Jobs' },
+      { href: '/jobs', label: 'Jobs Board' },
       { href: '/pricing', label: 'Pricing' },
       { href: '/audition', label: 'Interview practice' },
       { href: '/blog', label: 'Blog' },

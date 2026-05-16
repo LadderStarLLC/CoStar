@@ -1,6 +1,9 @@
 import type { JSONContent } from '@tiptap/react';
 
 export type BlogPostStatus = 'draft' | 'published';
+export type BlogPostSource = 'human' | 'ai';
+export type BlogPostReviewStatus = 'needs_review' | 'approved' | 'changes_requested';
+export type BlogRole = 'writer' | 'publisher';
 
 export interface BlogPost {
   id: string;
@@ -14,6 +17,37 @@ export interface BlogPost {
   createdAt: string | null;
   updatedAt: string | null;
   publishedAt: string | null;
+  source?: BlogPostSource;
+  reviewStatus?: BlogPostReviewStatus;
+  generatedByUid?: string;
+  lastEditedByUid?: string;
+  publishedByUid?: string;
+  model?: string;
+  promptSummary?: string;
+}
+
+export interface BlogPermissions {
+  canReadDrafts: boolean;
+  canWriteDrafts: boolean;
+  canPublish: boolean;
+}
+
+export function normalizeBlogRole(value: unknown): BlogRole | null {
+  return value === 'writer' || value === 'publisher' ? value : null;
+}
+
+export function getBlogPermissions(profile?: Record<string, unknown> | null): BlogPermissions {
+  const accountType = String(profile?.accountType ?? '');
+  const blogRole = normalizeBlogRole(profile?.blogRole);
+  const isPrivileged = accountType === 'admin' || accountType === 'owner';
+  const canPublish = isPrivileged || blogRole === 'publisher';
+  const canWriteDrafts = canPublish || blogRole === 'writer';
+
+  return {
+    canReadDrafts: canWriteDrafts,
+    canWriteDrafts,
+    canPublish,
+  };
 }
 
 export const EMPTY_BLOG_CONTENT: JSONContent = {

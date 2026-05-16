@@ -3,11 +3,12 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { jsonError, requireAdmin } from '@/lib/firebaseAdmin';
+import { jsonError } from '@/lib/firebaseAdmin';
+import { requireBlogWriter } from '@/lib/blogServer';
 
 export async function PATCH(req: NextRequest, { params }: { params: { postId: string } }) {
   try {
-    const { db } = await requireAdmin(req);
+    const { db, decoded, permissions } = await requireBlogWriter(req);
     const postId = params.postId;
     const body = await req.json();
     const postRef = db.collection('blogPosts').doc(postId);
@@ -18,8 +19,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { postId: st
     }
 
     const current = snap.data() ?? {};
+    if (current.status === 'published' && !permissions.canPublish) {
+      return NextResponse.json({ error: 'Blog publisher access required to edit published posts.' }, { status: 403 });
+    }
+
     const updates: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
+      lastEditedByUid: decoded.uid,
     };
 
     if ('title' in body) {
@@ -39,11 +45,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { postId: st
     }
 
     if ('status' in body) {
+      if (!permissions.canPublish) {
+        return NextResponse.json({ error: 'Blog publisher access required.' }, { status: 403 });
+      }
       const nextStatus = body.status === 'published' ? 'published' : 'draft';
       updates.status = nextStatus;
       updates.publishedAt = nextStatus === 'published'
         ? current.publishedAt ?? FieldValue.serverTimestamp()
         : null;
+      updates.publishedByUid = nextStatus === 'published' ? decoded.uid : null;
+      updates.reviewStatus = nextStatus === 'published' ? 'approved' : current.reviewStatus ?? 'needs_review';
     }
 
     await postRef.update(updates);

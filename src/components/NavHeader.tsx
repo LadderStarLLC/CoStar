@@ -13,6 +13,7 @@ import { fetchWalletSummary, getCachedWalletSummary } from "@/lib/walletClient";
 import { currencyForAccountType, walletLabel, type WalletSummary, type AccountWallet } from "@/lib/wallet";
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { resolveProfileEntitlements } from '@/lib/entitlements';
 
 export default function NavHeader() {
   const { user, logout, loading } = useAuth();
@@ -131,13 +132,15 @@ export default function NavHeader() {
         </div>
 
         <nav className="flex items-center gap-4 sm:gap-6 flex-wrap">
-          <Link href="/jobs" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">Jobs</Link>
-          <Link href="/pricing" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">Pricing</Link>
-          <Link href="/blog" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">Blog</Link>
           <Link href="/audition" className="flex items-center gap-1.5 text-brand-secondary hover:text-[#F4F5F7] transition-colors font-medium text-sm sm:text-base">
             <Mic className="w-3.5 h-3.5" />
-            Interview
+            Interview Practice
           </Link>
+          <Link href="/blog" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">Blog</Link>
+          {(!user || resolveProfileEntitlements(user)?.status !== 'active') && (
+            <Link href="/pricing" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">Pricing</Link>
+          )}
+          <Link href="/jobs" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">Jobs Board</Link>
           {accountType === 'business' && (
             <Link href="/dashboard/jobs" className="text-[#F4F5F7]/72 hover:text-brand-secondary transition-colors text-sm sm:text-base">
               Post a Job

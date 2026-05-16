@@ -38,7 +38,7 @@ export function getNavigationItems(user: NavigationUser): NavigationItem[] {
   const accountType = user?.accountType ?? null;
   const items: NavigationItem[] = [
     { href: '/', label: 'Home', icon: Home },
-    { href: '/jobs', label: 'Jobs', icon: Briefcase },
+    { href: '/jobs', label: 'Jobs Board', icon: Briefcase },
     { href: '/pricing', label: 'Pricing', icon: Tag },
     { href: '/blog', label: 'Blog', icon: Newspaper },
     {

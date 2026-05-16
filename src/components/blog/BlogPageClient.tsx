@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Edit3, FileText, Loader2, Plus, RefreshCw } from 'lucide-react';
+import { Edit3, FileText, Loader2, Plus, RefreshCw, Sparkles } from 'lucide-react';
 import NavHeader from '@/components/NavHeader';
 import { BlogEditor } from '@/components/blog/BlogEditor';
 import { useAuth } from '@/context/AuthContext';
@@ -17,11 +17,21 @@ export function BlogPageClient() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [editorState, setEditorState] = useState<EditorState>(null);
+  const [aiDraftInput, setAiDraftInput] = useState({
+    topic: '',
+    audience: '',
+    goal: '',
+    keywords: '',
+    internalLinks: '/jobs, /audition, /profile, /pricing, /sign-up',
+    sourceNotes: '',
+  });
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const isPrivileged = user?.accountType === 'admin' || user?.accountType === 'owner';
+  const canPublish = user?.accountType === 'admin' || user?.accountType === 'owner' || user?.blogRole === 'publisher';
+  const canWriteDrafts = canPublish || user?.blogRole === 'writer';
 
   const fetchPosts = useCallback(async () => {
     setIsLoading(true);
@@ -36,7 +46,7 @@ export function BlogPageClient() {
       const data: { posts?: Array<Record<string, any>> } = await response.json();
       const next = (data.posts ?? [])
         .map((post: any) => normalizeBlogPost(post.id, post))
-        .filter((post: BlogPost) => isPrivileged || post.status === 'published')
+        .filter((post: BlogPost) => canWriteDrafts || post.status === 'published')
         .sort((a, b) => dateValue(b.publishedAt ?? b.updatedAt) - dateValue(a.publishedAt ?? a.updatedAt));
       setPosts(next);
     } catch (err) {
@@ -44,7 +54,7 @@ export function BlogPageClient() {
     } finally {
       setIsLoading(false);
     }
-  }, [isPrivileged]);
+  }, [canWriteDrafts]);
 
   useEffect(() => {
     if (!loading) fetchPosts();
@@ -81,6 +91,33 @@ export function BlogPageClient() {
       setError(err instanceof Error ? err.message : 'Could not save blog post.');
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function generateAiDraft() {
+    if (!auth?.currentUser || !aiDraftInput.topic.trim()) return;
+
+    setIsGenerating(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const response = await fetch('/api/blog/ai-drafts', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(aiDraftInput),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      setMessage('AI draft created for human review.');
+      setAiDraftInput((current) => ({ ...current, topic: '', sourceNotes: '' }));
+      await fetchPosts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not generate AI draft.');
+    } finally {
+      setIsGenerating(false);
     }
   }
 
@@ -136,7 +173,7 @@ export function BlogPageClient() {
               <RefreshCw className="h-4 w-4" />
               Refresh
             </button>
-            {isPrivileged && (
+            {canWriteDrafts && (
               <button
                 onClick={() => setEditorState({ mode: 'new', post: null })}
                 className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 font-bold text-slate-900 hover:bg-amber-400"
@@ -154,11 +191,74 @@ export function BlogPageClient() {
           </div>
         )}
 
-        {editorState && isPrivileged && (
+        {canWriteDrafts && (
+          <section className="mb-8 rounded-xl border border-white/10 bg-slate-800/50 p-5">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="inline-flex items-center gap-2 text-xl font-bold text-white">
+                  <Sparkles className="h-5 w-5 text-amber-300" />
+                  AI Draft Queue
+                </h2>
+                <p className="mt-1 text-sm text-slate-400">Generate a draft for review. AI drafts cannot publish themselves.</p>
+              </div>
+              <button
+                type="button"
+                onClick={generateAiDraft}
+                disabled={isGenerating || !aiDraftInput.topic.trim()}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2 font-bold text-slate-900 hover:bg-amber-400 disabled:opacity-50"
+              >
+                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Generate Draft
+              </button>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <input
+                value={aiDraftInput.topic}
+                onChange={(event) => setAiDraftInput((current) => ({ ...current, topic: event.target.value }))}
+                placeholder="Topic"
+                className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+              />
+              <input
+                value={aiDraftInput.audience}
+                onChange={(event) => setAiDraftInput((current) => ({ ...current, audience: event.target.value }))}
+                placeholder="Audience"
+                className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+              />
+              <input
+                value={aiDraftInput.goal}
+                onChange={(event) => setAiDraftInput((current) => ({ ...current, goal: event.target.value }))}
+                placeholder="Goal"
+                className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+              />
+              <input
+                value={aiDraftInput.keywords}
+                onChange={(event) => setAiDraftInput((current) => ({ ...current, keywords: event.target.value }))}
+                placeholder="Keywords"
+                className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+              />
+              <input
+                value={aiDraftInput.internalLinks}
+                onChange={(event) => setAiDraftInput((current) => ({ ...current, internalLinks: event.target.value }))}
+                placeholder="Internal links"
+                className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none md:col-span-2"
+              />
+              <textarea
+                value={aiDraftInput.sourceNotes}
+                onChange={(event) => setAiDraftInput((current) => ({ ...current, sourceNotes: event.target.value }))}
+                placeholder="Source notes"
+                rows={4}
+                className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none md:col-span-2"
+              />
+            </div>
+          </section>
+        )}
+
+        {editorState && canWriteDrafts && (
           <div className="mb-8">
             <BlogEditor
               post={selectedPost}
               isSaving={isSaving}
+              canPublish={canPublish}
               onCancel={() => setEditorState(null)}
               onSave={savePost}
             />
@@ -175,7 +275,9 @@ export function BlogPageClient() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {posts.map((post) => (
+            {posts.map((post) => {
+              const canEditPost = canPublish || post.status !== 'published';
+              return (
               <article key={post.id} className="rounded-xl border border-white/10 bg-slate-800/50 p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
@@ -183,6 +285,16 @@ export function BlogPageClient() {
                       <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${post.status === 'published' ? 'border-green-500/30 bg-green-500/10 text-green-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'}`}>
                         {post.status}
                       </span>
+                      {post.source === 'ai' && (
+                        <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-300">
+                          AI draft
+                        </span>
+                      )}
+                      {post.reviewStatus === 'needs_review' && (
+                        <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-300">
+                          needs review
+                        </span>
+                      )}
                       <span className="text-xs text-slate-500">{formatDate(post.publishedAt ?? post.updatedAt)}</span>
                     </div>
                     <Link href={`/blog/${post.slug}`} className="text-2xl font-bold text-white hover:text-amber-300">
@@ -190,27 +302,31 @@ export function BlogPageClient() {
                     </Link>
                     {post.excerpt && <p className="mt-2 max-w-3xl text-slate-400">{post.excerpt}</p>}
                   </div>
-                  {isPrivileged && (
+                  {canWriteDrafts && (
                     <div className="flex shrink-0 flex-wrap gap-2">
-                      <button
-                        onClick={() => setEditorState({ mode: 'edit', post })}
-                        className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-600"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => setPostStatus(post, post.status === 'published' ? 'draft' : 'published')}
-                        disabled={isSaving}
-                        className="rounded-lg bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-600 disabled:opacity-60"
-                      >
-                        {post.status === 'published' ? 'Unpublish' : 'Publish'}
-                      </button>
+                      {canEditPost && (
+                        <button
+                          onClick={() => setEditorState({ mode: 'edit', post })}
+                          className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-600"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                          Edit
+                        </button>
+                      )}
+                      {canPublish && (
+                        <button
+                          onClick={() => setPostStatus(post, post.status === 'published' ? 'draft' : 'published')}
+                          disabled={isSaving}
+                          className="rounded-lg bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-600 disabled:opacity-60"
+                        >
+                          {post.status === 'published' ? 'Unpublish' : 'Publish'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
               </article>
-            ))}
+            )})}
           </div>
         )}
       </main>
@@ -231,6 +347,13 @@ function normalizeBlogPost(id: string, data: any): BlogPost {
     createdAt: serializeBlogTimestamp(data.createdAt),
     updatedAt: serializeBlogTimestamp(data.updatedAt),
     publishedAt: serializeBlogTimestamp(data.publishedAt),
+    source: data.source === 'ai' ? 'ai' : data.source === 'human' ? 'human' : undefined,
+    reviewStatus: ['needs_review', 'approved', 'changes_requested'].includes(data.reviewStatus) ? data.reviewStatus : undefined,
+    generatedByUid: data.generatedByUid ?? undefined,
+    lastEditedByUid: data.lastEditedByUid ?? undefined,
+    publishedByUid: data.publishedByUid ?? undefined,
+    model: data.model ?? undefined,
+    promptSummary: data.promptSummary ?? undefined,
   };
 }
 
