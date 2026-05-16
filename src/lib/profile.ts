@@ -27,6 +27,7 @@ export type AdminAuditAction =
   | 'user.public_profile.updated'
   | 'user.notes.updated'
   | 'user.role.updated'
+  | 'user.operational_roles.updated'
   | 'user.wallet.adjusted'
   | 'user.lifecycle.disabled'
   | 'migration.talent.updated'

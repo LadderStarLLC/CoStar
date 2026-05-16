@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { jsonError, requireAdmin } from '@/lib/firebaseAdmin';
+import { getOperationalRolesForProfile } from '@/lib/operationalRoles';
 
 const ACCOUNT_TYPES = ['talent', 'business', 'agency', 'admin', 'owner'];
 
@@ -50,6 +51,8 @@ function serializeAdminUser(uid: string, data: FirebaseFirestore.DocumentData) {
     displayName: data.displayName ?? '',
     photoURL: data.photoURL ?? null,
     accountType,
+    blogRole: data.blogRole ?? null,
+    operationalRoles: getOperationalRolesForProfile(data),
     accountTypeLocked: Boolean(data.accountTypeLocked),
     publicProfileEnabled: data.publicProfileEnabled !== false,
     moderationStatus: data.moderationStatus ?? 'active',

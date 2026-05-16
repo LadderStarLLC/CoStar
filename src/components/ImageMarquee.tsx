@@ -30,7 +30,7 @@ export default function ImageMarquee({ slides }: { slides: HomepageMarqueeSlide[
   }, [index]);
 
   useEffect(() => {
-    const timer = setInterval(next, 6000);
+    const timer = setInterval(next, 10000);
     return () => clearInterval(timer);
   }, [next]);
 
@@ -64,7 +64,7 @@ export default function ImageMarquee({ slides }: { slides: HomepageMarqueeSlide[
             fill
             sizes="100vw"
             priority={index === 0}
-            className="object-cover"
+            className={`object-cover ${slide.profileType.toLowerCase() === 'talent' ? 'md:object-[center_25%]' : ''}`}
           />
 
           <div className="absolute inset-0 bg-gradient-to-r from-[#0D0F11]/95 via-[#0D0F11]/60 to-transparent" />

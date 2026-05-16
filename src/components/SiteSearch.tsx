@@ -119,7 +119,7 @@ export default function SiteSearch() {
               <option value="talent">Talent</option>
               <option value="agency">Agencies</option>
               <option value="business">Businesses</option>
-              <option value="job">Jobs</option>
+              <option value="job">Jobs Board</option>
             </select>
           </div>
           <button

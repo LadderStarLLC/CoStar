@@ -2,9 +2,15 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { FieldValue, type Firestore, type Query } from 'firebase-admin/firestore';
-import { createBlogSlug } from '@/lib/blog';
-import { getCallerProfile, getAdminDb, isPrivilegedType, jsonError, requireAdmin } from '@/lib/firebaseAdmin';
+import { FieldValue, type Query } from 'firebase-admin/firestore';
+import { getAdminDb, jsonError } from '@/lib/firebaseAdmin';
+import {
+  buildHumanBlogMetadata,
+  callerCanManageBlog,
+  createUniqueBlogSlug,
+  getAuthorName,
+  requireBlogWriter,
+} from '@/lib/blogServer';
 
 export async function GET(req: NextRequest) {
   try {
@@ -34,12 +40,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { db, decoded, profile } = await requireAdmin(req);
+    const { db, decoded, profile, permissions } = await requireBlogWriter(req);
     const body = await req.json();
     const title = String(body.title ?? '').trim();
     const excerpt = String(body.excerpt ?? '').trim();
     const contentJson = String(body.contentJson ?? '').trim();
     const status = body.status === 'published' ? 'published' : 'draft';
+    const publishNow = status === 'published';
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required.' }, { status: 400 });
@@ -47,8 +54,11 @@ export async function POST(req: NextRequest) {
     if (!contentJson) {
       return NextResponse.json({ error: 'Content is required.' }, { status: 400 });
     }
+    if (publishNow && !permissions.canPublish) {
+      return NextResponse.json({ error: 'Blog publisher access required.' }, { status: 403 });
+    }
 
-    const slug = await createUniqueSlug(db, createBlogSlug(title));
+    const slug = await createUniqueBlogSlug(db, title);
     const docRef = db.collection('blogPosts').doc();
     const now = FieldValue.serverTimestamp();
 
@@ -59,41 +69,15 @@ export async function POST(req: NextRequest) {
       contentJson,
       status,
       authorUid: decoded.uid,
-      authorName: profile?.displayName || profile?.email || 'CoStar Admin',
+      authorName: getAuthorName(profile, decoded),
       createdAt: now,
       updatedAt: now,
-      publishedAt: status === 'published' ? now : null,
+      ...buildHumanBlogMetadata(decoded, publishNow),
     });
 
     return NextResponse.json({ id: docRef.id, slug });
   } catch (err) {
     return jsonError(err);
-  }
-}
-
-async function createUniqueSlug(db: Firestore, baseSlug: string): Promise<string> {
-  let slug = baseSlug;
-  let counter = 1;
-
-  while (counter < 100) {
-    const snap = await db.collection('blogPosts').where('slug', '==', slug).limit(1).get();
-    if (snap.empty) return slug;
-    counter += 1;
-    slug = `${baseSlug}-${counter}`;
-  }
-
-  return `${baseSlug}-${Date.now()}`;
-}
-
-async function callerCanManageBlog(req: NextRequest): Promise<boolean> {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) return false;
-
-  try {
-    const { profile } = await getCallerProfile(req);
-    return isPrivilegedType(profile?.accountType);
-  } catch {
-    return false;
   }
 }
 

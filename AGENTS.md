@@ -393,6 +393,7 @@ The admin console at `/admin` supports managed operations:
 
 Owner-only operations:
 - Promote/demote admins.
+- Grant or remove operational roles, such as blog writer/publisher.
 - Disable accounts from admin UI.
 - Run migration tools.
 
@@ -409,6 +410,8 @@ Admin routes:
   visibility/searchability moderation.
 - `POST /api/admin/users/[uid]/notes` - admin/owner internal support notes.
 - `POST /api/admin/users/set-role` - owner-only admin promotion/demotion.
+- `GET /api/admin/roles` - owner-only operational role registry.
+- `PATCH /api/admin/users/[uid]/roles` - owner-only operational role grants.
 - `POST /api/admin/users/set-status` - legacy status/public-profile endpoint.
 - `POST /api/admin/wallets/adjust` - admin/owner wallet adjustment.
 - `POST /api/admin/migrate/talent` - owner-only legacy `"user"` to `talent`
@@ -568,6 +571,25 @@ Rich text uses TipTap. Store the TipTap document as serialized JSON, not raw
 HTML. Render editor/read-only content with Tailwind Typography classes such as
 `prose prose-invert`; `@tailwindcss/typography` must remain enabled in
 `tailwind.config.ts`.
+
+---
+
+## Blog Authoring
+
+Blog posts are stored in `blogPosts` as TipTap JSON with `status: "draft" |
+"published"`. Anonymous/public readers see only published posts.
+
+Blog writing is narrower than platform admin access:
+- `users/{uid}.blogRole: "writer"` may create AI or human drafts and edit
+  drafts.
+- `users/{uid}.blogRole: "publisher"` may create/edit drafts and publish or
+  unpublish posts.
+- `admin` and `owner` account types retain full blog management access.
+
+AI blog generation must create drafts only. Human review is required before a
+post becomes public. AI-authored posts should include source/review metadata
+such as `source: "ai"`, `reviewStatus: "needs_review"`, `generatedByUid`,
+`model`, and `promptSummary`.
 
 ---
 

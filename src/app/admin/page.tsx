@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, Eye, EyeOff, Loader2, Megaphone, Percent, RefreshCw, Save, Search, Shield, Tag, Upload, UserCog, Users, Wallet } from "lucide-react";
+import { BarChart3, Eye, EyeOff, Loader2, Megaphone, Percent, RefreshCw, Save, Search, Shield, Tag, Upload, UserCog, Users, Wallet, X } from "lucide-react";
 import NavHeader from "@/components/NavHeader";
 import SiteContentEditor, { type AdminHomepageConfig } from "@/components/admin/SiteContentEditor";
 import { useAuth } from "@/context/AuthContext";
@@ -38,6 +38,8 @@ interface AdminUser {
   displayName: string;
   photoURL?: string | null;
   accountType: string | null;
+  blogRole?: string | null;
+  operationalRoles?: string[];
   accountTypeLocked: boolean;
   publicProfileEnabled: boolean;
   moderationStatus: "active" | "suspended";
@@ -93,6 +95,14 @@ interface AdminPricingConfig {
   lastPublishReason: string | null;
 }
 
+interface OperationalRoleDefinition {
+  id: string;
+  label: string;
+  description: string;
+  field: string;
+  value: string;
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -119,6 +129,10 @@ export default function AdminPage() {
   const [homepageDraft, setHomepageDraft] = useState<HomepageContent | null>(null);
   const [homepageReason, setHomepageReason] = useState("");
   const [isHomepageLoading, setIsHomepageLoading] = useState(false);
+  const [roleDefinitions, setRoleDefinitions] = useState<OperationalRoleDefinition[]>([]);
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [roleSavingId, setRoleSavingId] = useState<string | null>(null);
+  const [roleError, setRoleError] = useState<string | null>(null);
 
   const isPrivileged = user?.accountType === "admin" || user?.accountType === "owner";
   const isOwner = user?.accountType === "owner";
@@ -223,6 +237,16 @@ export default function AdminPage() {
     }
   }, [apiFetch, isPrivileged]);
 
+  const fetchOperationalRoles = useCallback(async () => {
+    if (!isOwner) return;
+    try {
+      const data = await apiFetch("/api/admin/roles") as { roles: OperationalRoleDefinition[] };
+      setRoleDefinitions(data.roles);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load operational roles.");
+    }
+  }, [apiFetch, isOwner]);
+
   useEffect(() => {
     if (isPrivileged) {
       fetchSummary();
@@ -247,6 +271,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (isPrivileged) fetchHomepage();
   }, [fetchHomepage, isPrivileged]);
+
+  useEffect(() => {
+    if (isOwner) fetchOperationalRoles();
+  }, [fetchOperationalRoles, isOwner]);
 
   async function callAdminApi(path: string, body: Record<string, unknown>, success: string) {
     setIsActing(true);
@@ -309,6 +337,25 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : "Site content action failed.");
     } finally {
       setIsActing(false);
+    }
+  }
+
+  async function updateOperationalRole(roleId: string, enabled: boolean) {
+    if (!detail) return;
+    setRoleSavingId(roleId);
+    setRoleError(null);
+    setMessage(null);
+    try {
+      await apiFetch(`/api/admin/users/${detail.profile.uid}/roles`, {
+        method: "PATCH",
+        body: JSON.stringify({ roleId, enabled }),
+      });
+      setMessage("User roles updated.");
+      await Promise.all([fetchSummary(), fetchUsers(), fetchDetail(detail.profile.uid)]);
+    } catch (err) {
+      setRoleError(err instanceof Error ? err.message : "Could not update user roles.");
+    } finally {
+      setRoleSavingId(null);
     }
   }
 
@@ -527,12 +574,26 @@ export default function AdminPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <Info label="Type" value={detail.profile.accountType ?? "none"} />
+                    <Info label="Roles" value={formatOperationalRoles(detail.profile.operationalRoles)} />
                     <Info label="Public" value={detail.publicProfile?.status ?? (detail.profile.publicProfileEnabled ? "visible" : "hidden")} />
                     <Info label="Private %" value={`${detail.profile.profileComplete ?? 0}%`} />
                     <Info label="Public %" value={`${detail.profile.publicProfileComplete ?? 0}%`} />
                   </div>
 
                   <div className="flex flex-wrap gap-2">
+                    {isOwner && detail.profile.accountType !== "owner" && (
+                      <button
+                        onClick={() => {
+                          setRoleError(null);
+                          setIsRoleModalOpen(true);
+                        }}
+                        disabled={isActing}
+                        className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-2 font-bold text-slate-950 hover:bg-amber-400 disabled:opacity-40"
+                      >
+                        <UserCog className="h-4 w-4" />
+                        Roles
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         const reason = window.prompt("Reason for this status change?");
@@ -771,6 +832,18 @@ export default function AdminPage() {
             onPublish={() => callHomepageApi("publish", "Site content published.")}
           />
         )}
+
+        {isRoleModalOpen && detail && (
+          <RoleManagementModal
+            userLabel={detail.profile.displayName || detail.profile.email || detail.profile.uid}
+            roles={roleDefinitions}
+            activeRoles={detail.profile.operationalRoles ?? []}
+            savingRoleId={roleSavingId}
+            error={roleError}
+            onClose={() => setIsRoleModalOpen(false)}
+            onToggle={updateOperationalRole}
+          />
+        )}
       </main>
     </div>
   );
@@ -787,6 +860,83 @@ function FilterSelect({ value, onChange, options }: { value: string; onChange: (
         <option key={option} value={option}>{option}</option>
       ))}
     </select>
+  );
+}
+
+function RoleManagementModal({
+  activeRoles,
+  error,
+  onClose,
+  onToggle,
+  roles,
+  savingRoleId,
+  userLabel,
+}: {
+  activeRoles: string[];
+  error: string | null;
+  onClose: () => void;
+  onToggle: (roleId: string, enabled: boolean) => void;
+  roles: OperationalRoleDefinition[];
+  savingRoleId: string | null;
+  userLabel: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-6">
+      <section className="w-full max-w-lg rounded-lg border border-white/10 bg-slate-900 p-6 shadow-2xl">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-sm text-amber-300">
+              <UserCog className="h-4 w-4" />
+              Operational roles
+            </div>
+            <h2 className="text-xl font-bold text-white">{userLabel}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white"
+            title="Close roles"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {roles.length > 0 ? roles.map((role) => {
+            const checked = activeRoles.includes(role.id);
+            const isSaving = savingRoleId === role.id;
+            return (
+              <label key={role.id} className="flex gap-3 rounded-lg border border-white/10 bg-slate-950/70 p-4">
+                <span className="relative mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={isSaving}
+                    onChange={(event) => onToggle(role.id, event.target.checked)}
+                    className="h-5 w-5 rounded border-white/20 bg-slate-900 text-amber-500 focus:ring-amber-500 disabled:opacity-40"
+                  />
+                  {isSaving && <Loader2 className="absolute h-4 w-4 animate-spin text-amber-300" />}
+                </span>
+                <span>
+                  <span className="block font-semibold text-white">{role.label}</span>
+                  <span className="mt-1 block text-sm leading-5 text-slate-400">{role.description}</span>
+                </span>
+              </label>
+            );
+          }) : (
+            <p className="rounded-lg border border-white/10 bg-slate-950/70 p-4 text-sm text-slate-400">
+              No operational roles are configured.
+            </p>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -921,6 +1071,11 @@ function Info({ label, value }: { label: string; value: string }) {
       <div className="mt-1 truncate text-sm font-semibold capitalize text-white">{value}</div>
     </div>
   );
+}
+
+function formatOperationalRoles(value?: string[]): string {
+  if (!value?.length) return "none";
+  return value.map((role) => role.replace(".", " ")).join(", ");
 }
 
 function formatAdminPrice(tier: PricingTier, cycle: BillingCycle) {

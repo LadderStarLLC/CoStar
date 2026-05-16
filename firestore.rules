@@ -22,6 +22,13 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountType in ['admin', 'owner'];
     }
 
+    function hasBlogRole() {
+      return signedIn() && (
+        isPrivilegedAccount() ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.blogRole in ['writer', 'publisher']
+      );
+    }
+
     function accountTypeIsCreateValid() {
       return !('accountType' in request.resource.data) ||
         request.resource.data.accountType == null ||
@@ -52,7 +59,8 @@ service cloud.firestore {
 
     function billingFieldsAreServerOwnedOnCreate() {
       return !('billing' in request.resource.data) &&
-        !('entitlements' in request.resource.data);
+        !('entitlements' in request.resource.data) &&
+        !('blogRole' in request.resource.data);
     }
 
     function serverOwnedFieldsAreImmutable() {
@@ -68,7 +76,8 @@ service cloud.firestore {
         'disabled',
         'lastAdminActionAt',
         'lastAdminActionBy',
-        'adminNotes'
+        'adminNotes',
+        'blogRole'
       ]);
     }
 
@@ -250,10 +259,12 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
-    // Blog posts - published posts are public; drafts and writes are admin/owner only.
+    // Blog posts - published posts are public; drafts are visible to blog workers.
+    // Writes go through server API routes so author, review, and publishing
+    // metadata can be validated consistently.
     match /blogPosts/{postId} {
-      allow read: if resource.data.status == 'published' || isPrivilegedAccount();
-      allow create, update, delete: if isPrivilegedAccount();
+      allow read: if resource.data.status == 'published' || hasBlogRole();
+      allow create, update, delete: if false;
     }
 
     // Conversations (Messaging)
