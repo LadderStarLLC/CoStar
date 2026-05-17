@@ -8,7 +8,12 @@ import { BlogEditor } from '@/components/blog/BlogEditor';
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/lib/firebase';
 import type { BlogPost, BlogPostStatus } from '@/lib/blog';
-import { serializeBlogTimestamp } from '@/lib/blog';
+import {
+  createBlogPostAction,
+  generateAiBlogDraftAction,
+  listBlogPostsAction,
+  updateBlogPostAction,
+} from '@/app/blog/actions';
 
 type EditorState = { mode: 'new'; post: null } | { mode: 'edit'; post: BlogPost } | null;
 
@@ -37,15 +42,10 @@ export function BlogPageClient() {
     setIsLoading(true);
     setError(null);
     try {
-      const headers: HeadersInit = {};
-      if (auth?.currentUser) {
-        headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
-      }
-      const response = await fetch('/api/blog', { headers, cache: 'no-store' });
-      if (!response.ok) throw new Error(await response.text());
-      const data: { posts?: Array<Record<string, any>> } = await response.json();
-      const next = (data.posts ?? [])
-        .map((post: any) => normalizeBlogPost(post.id, post))
+      const token = auth?.currentUser ? await auth.currentUser.getIdToken() : undefined;
+      const result = await listBlogPostsAction(token);
+      if (!result.ok) throw new Error(result.error);
+      const next = result.data.posts
         .filter((post: BlogPost) => canWriteDrafts || post.status === 'published')
         .sort((a, b) => dateValue(b.publishedAt ?? b.updatedAt) - dateValue(a.publishedAt ?? a.updatedAt));
       setPosts(next);
@@ -74,16 +74,11 @@ export function BlogPageClient() {
     try {
       const token = await auth.currentUser.getIdToken();
       const isEdit = editorState?.mode === 'edit';
-      const response = await fetch(isEdit ? `/api/blog/${editorState.post.id}` : '/api/blog', {
-        method: isEdit ? 'PATCH' : 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      const result = isEdit
+        ? await updateBlogPostAction(token, editorState.post.id, payload)
+        : await createBlogPostAction(token, payload);
 
-      if (!response.ok) throw new Error(await response.text());
+      if (!result.ok) throw new Error(result.error);
       setMessage(payload.status === 'published' ? 'Post published.' : 'Draft saved.');
       setEditorState(null);
       await fetchPosts();
@@ -102,15 +97,8 @@ export function BlogPageClient() {
     setError(null);
     try {
       const token = await auth.currentUser.getIdToken();
-      const response = await fetch('/api/blog/ai-drafts', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(aiDraftInput),
-      });
-      if (!response.ok) throw new Error(await response.text());
+      const result = await generateAiBlogDraftAction(token, aiDraftInput);
+      if (!result.ok) throw new Error(result.error);
       setMessage('AI draft created for human review.');
       setAiDraftInput((current) => ({ ...current, topic: '', sourceNotes: '' }));
       await fetchPosts();
@@ -133,15 +121,8 @@ export function BlogPageClient() {
     setError(null);
     try {
       const token = await auth.currentUser.getIdToken();
-      const response = await fetch(`/api/blog/${post.id}`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(patch),
-      });
-      if (!response.ok) throw new Error(await response.text());
+      const result = await updateBlogPostAction(token, post.id, patch);
+      if (!result.ok) throw new Error(result.error);
       setMessage(patch.status === 'published' ? 'Post published.' : 'Post moved to drafts.');
       await fetchPosts();
     } catch (err) {
@@ -332,29 +313,6 @@ export function BlogPageClient() {
       </main>
     </div>
   );
-}
-
-function normalizeBlogPost(id: string, data: any): BlogPost {
-  return {
-    id,
-    title: data.title ?? '',
-    slug: data.slug ?? id,
-    excerpt: data.excerpt ?? '',
-    contentJson: data.contentJson ?? '',
-    status: data.status === 'published' ? 'published' : 'draft',
-    authorUid: data.authorUid ?? '',
-    authorName: data.authorName ?? '',
-    createdAt: serializeBlogTimestamp(data.createdAt),
-    updatedAt: serializeBlogTimestamp(data.updatedAt),
-    publishedAt: serializeBlogTimestamp(data.publishedAt),
-    source: data.source === 'ai' ? 'ai' : data.source === 'human' ? 'human' : undefined,
-    reviewStatus: ['needs_review', 'approved', 'changes_requested'].includes(data.reviewStatus) ? data.reviewStatus : undefined,
-    generatedByUid: data.generatedByUid ?? undefined,
-    lastEditedByUid: data.lastEditedByUid ?? undefined,
-    publishedByUid: data.publishedByUid ?? undefined,
-    model: data.model ?? undefined,
-    promptSummary: data.promptSummary ?? undefined,
-  };
 }
 
 function dateValue(value: string | null): number {
