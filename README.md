@@ -299,14 +299,16 @@ Recorded business screenings are limited to explicit business screening links. T
 
 - `GET /api/jobs`: fetches job listings through configured providers.
 - `GET /api/search`: unified site search.
-- `POST /api/blog`: privileged blog creation.
-- `PATCH /api/blog/[postId]`: privileged blog updates.
 - `GET /api/ai/content/manifest`: machine-authenticated public content manifest for approved AI/agent tooling.
 - `GET /api/ai/content/pages`: machine-authenticated public page content, with optional `?path=/about` filtering.
 - `GET /api/ai/content/blog`: machine-authenticated published blog post summaries.
 - `GET /api/ai/content/blog/[slug]`: machine-authenticated published blog post content.
 
-Blog listing and post reads currently happen through Firestore client queries, with privileged writes handled by the API routes above. AI content routes expose only public/indexable content and require `Authorization: Bearer $AI_CONTENT_API_TOKEN`. For protected Vercel previews, callers may also need Vercel's `x-vercel-protection-bypass` header.
+Blog listing, reads, authoring, publishing, and AI draft generation use
+server-side blog actions rather than public REST API routes. AI content routes
+expose only public/indexable content and require `Authorization: Bearer
+$AI_CONTENT_API_TOKEN`. For protected Vercel previews, callers may also need
+Vercel's `x-vercel-protection-bypass` header.
 
 ## Project Map
 

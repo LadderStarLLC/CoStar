@@ -608,6 +608,10 @@ post becomes public. AI-authored posts should include source/review metadata
 such as `source: "ai"`, `reviewStatus: "needs_review"`, `generatedByUid`,
 `model`, and `promptSummary`.
 
+Blog listing, reads, authoring, publishing, and AI draft generation use
+server-side blog actions. Do not reintroduce `/api/blog` REST routes or
+standalone REST publish scripts for blog operations.
+
 ---
 
 ## Firestore Security Rules Notes
