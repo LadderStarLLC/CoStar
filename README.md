@@ -298,10 +298,9 @@ Recorded business screenings are limited to explicit business screening links. T
 
 - `GET /api/jobs`: fetches job listings through configured providers.
 - `GET /api/search`: unified site search.
-- `POST /api/blog`: privileged blog creation.
-- `PATCH /api/blog/[postId]`: privileged blog updates.
 
-Blog listing and post reads currently happen through Firestore client queries, with privileged writes handled by the API routes above.
+Blog listing, reads, authoring, publishing, and AI draft generation use
+server-side blog actions rather than public REST API routes.
 
 ## Project Map
 

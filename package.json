@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run",
-    "draft:blog:practice-interview": "node scripts/publish-blog-post.mjs"
+    "test": "vitest run"
   },
   "dependencies": {
     "@google/genai": "^1.49.0",

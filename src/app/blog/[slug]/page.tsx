@@ -8,7 +8,7 @@ import { BlogContent } from '@/components/blog/BlogContent';
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/lib/firebase';
 import type { BlogPost } from '@/lib/blog';
-import { serializeBlogTimestamp } from '@/lib/blog';
+import { getBlogPostBySlugAction } from '@/app/blog/actions';
 
 export default function BlogPostPage({ params }: { params: { slug: string } }) {
   const { user, loading } = useAuth();
@@ -24,17 +24,11 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
       setIsLoading(true);
       setError(null);
       try {
-        const headers: HeadersInit = {};
-        if (auth?.currentUser) {
-          headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
-        }
-        const response = await fetch(`/api/blog?slug=${encodeURIComponent(params.slug)}`, { headers, cache: 'no-store' });
-        if (!response.ok) throw new Error(await response.text());
-        const data: { posts?: Array<Record<string, any>> } = await response.json();
-        const match = (data.posts ?? [])
-          .map((post: any) => normalizeBlogPost(post.id, post))
-          .find((candidate: BlogPost) => isPrivileged || candidate.status === 'published');
-        setPost(match ?? null);
+        const token = auth?.currentUser ? await auth.currentUser.getIdToken() : undefined;
+        const result = await getBlogPostBySlugAction(params.slug, token);
+        if (!result.ok) throw new Error(result.error);
+        const match = result.data.post;
+        setPost(match && (isPrivileged || match.status === 'published') ? match : null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not load this blog post.');
       } finally {
@@ -84,22 +78,6 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
       </main>
     </div>
   );
-}
-
-function normalizeBlogPost(id: string, data: any): BlogPost {
-  return {
-    id,
-    title: data.title ?? '',
-    slug: data.slug ?? id,
-    excerpt: data.excerpt ?? '',
-    contentJson: data.contentJson ?? '',
-    status: data.status === 'published' ? 'published' : 'draft',
-    authorUid: data.authorUid ?? '',
-    authorName: data.authorName ?? '',
-    createdAt: serializeBlogTimestamp(data.createdAt),
-    updatedAt: serializeBlogTimestamp(data.updatedAt),
-    publishedAt: serializeBlogTimestamp(data.publishedAt),
-  };
 }
 
 function formatDate(value: string | null): string {
